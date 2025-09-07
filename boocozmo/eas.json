@@ -13,12 +13,8 @@
       "distribution": "internal",
       "android": {
         "buildType": "apk",
-        "gradleCommand": ":app:assembleDebug",
-        "config": {
-          "googleMaps": {
-            "apiKey": null
-          }
-        }
+        "gradleCommand": ":app:assembleDebug"
+       
       },
       "cache": {
         "disabled": true

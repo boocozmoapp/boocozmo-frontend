@@ -23,7 +23,12 @@
         "backgroundColor": "#ffffff"
       },
       "package": "com.boocozmo.boocozmo",
-      "enableEdgeToEdge": true
+      "enableEdgeToEdge": true,
+      "config": {
+        "googleMaps": {
+          "apiKey": null
+        }
+      }
     },
     "web": {
       "favicon": "./assets/favicon.png"
