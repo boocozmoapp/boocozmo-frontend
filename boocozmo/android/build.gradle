@@ -1,36 +1,42 @@
 // Top-level build file where you can add configuration options common to all sub-projects/modules.
 
 buildscript {
-  repositories {
-    google()
-    mavenCentral()
-  }
-  dependencies {
-    classpath('com.android.tools.build:gradle')
-    classpath('com.facebook.react:react-native-gradle-plugin')
-    classpath('org.jetbrains.kotlin:kotlin-gradle-plugin')
-  }
+    ext {
+        buildToolsVersion = "35.0.0"
+        minSdkVersion = 24
+        compileSdkVersion = 35
+        targetSdkVersion = 35
+        ndkVersion = "27.1.12297006"
+        kotlinVersion = "2.0.21"
+    }
+    repositories {
+        google()
+        mavenCentral()
+    }
+    dependencies {
+        classpath("com.android.tools.build:gradle:8.8.2")
+        classpath("com.facebook.react:react-native-gradle-plugin:0.76.2")
+        classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:2.0.21")
+    }
 }
 
-def reactNativeAndroidDir = new File(
-  providers.exec {
-    workingDir(rootDir)
-    commandLine("node", "--print", "require.resolve('react-native/package.json')")
-  }.standardOutput.asText.get().trim(),
-  "../android"
-)
-
 allprojects {
-  repositories {
-    maven {
-      // All of React Native (JS, Obj-C sources, Android binaries) is installed from npm
-      url(reactNativeAndroidDir)
+    repositories {
+        google()
+        mavenCentral()
+        maven { url 'https://www.jitpack.io' }
+        maven { url "$rootDir/../node_modules/react-native/android" }
+        maven { url "$rootDir/../node_modules/@react-native-community/netinfo/android" }
+        maven { url "$rootDir/../node_modules/@react-native-picker/picker/android" }
+        maven { url "$rootDir/../node_modules/react-native-gesture-handler/android" }
+        maven { url "$rootDir/../node_modules/react-native-reanimated/android" }
+        maven { url "$rootDir/../node_modules/react-native-safe-area-context/android" }
+        maven { url "$rootDir/../node_modules/react-native-screens/android" }
+        maven { url "$rootDir/../node_modules/react-native-vector-icons/android" }
+        maven { url "$rootDir/../node_modules/react-native-get-random-values/android" }
+        maven { url "$rootDir/../node_modules/react-native-linear-gradient/android" }
+        maven { url "$rootDir/../node_modules/react-native-maps/android" }
     }
-
-    google()
-    mavenCentral()
-    maven { url 'https://www.jitpack.io' }
-  }
 }
 
 apply plugin: "expo-root-project"
