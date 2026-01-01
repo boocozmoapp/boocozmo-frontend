@@ -1,4 +1,4 @@
-// src/pages/HomeScreen.tsx - FIXED DOUBLE LOADING
+// src/pages/HomeScreen.tsx - WITH USER PROFILE IN HEADER
 import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -15,7 +15,10 @@ import {
   FaExchangeAlt,
   FaDollarSign,
   FaTag,
-  FaSync,
+  FaGlobe,
+  FaUsers,
+  FaBell,
+  FaStar,
 } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import React from "react";
@@ -83,11 +86,11 @@ export default function HomeScreen({
   const [refreshing, setRefreshing] = useState(false);
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
   
-  // Refs for timers and data - FIXED TYPES
+  // Refs
   const refreshTimerRef = useRef<number | null>(null);
   const isMountedRef = useRef(true);
   const abortControllerRef = useRef<AbortController | null>(null);
-  const hasInitializedRef = useRef(false); // NEW: Prevent double initialization
+  const hasInitializedRef = useRef(false);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -103,7 +106,7 @@ export default function HomeScreen({
     };
   }, []);
 
-  // Get user location once - FIXED: Don't trigger re-fetch
+  // Get user location once
   useEffect(() => {
     const getLocation = () => {
       if (navigator.geolocation) {
@@ -123,8 +126,8 @@ export default function HomeScreen({
           },
           { 
             timeout: 5000, 
-            maximumAge: 600000, // Cache for 10 minutes
-            enableHighAccuracy: false // Faster, less battery
+            maximumAge: 600000,
+            enableHighAccuracy: false
           }
         );
       } else {
@@ -136,11 +139,10 @@ export default function HomeScreen({
       getLocation();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Empty dependency array - runs only once
+  }, []);
 
-  // Optimized fetch function
+  // Fetch function
   const fetchOffers = useCallback(async (silent = false, force = false) => {
-    // Don't fetch if already loading and not forced
     if ((loading || refreshing) && !force) return;
     
     if (!silent) {
@@ -149,7 +151,6 @@ export default function HomeScreen({
       setRefreshing(true);
     }
 
-    // Cancel previous request if any
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
     }
@@ -168,7 +169,6 @@ export default function HomeScreen({
       if (!response.ok) throw new Error("Failed to fetch offers");
       const data = await response.json();
 
-      // Process offers efficiently
       const processedOffers = data.map((offer: Offer) => {
         let imageUrl = offer.imageUrl;
         
@@ -202,7 +202,7 @@ export default function HomeScreen({
       if (isMountedRef.current) {
         setOffers(processedOffers);
         setLastRefresh(new Date());
-        setError(null); // Clear any previous errors
+        setError(null);
       }
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
@@ -219,9 +219,9 @@ export default function HomeScreen({
       abortControllerRef.current = null;
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userLocation, loading, refreshing]); // Include loading/refreshing in deps
+  }, [userLocation, loading, refreshing]);
 
-  // Initial load - FIXED: Only run once
+  // Initial load
   useEffect(() => {
     if (!hasInitializedRef.current) {
       hasInitializedRef.current = true;
@@ -229,7 +229,7 @@ export default function HomeScreen({
     }
   }, [fetchOffers]);
 
-  // Silent background refresh every 30 seconds - FIXED: Use setTimeout instead of setInterval
+  // Silent background refresh
   useEffect(() => {
     const scheduleRefresh = () => {
       if (refreshTimerRef.current) {
@@ -240,11 +240,10 @@ export default function HomeScreen({
         if (document.visibilityState === 'visible' && !refreshing && !loading) {
           fetchOffers(true);
         }
-        scheduleRefresh(); // Schedule next refresh
+        scheduleRefresh();
       }, 30000);
     };
 
-    // Start the refresh cycle
     scheduleRefresh();
 
     return () => {
@@ -254,7 +253,7 @@ export default function HomeScreen({
     };
   }, [fetchOffers, refreshing, loading]);
 
-  // Optimized filtering with useMemo
+  // Filter offers
   const filteredOffers = useMemo(() => {
     let result = offers;
 
@@ -277,7 +276,7 @@ export default function HomeScreen({
     return result;
   }, [searchQuery, selectedFilter, offers]);
 
-  // Memoized distance calculation
+  // Helper functions
   const calculateDistance = useCallback((
     lat1: number,
     lon1: number,
@@ -297,7 +296,6 @@ export default function HomeScreen({
     return R * c;
   }, []);
 
-  // Memoized image source
   const getImageSource = useCallback((offer: Offer): string => {
     if (offer.imageUrl?.startsWith('data:image')) {
       return offer.imageUrl;
@@ -308,14 +306,12 @@ export default function HomeScreen({
     return offer.imageUrl || "https://images.unsplash.com/photo-1541963463532-d68292c34b19?w=400&h=500&fit=crop";
   }, []);
 
-  // Memoized event handlers
   const handleOfferPress = useCallback((offerId: number) => {
     navigate(`/offer/${offerId}`);
   }, [navigate]);
 
   const handleLike = useCallback(async (offerId: number, e: React.MouseEvent) => {
     e.stopPropagation();
-    // Optimistic update
     setOffers(prev => prev.map(offer => 
       offer.id === offerId 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -349,7 +345,6 @@ export default function HomeScreen({
     navigate(`/offer/${offer.id}`);
   }, [currentUser.email, navigate]);
 
-  // Helper functions
   const getTypeColor = (type: string): string => {
     switch(type) {
       case 'sell': return BRONZE.primary;
@@ -378,14 +373,6 @@ export default function HomeScreen({
     return `${Math.floor(hours / 24)}d ago`;
   };
 
-  // Pull to refresh handler
-  const handleRefresh = useCallback(() => {
-    if (!refreshing) {
-      fetchOffers(false, true); // Force refresh
-    }
-  }, [fetchOffers, refreshing]);
-
-  // Filter buttons
   const filterButtons = useMemo(() => [
     { id: "all" as const, label: "All", icon: <FaFilter /> },
     { id: "sell" as const, label: "For Sale", icon: <FaDollarSign /> },
@@ -393,55 +380,35 @@ export default function HomeScreen({
     { id: "buy" as const, label: "Wanted", icon: <FaTag /> },
   ], []);
 
-  // Memoized OfferCard component - MOVED OUTSIDE
+  // OfferCard component
   const OfferCard = useMemo(() => 
     React.memo(({ offer }: { offer: Offer }) => (
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95 }}
-        whileHover={{ y: -4, transition: { duration: 0.2 } }}
+        whileHover={{ y: -4 }}
         whileTap={{ scale: 0.98 }}
         style={{
           background: "white",
-          borderRadius: "20px",
-          padding: "18px",
+          borderRadius: "16px",
+          overflow: "hidden",
           marginBottom: "16px",
-          boxShadow: "0 6px 24px rgba(205, 127, 50, 0.08)",
+          boxShadow: "0 4px 20px rgba(205, 127, 50, 0.08)",
           border: `1px solid ${BRONZE.pale}`,
           cursor: "pointer",
           position: "relative",
-          overflow: "hidden",
-          willChange: "transform",
         }}
         onClick={() => handleOfferPress(offer.id)}
       >
-        {/* Bronze accent */}
-        <div
-          style={{
-            position: "absolute",
-            top: 0,
-            left: 0,
-            width: "100%",
-            height: "4px",
-            background: `linear-gradient(90deg, ${BRONZE.primary}, ${BRONZE.light})`,
-          }}
-        />
-
-        <div style={{ display: "flex", gap: "18px" }}>
-          {/* Image Container */}
-          <div
-            style={{
-              width: "100px",
-              height: "140px",
-              borderRadius: "14px",
-              overflow: "hidden",
-              flexShrink: 0,
-              border: `2px solid ${BRONZE.pale}`,
-              position: "relative",
-              background: BRONZE.bgDark,
-            }}
-          >
+        <div style={{ display: "flex" }}>
+          {/* Book Image */}
+          <div style={{
+            width: "110px",
+            height: "160px",
+            position: "relative",
+            flexShrink: 0,
+          }}>
             <img
               src={getImageSource(offer)}
               alt={offer.bookTitle}
@@ -449,161 +416,157 @@ export default function HomeScreen({
                 width: "100%",
                 height: "100%",
                 objectFit: "cover",
-                transition: "transform 0.3s ease",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.transform = "scale(1.05)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform = "scale(1)";
               }}
               loading="lazy"
-              width={100}
-              height={140}
+              width={110}
+              height={160}
             />
-          </div>
-
-          {/* Content */}
-          <div style={{ flex: 1 }}>
-            {/* Type badge */}
-            <div
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "6px",
-                padding: "5px 12px",
-                borderRadius: "20px",
-                background: `${getTypeColor(offer.type)}15`,
-                color: getTypeColor(offer.type),
-                fontSize: "12px",
-                fontWeight: 600,
-                marginBottom: "10px",
-                border: `1px solid ${getTypeColor(offer.type)}30`,
-              }}
-            >
+            {/* Type Badge on Image */}
+            <div style={{
+              position: "absolute",
+              top: "10px",
+              left: "10px",
+              background: "rgba(255,255,255,0.9)",
+              padding: "4px 10px",
+              borderRadius: "12px",
+              fontSize: "11px",
+              fontWeight: "600",
+              color: getTypeColor(offer.type),
+              display: "flex",
+              alignItems: "center",
+              gap: "4px",
+              border: `1px solid ${getTypeColor(offer.type)}30`,
+            }}>
               {getTypeIcon(offer.type)}
               {offer.type.charAt(0).toUpperCase() + offer.type.slice(1)}
             </div>
+          </div>
 
-            {/* Title */}
-            <h3
-              style={{
-                fontSize: "18px",
-                fontWeight: "bold",
-                margin: "0 0 4px",
+          {/* Content */}
+          <div style={{ 
+            flex: 1, 
+            padding: "16px",
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "space-between"
+          }}>
+            <div>
+              {/* Title */}
+              <h3 style={{
+                fontSize: "16px",
+                fontWeight: "600",
+                margin: "0 0 6px",
                 color: BRONZE.textDark,
                 lineHeight: 1.3,
-              }}
-            >
-              {offer.bookTitle}
-            </h3>
+              }}>
+                {offer.bookTitle}
+              </h3>
 
-            {/* Author */}
-            {offer.author && (
-              <p
-                style={{
-                  fontSize: "14px",
+              {/* Author */}
+              {offer.author && (
+                <p style={{
+                  fontSize: "13px",
                   color: BRONZE.textLight,
-                  opacity: 0.9,
-                  margin: "0 0 6px",
+                  margin: "0 0 8px",
                   fontStyle: "italic",
-                }}
-              >
-                {offer.author}
-              </p>
-            )}
-
-            {/* Details */}
-            <div style={{ marginBottom: "10px" }}>
-              {offer.condition && (
-                <span
-                  style={{
-                    fontSize: "13px",
-                    color: BRONZE.primary,
-                    fontWeight: 500,
-                    marginRight: "12px",
-                  }}
-                >
-                  {offer.condition}
-                </span>
+                }}>
+                  {offer.author}
+                </p>
               )}
-              
-              {offer.type === "sell" && offer.price && (
-                <span
-                  style={{
+
+              {/* Price or Exchange */}
+              <div style={{ marginBottom: "10px" }}>
+                {offer.type === "sell" && offer.price ? (
+                  <span style={{
                     fontSize: "20px",
                     fontWeight: "bold",
                     color: BRONZE.primary,
-                  }}
-                >
-                  ${offer.price.toFixed(2)}
-                </span>
-              )}
-            </div>
-
-            {/* Exchange info */}
-            {offer.type === "exchange" && offer.exchangeBook && (
-              <div
-                style={{
-                  fontSize: "14px",
-                  color: BRONZE.dark,
-                  fontWeight: 500,
-                  marginBottom: "8px",
-                  padding: "6px 10px",
-                  background: `${BRONZE.dark}08`,
-                  borderRadius: "8px",
-                  borderLeft: `3px solid ${BRONZE.dark}`,
-                }}
-              >
-                For: {offer.exchangeBook}
-              </div>
-            )}
-
-            {/* Footer */}
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                fontSize: "12px",
-                color: BRONZE.textLight,
-              }}
-            >
-              <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                <FaMapMarkerAlt size={10} />
-                <span>{offer.distance || "Nearby"}</span>
-                {offer.ownerName && (
-                  <span style={{ opacity: 0.7 }}>• {offer.ownerName}</span>
+                  }}>
+                    ${offer.price.toFixed(2)}
+                  </span>
+                ) : offer.type === "exchange" && offer.exchangeBook ? (
+                  <div style={{
+                    fontSize: "13px",
+                    color: BRONZE.dark,
+                    fontWeight: "500",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "6px",
+                  }}>
+                    <FaExchangeAlt size={12} />
+                    For: {offer.exchangeBook}
+                  </div>
+                ) : (
+                  <span style={{
+                    fontSize: "14px",
+                    color: BRONZE.textLight,
+                    fontWeight: "500",
+                  }}>
+                    Looking for offers
+                  </span>
                 )}
               </div>
+
+              {/* Condition and Genre */}
+              <div style={{ display: "flex", gap: "10px", fontSize: "12px" }}>
+                {offer.condition && (
+                  <span style={{
+                    color: BRONZE.primary,
+                    padding: "2px 8px",
+                    background: `${BRONZE.primary}10`,
+                    borderRadius: "10px",
+                  }}>
+                    {offer.condition}
+                  </span>
+                )}
+                {offer.genre && (
+                  <span style={{
+                    color: BRONZE.textLight,
+                    padding: "2px 8px",
+                    background: `${BRONZE.textLight}08`,
+                    borderRadius: "10px",
+                  }}>
+                    {offer.genre}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              marginTop: "12px",
+              paddingTop: "12px",
+              borderTop: `1px solid ${BRONZE.pale}`,
+            }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "12px" }}>
+                <FaMapMarkerAlt size={10} color={BRONZE.textLight} />
+                <span style={{ color: BRONZE.textLight }}>{offer.distance || "Nearby"}</span>
+              </div>
               
-              {offer.lastUpdated && (
-                <span style={{ opacity: 0.5, fontSize: "11px" }}>
-                  {formatTimeAgo(offer.lastUpdated)}
-                </span>
-              )}
+              <div style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "11px" }}>
+                <FaUser size={9} color={BRONZE.textLight} />
+                <span style={{ color: BRONZE.textLight }}>{offer.ownerName || "Reader"}</span>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Actions */}
-        <div
-          style={{
-            display: "flex",
-            gap: "12px",
-            marginTop: "18px",
-            paddingTop: "16px",
-            borderTop: `1px solid ${BRONZE.pale}`,
-          }}
-        >
+        {/* Quick Actions Bar */}
+        <div style={{
+          display: "flex",
+          borderTop: `1px solid ${BRONZE.pale}`,
+        }}>
           {[
-            { icon: FaHeart, label: "Like", onClick: (e: React.MouseEvent) => handleLike(offer.id, e), color: BRONZE.primary },
-            { icon: FaComments, label: "Chat", onClick: (e: React.MouseEvent) => handleChat(offer, e), color: BRONZE.dark },
-            { icon: FaShareAlt, label: "Share", onClick: (e: React.MouseEvent) => handleShare(offer.id, e), color: BRONZE.light },
+            { icon: FaHeart, label: "Like", onClick: (e: React.MouseEvent) => handleLike(offer.id, e) },
+            { icon: FaComments, label: "Chat", onClick: (e: React.MouseEvent) => handleChat(offer, e) },
+            { icon: FaShareAlt, label: "Share", onClick: (e: React.MouseEvent) => handleShare(offer.id, e) },
+            { icon: FaStar, label: "Save", onClick: (e: React.MouseEvent) => { e.stopPropagation(); } },
           ].map((action) => (
             <motion.button
               key={action.label}
-              whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               onClick={action.onClick}
               style={{
@@ -611,22 +574,23 @@ export default function HomeScreen({
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                gap: "8px",
-                padding: "10px",
-                borderRadius: "10px",
+                gap: "6px",
+                padding: "12px",
                 border: "none",
-                background: `${action.color}08`,
-                color: action.color,
-                fontSize: "14px",
-                fontWeight: 500,
+                background: "transparent",
+                color: BRONZE.textLight,
+                fontSize: "12px",
+                fontWeight: "500",
                 cursor: "pointer",
                 transition: "all 0.2s ease",
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.background = `${action.color}15`;
+                e.currentTarget.style.color = BRONZE.primary;
+                e.currentTarget.style.background = `${BRONZE.primary}05`;
               }}
               onMouseLeave={(e) => {
-                e.currentTarget.style.background = `${action.color}08`;
+                e.currentTarget.style.color = BRONZE.textLight;
+                e.currentTarget.style.background = "transparent";
               }}
             >
               <action.icon size={14} />
@@ -650,69 +614,133 @@ export default function HomeScreen({
         overflow: "hidden",
       }}
     >
-      {/* Header */}
+      {/* Header - Clean and Professional */}
       <header
         style={{
           padding: "60px 20px 20px 20px",
-          background: `linear-gradient(135deg, ${BRONZE.dark} 0%, ${BRONZE.primary} 100%)`,
-          color: "white",
+          background: "white",
           position: "sticky",
           top: 0,
           zIndex: 50,
           flexShrink: 0,
+          boxShadow: "0 2px 20px rgba(205, 127, 50, 0.08)",
         }}
       >
-        {/* Welcome & Refresh */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
-          <div>
-            <h1
-              style={{
-                fontSize: "22px",
-                fontWeight: "700",
-                margin: "0 0 4px",
-                display: "flex",
-                alignItems: "center",
-                gap: "10px",
-                fontFamily: "'Merriweather', serif",
-              }}
-            >
-              <FaBookOpen />
-              Welcome, {currentUser.name.split(' ')[0]}!
-            </h1>
-            <div style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "13px", opacity: 0.9 }}>
-              <span>Discover books near you</span>
-              {lastRefresh && (
-                <span style={{ opacity: 0.7, fontSize: "12px" }}>
-                  • Updated {formatTimeAgo(lastRefresh.toISOString())}
-                </span>
-              )}
-            </div>
-          </div>
-          
+        {/* Top Bar with User Profile and Actions */}
+        <div style={{ 
+          display: "flex", 
+          justifyContent: "space-between", 
+          alignItems: "center", 
+          marginBottom: "20px" 
+        }}>
+          {/* User Profile (replaces logo) */}
           <motion.button
-            whileTap={{ rotate: 180 }}
-            onClick={handleRefresh}
-            disabled={refreshing || loading}
+            whileTap={{ scale: 0.95 }}
+            onClick={onProfilePress}
             style={{
-              background: "rgba(255,255,255,0.15)",
-              border: "1px solid rgba(255,255,255,0.3)",
-              color: "white",
-              width: "40px",
-              height: "40px",
+              display: "flex",
+              alignItems: "center",
+              gap: "12px",
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              padding: "8px",
+              borderRadius: "12px",
+              transition: "all 0.2s ease",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = `${BRONZE.primary}08`;
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = "none";
+            }}
+          >
+            {/* User Avatar */}
+            <div style={{
+              width: "44px",
+              height: "44px",
               borderRadius: "50%",
+              background: `linear-gradient(135deg, ${BRONZE.primary}, ${BRONZE.dark})`,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              cursor: refreshing || loading ? "not-allowed" : "pointer",
-              opacity: (refreshing || loading) ? 0.5 : 1,
-            }}
-          >
-            <FaSync className={refreshing ? "spin" : ""} />
+              color: "white",
+              fontSize: "18px",
+              fontWeight: "600",
+              border: `2px solid ${BRONZE.pale}`,
+              boxShadow: "0 4px 12px rgba(205, 127, 50, 0.1)",
+            }}>
+              {currentUser.name.charAt(0).toUpperCase()}
+            </div>
+            
+            <div style={{ textAlign: "left" }}>
+              <p style={{
+                fontSize: "14px",
+                fontWeight: "600",
+                margin: "0",
+                color: BRONZE.textDark,
+                display: "flex",
+                alignItems: "center",
+                gap: "4px",
+              }}>
+                Hi, {currentUser.name.split(' ')[0]}
+                <span style={{ fontSize: "12px", color: BRONZE.primary }}>👋</span>
+              </p>
+              <p style={{
+                fontSize: "12px",
+                color: BRONZE.textLight,
+                margin: "4px 0 0",
+                opacity: 0.8,
+              }}>
+                Your literary journey
+              </p>
+            </div>
           </motion.button>
+
+          {/* Action Icons */}
+          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+            <motion.button
+              whileTap={{ scale: 0.9 }}
+              style={{
+                width: "36px",
+                height: "36px",
+                borderRadius: "50%",
+                border: `1px solid ${BRONZE.pale}`,
+                background: "white",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: BRONZE.primary,
+                cursor: "pointer",
+                fontSize: "16px",
+              }}
+            >
+              <FaGlobe />
+            </motion.button>
+            
+            <motion.button
+              whileTap={{ scale: 0.9 }}
+              style={{
+                width: "36px",
+                height: "36px",
+                borderRadius: "50%",
+                border: `1px solid ${BRONZE.pale}`,
+                background: "white",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: BRONZE.primary,
+                cursor: "pointer",
+                fontSize: "16px",
+              }}
+            >
+              <FaBell />
+            </motion.button>
+          </div>
         </div>
 
-        {/* Search */}
-        <div style={{ position: "relative", marginBottom: "16px" }}>
+        {/* Search Bar */}
+        <div style={{ position: "relative", marginBottom: "20px" }}>
           <div
             style={{
               position: "absolute",
@@ -727,26 +755,29 @@ export default function HomeScreen({
           </div>
           <input
             type="text"
-            placeholder="Search books, authors, genres..."
+            placeholder="Search books, authors, or genres..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             style={{
               width: "100%",
-              padding: "16px 16px 16px 48px",
-              borderRadius: "14px",
-              border: "none",
-              fontSize: "16px",
+              padding: "14px 14px 14px 48px",
+              borderRadius: "12px",
+              border: `1px solid ${BRONZE.light}`,
+              fontSize: "15px",
               background: "white",
-              boxShadow: "0 8px 32px rgba(205, 127, 50, 0.12)",
+              color: BRONZE.textDark,
               fontFamily: "inherit",
               fontWeight: 500,
               transition: "all 0.2s ease",
+              boxShadow: "0 2px 8px rgba(205, 127, 50, 0.05)",
             }}
             onFocus={(e) => {
-              e.currentTarget.style.boxShadow = "0 8px 32px rgba(205, 127, 50, 0.2)";
+              e.currentTarget.style.borderColor = BRONZE.primary;
+              e.currentTarget.style.boxShadow = "0 2px 12px rgba(205, 127, 50, 0.1)";
             }}
             onBlur={(e) => {
-              e.currentTarget.style.boxShadow = "0 8px 32px rgba(205, 127, 50, 0.12)";
+              e.currentTarget.style.borderColor = BRONZE.light;
+              e.currentTarget.style.boxShadow = "0 2px 8px rgba(205, 127, 50, 0.05)";
             }}
           />
         </div>
@@ -757,7 +788,7 @@ export default function HomeScreen({
             display: "flex",
             gap: "10px",
             overflowX: "auto",
-            paddingBottom: "6px",
+            paddingBottom: "4px",
             scrollbarWidth: "none",
           }}
         >
@@ -767,25 +798,25 @@ export default function HomeScreen({
               whileTap={{ scale: 0.95 }}
               onClick={() => setSelectedFilter(filter.id)}
               style={{
-                padding: "10px 18px",
-                borderRadius: "24px",
-                border: `2px solid ${
-                  selectedFilter === filter.id
-                    ? "white"
-                    : "rgba(255,255,255,0.25)"
-                }`,
+                padding: "8px 16px",
+                borderRadius: "20px",
+                border: "none",
                 background:
-                  selectedFilter === filter.id ? "white" : "rgba(255,255,255,0.1)",
-                color: selectedFilter === filter.id ? BRONZE.primary : "white",
-                fontSize: "14px",
+                  selectedFilter === filter.id 
+                    ? `linear-gradient(135deg, ${BRONZE.primary}, ${BRONZE.dark})`
+                    : `${BRONZE.pale}`,
+                color: selectedFilter === filter.id ? "white" : BRONZE.textLight,
+                fontSize: "13px",
                 fontWeight: "600",
                 display: "flex",
                 alignItems: "center",
-                gap: "8px",
+                gap: "6px",
                 cursor: "pointer",
                 whiteSpace: "nowrap",
                 flexShrink: 0,
-                backdropFilter: "blur(10px)",
+                boxShadow: selectedFilter === filter.id 
+                  ? "0 4px 12px rgba(205, 127, 50, 0.2)" 
+                  : "none",
               }}
             >
               {filter.icon}
@@ -801,56 +832,75 @@ export default function HomeScreen({
           flex: 1,
           overflowY: "auto",
           padding: "20px",
-          paddingBottom: "80px",
+          paddingBottom: "90px",
           WebkitOverflowScrolling: "touch",
         }}
       >
-        {/* Refresh indicator - only show when refreshing (not initial load) */}
+        {/* Refresh indicator */}
         {refreshing && !loading && (
           <div style={{ textAlign: "center", padding: "10px 0 20px" }}>
             <div
               style={{
-                width: "30px",
-                height: "30px",
-                border: `3px solid ${BRONZE.primary}30`,
+                width: "24px",
+                height: "24px",
+                border: `2px solid ${BRONZE.primary}30`,
                 borderTopColor: BRONZE.primary,
                 borderRadius: "50%",
                 margin: "0 auto",
                 animation: "spin 0.8s linear infinite",
               }}
             />
-            <p style={{ fontSize: "14px", color: BRONZE.textLight, marginTop: "8px" }}>
-              Refreshing...
-            </p>
           </div>
         )}
 
-        {/* Results count - only show when not loading */}
-        {!loading && !error && filteredOffers.length > 0 && (
-          <div style={{ marginBottom: "16px", padding: "0 4px" }}>
-            <p style={{ fontSize: "14px", color: BRONZE.textLight, fontWeight: 500 }}>
-              {filteredOffers.length} {filteredOffers.length === 1 ? 'book' : 'books'} found
-              {searchQuery && ` for "${searchQuery}"`}
-            </p>
+        {/* Stats Bar */}
+        {!loading && !error && (
+          <div style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginBottom: "20px",
+            padding: "12px 16px",
+            background: "white",
+            borderRadius: "12px",
+            boxShadow: "0 2px 8px rgba(205, 127, 50, 0.05)",
+            border: `1px solid ${BRONZE.pale}`,
+          }}>
+            <div>
+              <p style={{ fontSize: "14px", color: BRONZE.textLight, margin: "0 0 4px" }}>
+                Available Books
+              </p>
+              <p style={{ fontSize: "24px", fontWeight: "bold", color: BRONZE.primary, margin: "0" }}>
+                {filteredOffers.length}
+              </p>
+            </div>
+            <div style={{ textAlign: "right" }}>
+              <p style={{ fontSize: "14px", color: BRONZE.textLight, margin: "0 0 4px" }}>
+                Last updated
+              </p>
+              <p style={{ fontSize: "13px", color: BRONZE.textDark, margin: "0", fontWeight: "500" }}>
+                {lastRefresh ? formatTimeAgo(lastRefresh.toISOString()) : "Just now"}
+              </p>
+            </div>
           </div>
         )}
 
         {/* Content states */}
-        {loading && !refreshing ? ( // Show loading only on initial load
+        {loading && !refreshing ? (
           <div style={{ textAlign: "center", padding: "60px 20px" }}>
             <div
               style={{
-                width: "60px",
-                height: "60px",
-                border: `4px solid ${BRONZE.primary}20`,
+                width: "50px",
+                height: "50px",
+                border: `3px solid ${BRONZE.primary}20`,
                 borderTopColor: BRONZE.primary,
                 borderRadius: "50%",
                 margin: "0 auto 24px",
                 animation: "spin 1s ease-in-out infinite",
               }}
             />
-            <p style={{ color: BRONZE.primary, fontSize: "16px", fontWeight: 500 }}>
-              Loading your books...
+            <p style={{ color: BRONZE.primary, fontSize: "15px", fontWeight: "500" }}>
+              Loading books...
             </p>
           </div>
         ) : error ? (
@@ -859,7 +909,7 @@ export default function HomeScreen({
               📚
             </div>
             <h3 style={{ color: BRONZE.dark, marginBottom: "8px", fontSize: "18px" }}>
-              Something went wrong
+              Unable to load books
             </h3>
             <p style={{ color: BRONZE.textLight, marginBottom: "24px", fontSize: "14px" }}>
               {error}
@@ -869,15 +919,15 @@ export default function HomeScreen({
               whileTap={{ scale: 0.95 }}
               onClick={() => fetchOffers(false, true)}
               style={{
-                padding: "14px 28px",
+                padding: "12px 24px",
                 background: BRONZE.primary,
                 color: "white",
                 border: "none",
-                borderRadius: "14px",
-                fontSize: "16px",
+                borderRadius: "12px",
+                fontSize: "15px",
                 fontWeight: "600",
                 cursor: "pointer",
-                boxShadow: `0 6px 20px ${BRONZE.primary}40`,
+                boxShadow: `0 4px 16px ${BRONZE.primary}40`,
               }}
             >
               Try Again
@@ -885,16 +935,27 @@ export default function HomeScreen({
           </div>
         ) : filteredOffers.length === 0 ? (
           <div style={{ textAlign: "center", padding: "60px 20px" }}>
-            <div style={{ fontSize: "64px", color: BRONZE.light, marginBottom: "20px", opacity: 0.5 }}>
-              📖
+            <div style={{ 
+              width: "100px", 
+              height: "100px", 
+              borderRadius: "50%",
+              background: `${BRONZE.primary}10`,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              margin: "0 auto 20px",
+              fontSize: "40px",
+              color: BRONZE.primary,
+            }}>
+              <FaBookOpen />
             </div>
-            <h3 style={{ color: BRONZE.dark, marginBottom: "8px", fontSize: "20px", fontWeight: "600" }}>
-              {searchQuery ? 'No matches found' : 'No books yet'}
+            <h3 style={{ color: BRONZE.dark, marginBottom: "8px", fontSize: "18px", fontWeight: "600" }}>
+              {searchQuery ? 'No matches found' : 'No books available'}
             </h3>
-            <p style={{ color: BRONZE.textLight, marginBottom: "28px", fontSize: "15px", maxWidth: "300px", margin: "0 auto 28px", lineHeight: 1.5 }}>
+            <p style={{ color: BRONZE.textLight, fontSize: "14px", maxWidth: "280px", margin: "0 auto 28px", lineHeight: 1.5 }}>
               {searchQuery
-                ? "Try a different search term or browse all books"
-                : "Be the first to share a book in your area!"}
+                ? "Try adjusting your search terms"
+                : "Be the first to share a book in your community"}
             </p>
             {!searchQuery && onAddPress && (
               <motion.button
@@ -902,15 +963,15 @@ export default function HomeScreen({
                 whileTap={{ scale: 0.95 }}
                 onClick={onAddPress}
                 style={{
-                  padding: "16px 32px",
+                  padding: "14px 28px",
                   background: `linear-gradient(135deg, ${BRONZE.primary}, ${BRONZE.dark})`,
                   color: "white",
                   border: "none",
-                  borderRadius: "14px",
-                  fontSize: "16px",
+                  borderRadius: "12px",
+                  fontSize: "15px",
                   fontWeight: "600",
                   cursor: "pointer",
-                  boxShadow: `0 8px 24px ${BRONZE.primary}50`,
+                  boxShadow: `0 6px 20px ${BRONZE.primary}40`,
                   display: "flex",
                   alignItems: "center",
                   gap: "10px",
@@ -918,7 +979,7 @@ export default function HomeScreen({
                 }}
               >
                 <FaPlus />
-                Post Your First Book
+                Share a Book
               </motion.button>
             )}
           </div>
@@ -931,74 +992,107 @@ export default function HomeScreen({
         )}
       </main>
 
-      {/* Bottom Navigation */}
+      {/* Bottom Navigation - Professional Design */}
       <nav
         style={{
           display: "flex",
           justifyContent: "space-around",
-          padding: "16px 0",
+          alignItems: "center",
+          padding: "12px 0",
           borderTop: `1px solid ${BRONZE.pale}`,
-          background: "rgba(255, 255, 255, 0.95)",
-          backdropFilter: "blur(20px)",
+          background: "white",
           position: "fixed",
           bottom: 0,
           width: "100%",
           zIndex: 100,
-          boxShadow: "0 -8px 32px rgba(205, 127, 50, 0.08)",
+          boxShadow: "0 -4px 20px rgba(205, 127, 50, 0.08)",
         }}
       >
         {[
           { icon: FaBookOpen, label: "Home", active: true, onClick: () => navigate("/") },
           { icon: FaMapMarkedAlt, label: "Map", onClick: onMapPress },
-          { icon: FaPlus, label: "Add", onClick: onAddPress, isAdd: true },
-          { icon: FaComments, label: "Chat", onClick: () => navigate("/chat") },
-          { icon: FaUser, label: "Profile", onClick: onProfilePress },
+          { icon: FaComments, label: "Chats", onClick: () => navigate("/chat") },
+          { icon: FaUsers, label: "Community", onClick: () => {} },
         ].map((item) => (
           <motion.button
             key={item.label}
-            whileTap={{ scale: 0.9 }}
+            whileTap={{ scale: 0.95 }}
             onClick={item.onClick}
             style={{
-              background: item.isAdd 
-                ? `linear-gradient(135deg, ${BRONZE.primary}, ${BRONZE.dark})`
-                : "transparent",
+              background: "transparent",
               border: "none",
-              color: item.active && !item.isAdd ? BRONZE.primary : BRONZE.textLight,
+              color: item.active ? BRONZE.primary : BRONZE.textLight,
               display: "flex",
               flexDirection: "column",
               alignItems: "center",
-              fontSize: item.isAdd ? "26px" : "22px",
+              fontSize: "20px",
               cursor: "pointer",
-              padding: item.isAdd ? "0" : "8px",
-              width: item.isAdd ? "64px" : "auto",
-              height: item.isAdd ? "64px" : "auto",
-              borderRadius: item.isAdd ? "50%" : "0",
-              marginTop: item.isAdd ? "-32px" : "0",
-              boxShadow: item.isAdd ? `0 8px 32px ${BRONZE.primary}40` : "none",
-              position: "relative",
+              padding: "8px 12px",
+              minWidth: "60px",
+              borderRadius: "10px",
+              transition: "all 0.2s ease",
+            }}
+            onMouseEnter={(e) => {
+              if (!item.active) {
+                e.currentTarget.style.background = `${BRONZE.primary}08`;
+                e.currentTarget.style.color = BRONZE.primary;
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (!item.active) {
+                e.currentTarget.style.background = "transparent";
+                e.currentTarget.style.color = BRONZE.textLight;
+              }
             }}
           >
-            {item.icon && <item.icon />}
+            <item.icon />
             <span style={{ 
               fontSize: "11px", 
               marginTop: "4px", 
-              fontWeight: item.active && !item.isAdd ? "600" : "500",
-              opacity: item.active ? 1 : 0.8,
+              fontWeight: item.active ? "600" : "500",
             }}>
               {item.label}
             </span>
           </motion.button>
         ))}
+
+        {/* Floating Add Button */}
+        <motion.div
+          style={{
+            position: "absolute",
+            top: "-25px",
+            left: "50%",
+            transform: "translateX(-50%)",
+          }}
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.9 }}
+        >
+          <button
+            onClick={onAddPress}
+            style={{
+              width: "56px",
+              height: "56px",
+              borderRadius: "50%",
+              background: `linear-gradient(135deg, ${BRONZE.primary}, ${BRONZE.dark})`,
+              border: `3px solid white`,
+              color: "white",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: "24px",
+              cursor: "pointer",
+              boxShadow: "0 6px 20px rgba(205, 127, 50, 0.4)",
+            }}
+          >
+            <FaPlus />
+          </button>
+        </motion.div>
       </nav>
 
       {/* Global Styles */}
       <style>{`
         @keyframes spin {
           to { transform: rotate(360deg); }
-        }
-        
-        .spin {
-          animation: spin 1s linear infinite;
         }
         
         * {
@@ -1014,8 +1108,8 @@ export default function HomeScreen({
         }
         
         ::-webkit-scrollbar {
-          width: 6px;
-          height: 6px;
+          width: 4px;
+          height: 4px;
         }
         
         ::-webkit-scrollbar-track {
@@ -1033,7 +1127,7 @@ export default function HomeScreen({
         
         @media (max-width: 480px) {
           input, button {
-            font-size: 16px !important; /* Prevents iOS zoom */
+            font-size: 16px !important;
           }
         }
       `}</style>
