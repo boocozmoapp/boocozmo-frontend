@@ -1061,7 +1061,7 @@ export default function MapScreen({ onBack, currentUser }: Props) {
           background: "rgba(255, 255, 255, 0.97)",
           backdropFilter: "blur(20px)",
           padding: "20px",
-          paddingTop: "60px",
+          paddingTop: "20px",
           zIndex: 1000,
           borderBottom: `1px solid ${BRONZE.pale}`,
           boxShadow: "0 8px 32px rgba(0,0,0,0.08)",

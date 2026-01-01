@@ -280,7 +280,7 @@ export default function ProfileScreen({ currentUser, onLogout }: Props) {
         animate={{ y: 0, opacity: 1 }}
         style={{ 
           background: `linear-gradient(135deg, ${BRONZE.primary}, ${BRONZE.dark})`,
-          padding: "60px 20px 32px 20px",
+          padding: "20px 20px 24px 20px",
           color: "white",
           position: "sticky",
           top: 0,
