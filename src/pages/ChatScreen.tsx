@@ -93,6 +93,7 @@ export default function ChatScreen({ currentUser }: ChatScreenProps) {
       const interval = setInterval(fetchChats, 30000);
       return () => clearInterval(interval);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUser.email, backendOnline]);
 
   const getMockConversations = (): Conversation[] => {

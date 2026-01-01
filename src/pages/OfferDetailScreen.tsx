@@ -57,44 +57,44 @@ export default function OfferDetailScreen({ currentUser }: OfferDetailScreenProp
   }, [id]);
 
   const getMockOffer = (offerId: number): Offer => {
-    const mockOffers = [
-      {
-        id: 1,
-        type: "sell",
-        bookTitle: "The Great Gatsby",
-        exchangeBook: null,
-        price: 12.99,
-        condition: "Excellent",
-        ownerEmail: "john@example.com",
-        imageUrl: "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60",
-        latitude: 40.7128,
-        longitude: -74.0060,
-        ownerName: "John Doe",
-        distance: "1.2km",
-        description: "Classic novel in perfect condition. Hardcover edition.",
-        genre: "Fiction, Classic",
-        author: "F. Scott Fitzgerald"
-      },
-      {
-        id: 2,
-        type: "exchange",
-        bookTitle: "To Kill a Mockingbird",
-        exchangeBook: "1984 by George Orwell",
-        price: null,
-        condition: "Good",
-        ownerEmail: "jane@example.com",
-        imageUrl: "https://images.unsplash.com/photo-1512820790803-83ca734da794?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60",
-        latitude: 40.7580,
-        longitude: -73.9855,
-        ownerName: "Jane Smith",
-        distance: "2.5km",
-        description: "Looking to exchange for dystopian novels.",
-        genre: "Fiction, Classic",
-        author: "Harper Lee"
-      },
-    ];
-    return mockOffers.find(o => o.id === offerId) || mockOffers[0];
-  };
+  const mockOffers: Offer[] = [  // Add type annotation here
+    {
+      id: 1,
+      type: "sell" as const,  // Add "as const"
+      bookTitle: "The Great Gatsby",
+      exchangeBook: null,
+      price: 12.99,
+      condition: "Excellent",
+      ownerEmail: "john@example.com",
+      imageUrl: "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60",
+      latitude: 40.7128,
+      longitude: -74.0060,
+      ownerName: "John Doe",
+      distance: "1.2km",
+      description: "Classic novel in perfect condition. Hardcover edition.",
+      genre: "Fiction, Classic",
+      author: "F. Scott Fitzgerald"
+    },
+    {
+      id: 2,
+      type: "exchange" as const,  // Add "as const"
+      bookTitle: "To Kill a Mockingbird",
+      exchangeBook: "1984 by George Orwell",
+      price: null,
+      condition: "Good",
+      ownerEmail: "jane@example.com",
+      imageUrl: "https://images.unsplash.com/photo-1512820790803-83ca734da794?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60",
+      latitude: 40.7580,
+      longitude: -73.9855,
+      ownerName: "Jane Smith",
+      distance: "2.5km",
+      description: "Looking to exchange for dystopian novels.",
+      genre: "Fiction, Classic",
+      author: "Harper Lee"
+    },
+  ];
+  return mockOffers.find(o => o.id === offerId) || mockOffers[0];
+};
 
   const handleChat = () => {
     if (!offer) return;

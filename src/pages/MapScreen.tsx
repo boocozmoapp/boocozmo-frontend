@@ -281,8 +281,9 @@ export default function MapScreen({ onBack, currentUser }: Props) {
   };
 
   // EXACT SAME CHAT FUNCTIONALITY AS HOMESCREEN
-  const handleChat = async (offer: Offer, e: React.MouseEvent) => {
-    e.stopPropagation();
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const handleChat = async (offer: Offer, _mockEvent: unknown) => {
+    
 
     // Don't create chat if user is viewing their own offer
     if (offer.ownerEmail === currentUser.email) {
@@ -907,8 +908,8 @@ export default function MapScreen({ onBack, currentUser }: Props) {
             </button>
 
             <button
-              // eslint-disable-next-line @typescript-eslint/no-unused-vars
-              onClick={(e) => {
+              
+              onClick={() => {
                 const mockEvent = {
                   stopPropagation: () => {},
                   preventDefault: () => {}
