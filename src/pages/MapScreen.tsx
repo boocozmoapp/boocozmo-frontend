@@ -1,8 +1,9 @@
-// src/pages/MapScreen.tsx - FIXED WITH CHAT FUNCTIONALITY & RESPONSIVE CARD
-import { useEffect, useRef, useState } from "react";
+/* eslint-disable @typescript-eslint/no-unused-vars */
+// src/pages/MapScreen.tsx - PRODUCTION READY (FIXED)
+import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { 
   FaArrowLeft, 
   FaMapMarkerAlt, 
@@ -14,9 +15,12 @@ import {
   FaComments,
   FaExchangeAlt,
   FaTag,
-  FaBook
+  FaBook,
+  FaFilter,
+  FaSync
 } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
+import React from "react";
 
 // Bronze color palette
 const BRONZE = {
@@ -25,6 +29,9 @@ const BRONZE = {
   dark: "#B87333",
   pale: "#F5E7D3",
   bg: "#F9F5F0",
+  textDark: "#2C1810",
+  textLight: "#5D4037",
+  bgLight: "#FDF8F3",
 };
 
 const API_BASE = "https://boocozmo-api.onrender.com";
@@ -46,9 +53,9 @@ type Offer = {
   description?: string;
   genre?: string;
   author?: string;
+  lastUpdated?: string;
 };
 
-// Define props type
 type Props = {
   onBack?: () => void;
   currentUser: { 
@@ -58,9 +65,89 @@ type Props = {
   };
 };
 
+// Helper functions defined at TOP LEVEL to avoid hoisting issues
+const getTypeColor = (type: string): string => {
+  switch(type) {
+    case 'sell': return BRONZE.primary;
+    case 'exchange': return BRONZE.dark;
+    case 'buy': return '#8B4513';
+    default: return BRONZE.light;
+  }
+};
+
+const getTypeIcon = (type: string) => {
+  switch(type) {
+    case 'sell': return <FaDollarSign size={10} />;
+    case 'exchange': return <FaExchangeAlt size={10} />;
+    case 'buy': return <FaTag size={10} />;
+    default: return null;
+  }
+};
+
+// Create custom markers with caching
+const createMarkerIcon = (() => {
+  const iconCache = new Map<string, L.DivIcon>();
+  
+  return (type: string, isSelected: boolean = false) => {
+    const cacheKey = `${type}_${isSelected}`;
+    
+    if (iconCache.has(cacheKey)) {
+      return iconCache.get(cacheKey)!;
+    }
+
+    const colors = {
+      sell: BRONZE.primary,
+      buy: "#8B4513",
+      exchange: BRONZE.dark
+    };
+
+    const icons = {
+      sell: '$',
+      buy: '📖',
+      exchange: '⇄'
+    };
+
+    const color = colors[type as keyof typeof colors] || BRONZE.primary;
+    const size = isSelected ? 50 : 40;
+    const border = isSelected ? '4px solid white' : '3px solid white';
+
+    const icon = L.divIcon({
+      className: 'custom-marker',
+      html: `
+        <div style="
+          width: ${size}px;
+          height: ${size}px;
+          border-radius: 50%;
+          background: ${color};
+          border: ${border};
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: white;
+          font-size: ${isSelected ? '20px' : '16px'};
+          font-weight: ${isSelected ? 'bold' : 'normal'};
+          box-shadow: 0 ${isSelected ? '4px' : '2px'} ${isSelected ? '16px' : '8px'} rgba(0,0,0,0.${isSelected ? '4' : '3'});
+          cursor: pointer;
+          transition: all 0.3s ease;
+          z-index: ${isSelected ? '1000' : '999'};
+        ">
+          ${icons[type as keyof typeof icons]}
+        </div>
+      `,
+      iconSize: [size, size],
+      iconAnchor: [size / 2, size / 2],
+      popupAnchor: [0, -size / 2]
+    });
+
+    iconCache.set(cacheKey, icon);
+    return icon;
+  };
+})();
+
 export default function MapScreen({ onBack, currentUser }: Props) {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstance = useRef<L.Map | null>(null);
+  const markersRef = useRef<L.Marker[]>([]);
   const navigate = useNavigate();
   
   const [offers, setOffers] = useState<Offer[]>([]);
@@ -69,230 +156,274 @@ export default function MapScreen({ onBack, currentUser }: Props) {
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
+  const [userLocation, setUserLocation] = useState<{lat: number, lng: number} | null>(null);
+  
+  // Refs for cleanup
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const isMountedRef = useRef(true);
+  const hasInitializedRef = useRef(false);
 
-  // Get image source - handles both URLs and base64
-  const getImageSource = (offer: Offer): string => {
-    if (offer.imageUrl && offer.imageUrl.startsWith('data:image')) {
+  // Define clearMap BEFORE using it in useEffect
+  const clearMap = useCallback(() => {
+    markersRef.current.forEach(marker => marker.remove());
+    markersRef.current = [];
+    
+    if (mapInstance.current) {
+      mapInstance.current.remove();
+      mapInstance.current = null;
+    }
+  }, []);
+
+  // Cleanup on unmount - NOW clearMap is defined
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+      clearMap();
+    };
+  }, [clearMap]); // Added clearMap to dependencies
+
+  // Get user location
+  useEffect(() => {
+    const getLocation = () => {
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            if (isMountedRef.current) {
+              setUserLocation({
+                lat: position.coords.latitude,
+                lng: position.coords.longitude,
+              });
+            }
+          },
+          () => {
+            if (isMountedRef.current) {
+              setUserLocation({ lat: 40.7128, lng: -74.006 });
+            }
+          },
+          { 
+            timeout: 5000, 
+            maximumAge: 600000,
+            enableHighAccuracy: false 
+          }
+        );
+      } else {
+        setUserLocation({ lat: 40.7128, lng: -74.006 });
+      }
+    };
+    
+    if (!userLocation) {
+      getLocation();
+    }
+  }, [userLocation]);
+
+  // Fetch offers
+  const fetchOffers = useCallback(async (silent = false) => {
+    if ((loading || refreshing) && !silent) return;
+    
+    if (!silent) {
+      setLoading(true);
+    } else {
+      setRefreshing(true);
+    }
+
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+
+    abortControllerRef.current = new AbortController();
+
+    try {
+      const response = await fetch(`${API_BASE}/offers`, {
+        signal: abortControllerRef.current.signal,
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        }
+      });
+      
+      if (!response.ok) throw new Error("Failed to fetch offers");
+      const data = await response.json();
+      
+      const processedOffers = data.map((offer: Offer) => ({
+        ...offer,
+        lastUpdated: new Date().toISOString()
+      }));
+
+      if (isMountedRef.current) {
+        setOffers(processedOffers);
+        setLastRefresh(new Date());
+        setError(null);
+      }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (err: any) {
+      if (err.name === 'AbortError') return;
+      console.error("Error fetching offers:", err);
+      if (isMountedRef.current && !silent) {
+        setError(err instanceof Error ? err.message : "Failed to load offers");
+      }
+    } finally {
+      if (isMountedRef.current) {
+        setLoading(false);
+        setRefreshing(false);
+      }
+      abortControllerRef.current = null;
+    }
+  }, [loading, refreshing]);
+
+  // Initial load
+  useEffect(() => {
+    if (!hasInitializedRef.current) {
+      hasInitializedRef.current = true;
+      fetchOffers();
+    }
+  }, [fetchOffers]);
+
+  // Get image source
+  const getImageSource = useCallback((offer: Offer): string => {
+    if (offer.imageUrl?.startsWith('data:image')) {
       return offer.imageUrl;
     }
     if (offer.imageBase64) {
       return offer.imageBase64;
     }
-    return offer.imageUrl || "https://images.unsplash.com/photo-1541963463532-d68292c34b19?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60";
-  };
-
-  // Fetch offers from backend
-  useEffect(() => {
-    const fetchOffers = async () => {
-      setLoading(true);
-      try {
-        const response = await fetch(`${API_BASE}/offers`);
-        if (!response.ok) throw new Error("Failed to fetch offers");
-
-        const data = await response.json();
-        setOffers(data);
-      } catch (err) {
-        console.error("Error fetching offers:", err);
-        setError(err instanceof Error ? err.message : "Failed to load offers");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchOffers();
+    return offer.imageUrl || "https://images.unsplash.com/photo-1541963463532-d68292c34b19?w=400&h=500&fit=crop";
   }, []);
 
-  // Filter offers based on search and filter
-  const filteredOffers = offers.filter(offer => {
-    // Apply type filter
-    if (filter !== "all" && offer.type !== filter) {
-      return false;
+  // Filter offers
+  const filteredOffers = useMemo(() => {
+    let result = offers;
+
+    if (filter !== "all") {
+      result = result.filter(offer => offer.type === filter);
     }
 
-    // Apply search filter
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
-      return (
-        offer.bookTitle.toLowerCase().includes(query) ||
-        (offer.description && offer.description.toLowerCase().includes(query)) ||
-        (offer.author && offer.author.toLowerCase().includes(query)) ||
-        (offer.genre && offer.genre.toLowerCase().includes(query)) ||
-        (offer.exchangeBook && offer.exchangeBook.toLowerCase().includes(query))
+      result = result.filter(
+        offer =>
+          offer.bookTitle.toLowerCase().includes(query) ||
+          offer.description?.toLowerCase().includes(query) ||
+          offer.author?.toLowerCase().includes(query) ||
+          offer.genre?.toLowerCase().includes(query) ||
+          offer.exchangeBook?.toLowerCase().includes(query)
       );
     }
 
-    return true;
-  });
+    return result.filter(offer => offer.latitude && offer.longitude);
+  }, [offers, filter, searchQuery]);
 
-  // Filter books that have coordinates
-  const offersWithCoords = filteredOffers.filter(offer => 
-    offer.latitude && offer.longitude
-  );
+  // Handle marker click
+  const handleMarkerClick = useCallback((offer: Offer) => {
+    setSelectedOffer(prev => prev?.id === offer.id ? null : offer);
+    
+    if (mapInstance.current && offer.latitude && offer.longitude) {
+      mapInstance.current.setView([offer.latitude, offer.longitude], 15, {
+        animate: true,
+        duration: 0.5
+      });
+    }
+  }, []);
 
-  // Initialize map with markers
+  // Initialize map - optimized to prevent re-renders on zoom/pan
   useEffect(() => {
     if (!mapRef.current || loading) return;
 
-    // Clean up existing map
-    if (mapInstance.current) {
-      mapInstance.current.remove();
-      mapInstance.current = null;
-    }
-
-    // Use first offer location or default center
+    // Get center coordinates
     let centerLat = 40.7128;
     let centerLng = -74.0060;
     
-    if (offersWithCoords.length > 0) {
-      centerLat = offersWithCoords[0].latitude!;
-      centerLng = offersWithCoords[0].longitude!;
+    if (userLocation) {
+      centerLat = userLocation.lat;
+      centerLng = userLocation.lng;
+    } else if (filteredOffers.length > 0) {
+      centerLat = filteredOffers[0].latitude!;
+      centerLng = filteredOffers[0].longitude!;
     }
 
-    // Create map
-    const map = L.map(mapRef.current).setView([centerLat, centerLng], 13);
-    mapInstance.current = map;
+    // Create map if doesn't exist
+    if (!mapInstance.current) {
+      const map = L.map(mapRef.current, {
+        zoomControl: false,
+        attributionControl: false,
+        zoomSnap: 0.5,
+        zoomDelta: 0.5,
+        inertia: true,
+        inertiaDeceleration: 3000,
+      }).setView([centerLat, centerLng], 13);
+      
+      mapInstance.current = map;
 
-    // Add tile layer
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '© OpenStreetMap contributors',
-      maxZoom: 19,
-    }).addTo(map);
+      // Add tile layer
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+        attribution: '© OpenStreetMap contributors, © CARTO',
+        subdomains: 'abcd',
+        maxZoom: 19,
+      }).addTo(map);
 
-    // Create custom icons for different offer types
-    const createIcon = (type: string) => {
-      const color = type === 'sell' ? BRONZE.primary : 
-                   type === 'buy' ? '#FF9800' : 
-                   '#2196F3';
-      return L.divIcon({
-        className: 'book-marker',
-        html: `
-          <div style="
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            background: ${color};
-            border: 3px solid white;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-size: 18px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-            cursor: pointer;
-          ">
-            ${type === 'sell' ? '$' : type === 'buy' ? '📖' : '⇄'}
-          </div>
-        `,
-        iconSize: [40, 40],
-        iconAnchor: [20, 20],
-        popupAnchor: [0, -20]
-      });
-    };
+      // Add zoom control
+      L.control.zoom({
+        position: 'bottomright'
+      }).addTo(map);
+    }
+
+    // Clear existing markers
+    markersRef.current.forEach(marker => marker.remove());
+    markersRef.current = [];
 
     // Add markers for each offer
-    offersWithCoords.forEach(offer => {
+    filteredOffers.forEach(offer => {
       if (!offer.latitude || !offer.longitude) return;
 
-      const icon = createIcon(offer.type);
+      const isSelected = selectedOffer?.id === offer.id;
+      const icon = createMarkerIcon(offer.type, isSelected);
+      
       const marker = L.marker([offer.latitude, offer.longitude], { icon })
-        .addTo(map)
-        .bindPopup(`
-          <div style="padding: 12px; min-width: 200px; max-width: 250px;">
-            <div style="display: flex; align-items: flex-start; gap: 10px; margin-bottom: 10px;">
-              <img src="${getImageSource(offer)}" 
-                   style="width: 60px; height: 80px; object-fit: cover; border-radius: 6px; border: 1px solid ${BRONZE.pale};"
-                   onerror="this.src='https://images.unsplash.com/photo-1541963463532-d68292c34b19?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60';"
-              />
-              <div>
-                <h4 style="margin: 0 0 4px; color: ${BRONZE.dark}; font-size: 14px; font-weight: 600; line-height: 1.3;">
-                  ${offer.bookTitle.substring(0, 30)}${offer.bookTitle.length > 30 ? '...' : ''}
-                </h4>
-                ${offer.author ? `<p style="margin: 0 0 4px; color: #666; font-size: 11px;">by ${offer.author}</p>` : ''}
-                <div style="
-                  background: ${offer.type === 'sell' ? BRONZE.primary : 
-                              offer.type === 'buy' ? '#FF9800' : 
-                              '#2196F3'}15;
-                  color: ${offer.type === 'sell' ? BRONZE.primary : 
-                          offer.type === 'buy' ? '#FF9800' : 
-                          '#2196F3'};
-                  padding: 3px 8px;
-                  border-radius: 12px;
-                  font-size: 10px;
-                  font-weight: 600;
-                  display: inline-block;
-                  border: 1px solid ${offer.type === 'sell' ? BRONZE.primary : 
-                                    offer.type === 'buy' ? '#FF9800' : 
-                                    '#2196F3'}30;
-                ">
-                  ${offer.type === 'sell' ? 'For Sale' : 
-                    offer.type === 'buy' ? 'Wanted' : 
-                    'Exchange'}
-                </div>
-              </div>
-            </div>
-            
-            ${offer.price ? `
-              <div style="font-size: 16px; font-weight: 700; color: ${BRONZE.primary}; margin: 8px 0;">
-                $${offer.price.toFixed(2)}
-              </div>
-            ` : ''}
-            
-            <div style="
-              width: 100%;
-              background: ${BRONZE.primary};
-              color: white;
-              border: none;
-              padding: 8px 12px;
-              border-radius: 8px;
-              margin-top: 8px;
-              cursor: pointer;
-              font-size: 12px;
-              font-weight: 600;
-              text-align: center;
-            ">
-              Click marker for details
-            </div>
-          </div>
-        `, { maxWidth: 300 });
+        .addTo(mapInstance.current!)
+        .on('click', () => {
+          handleMarkerClick(offer);
+        });
 
-      // Add click handler to marker
-      marker.on('click', () => {
-        setSelectedOffer(offer);
-        map.setView([offer.latitude!, offer.longitude!], 15);
-      });
+      markersRef.current.push(marker);
     });
 
-    // Cleanup
+    // Cleanup function
     return () => {
-      if (mapInstance.current) {
-        mapInstance.current.remove();
-        mapInstance.current = null;
-      }
+      // Don't remove map, just markers
+      markersRef.current.forEach(marker => marker.remove());
+      markersRef.current = [];
     };
-  }, [offersWithCoords, loading]);
+  }, [filteredOffers, loading, userLocation, selectedOffer, handleMarkerClick]);
 
   // Handle back navigation
-  const handleBack = () => {
+  const handleBack = useCallback(() => {
     if (onBack) {
       onBack();
     } else {
       navigate(-1);
     }
-  };
+  }, [onBack, navigate]);
 
-  // EXACT SAME CHAT FUNCTIONALITY AS HOMESCREEN
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const handleChat = async (offer: Offer, _mockEvent: unknown) => {
-    
+  // Handle refresh
+  const handleRefresh = useCallback(() => {
+    if (!refreshing) {
+      fetchOffers(true);
+    }
+  }, [fetchOffers, refreshing]);
 
-    // Don't create chat if user is viewing their own offer
+  // Handle chat
+  const handleChat = useCallback(async (offer: Offer) => {
     if (offer.ownerEmail === currentUser.email) {
       navigate(`/offer/${offer.id}`);
       return;
     }
 
     try {
-      // Step 1: Try to find existing chat
       const findUrl = `${API_BASE}/find-chats?user1=${encodeURIComponent(
         currentUser.email
       )}&user2=${encodeURIComponent(offer.ownerEmail)}&offer_id=${offer.id}`;
@@ -302,19 +433,15 @@ export default function MapScreen({ onBack, currentUser }: Props) {
 
       if (findResponse.ok) {
         const chats = await findResponse.json();
-        if (chats && chats.length > 0) {
-          // Use the most recent chat
-          chats.sort(
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            (a: any, b: any) =>
-              new Date(b.created_at || 0).getTime() -
-              new Date(a.created_at || 0).getTime()
+        if (chats?.length > 0) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          chats.sort((a: any, b: any) => 
+            new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
           );
           chatId = chats[0].id;
         }
       }
 
-      // Step 2: If no existing chat, create one
       if (!chatId) {
         const createResponse = await fetch(`${API_BASE}/create-chat`, {
           method: "POST",
@@ -331,12 +458,10 @@ export default function MapScreen({ onBack, currentUser }: Props) {
           const newChat = await createResponse.json();
           chatId = newChat.id;
         } else {
-          // If backend create fails, use timestamp as mock ID
           chatId = Date.now();
         }
       }
 
-      // Step 3: Navigate to chat
       navigate(`/chat/${chatId}`, {
         state: {
           chat: {
@@ -353,50 +478,574 @@ export default function MapScreen({ onBack, currentUser }: Props) {
       console.error("Chat error:", error);
       navigate(`/offer/${offer.id}`);
     }
-  };
+  }, [currentUser.email, navigate]);
 
-  // Handle Contact Owner button - uses the same chat function
-  const handleContactOwner = () => {
-    if (!selectedOffer) return;
-    
-    // Create a mock event object for the chat function
-    const mockEvent = {
-      stopPropagation: () => {},
-      preventDefault: () => {}
-    } as React.MouseEvent;
-    
-    handleChat(selectedOffer, mockEvent);
-  };
-
-  // Handle Like
-  const handleLike = async (offerId: number, e: React.MouseEvent) => {
+  // Handle like
+  const handleLike = useCallback(async (offerId: number, e: React.MouseEvent) => {
     e.stopPropagation();
-    console.log("Liked offer:", offerId);
-    // TODO: Implement like functionality
-  };
+    setOffers(prev => prev.map(offer => 
+      offer.id === offerId 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        ? { ...offer, liked: !(offer as any).liked }
+        : offer
+    ));
+  }, []);
 
-  // Handle Share
-  const handleShare = async (offerId: number, e: React.MouseEvent) => {
+  // Handle share
+  const handleShare = useCallback(async (offerId: number, e: React.MouseEvent) => {
     e.stopPropagation();
-    console.log("Shared offer:", offerId);
     if (navigator.share) {
       try {
         await navigator.share({
           title: "Check out this book!",
           text: "I found this great book on BookSphere",
-          url: window.location.href,
+          url: `${window.location.origin}/offer/${offerId}`,
         });
       } catch (err) {
-        console.log("Error sharing:", err);
+        console.log("Share cancelled");
       }
     }
-  };
+  }, []);
+
+  // Format time ago
+  const formatTimeAgo = useCallback((dateString: string): string => {
+    const diff = Date.now() - new Date(dateString).getTime();
+    const minutes = Math.floor(diff / 60000);
+    if (minutes < 1) return "Just now";
+    if (minutes < 60) return `${minutes}m ago`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours}h ago`;
+    return `${Math.floor(hours / 24)}d ago`;
+  }, []);
+
+  // Filter buttons
+  const filterButtons = useMemo(() => [
+    { id: "all" as const, label: "All", icon: <FaFilter /> },
+    { id: "sell" as const, label: "For Sale", icon: <FaDollarSign /> },
+    { id: "exchange" as const, label: "Exchange", icon: <FaExchangeAlt /> },
+    { id: "buy" as const, label: "Wanted", icon: <FaTag /> },
+  ], []);
+
+  // Offer list component
+  const OfferList = useMemo(() => 
+    React.memo(({ offers }: { offers: Offer[] }) => (
+      <motion.div
+        initial={{ y: 300 }}
+        animate={{ y: 0 }}
+        transition={{ type: "spring", damping: 25 }}
+        style={{
+          position: "absolute",
+          bottom: 16,
+          left: 16,
+          right: 16,
+          background: "rgba(255, 255, 255, 0.97)",
+          backdropFilter: "blur(20px)",
+          borderRadius: "24px",
+          boxShadow: "0 20px 60px rgba(0,0,0,0.15)",
+          padding: "20px",
+          maxHeight: "200px",
+          overflowY: "auto",
+          zIndex: 999,
+          border: `1px solid ${BRONZE.pale}`,
+        }}
+      >
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
+          <h3 style={{ 
+            fontSize: "16px", 
+            fontWeight: "600", 
+            margin: 0,
+            color: BRONZE.textDark,
+            display: "flex",
+            alignItems: "center",
+            gap: "8px",
+          }}>
+            <FaMapMarkerAlt size={14} />
+            Nearby Books ({offers.length})
+          </h3>
+          {lastRefresh && (
+            <span style={{ fontSize: "11px", color: BRONZE.textLight, opacity: 0.7 }}>
+              Updated {formatTimeAgo(lastRefresh.toISOString())}
+            </span>
+          )}
+        </div>
+        
+        <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+          {offers.map(offer => (
+            <motion.div
+              key={offer.id}
+              whileHover={{ x: 4 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => handleMarkerClick(offer)}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "12px",
+                padding: "12px",
+                borderRadius: "16px",
+                background: selectedOffer?.id === offer.id ? `${BRONZE.primary}15` : BRONZE.bgLight,
+                cursor: "pointer",
+                border: selectedOffer?.id === offer.id ? `2px solid ${BRONZE.primary}` : `1px solid ${BRONZE.pale}`,
+                transition: "all 0.2s ease",
+              }}
+            >
+              <div style={{
+                width: "40px",
+                height: "40px",
+                borderRadius: "10px",
+                overflow: "hidden",
+                border: `1px solid ${BRONZE.pale}`,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                background: selectedOffer?.id === offer.id ? BRONZE.primary : BRONZE.light,
+                color: "white",
+                fontSize: "14px",
+              }}>
+                {offer.imageUrl || offer.imageBase64 ? (
+                  <img 
+                    src={getImageSource(offer)} 
+                    alt={offer.bookTitle}
+                    style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                    loading="lazy"
+                  />
+                ) : (
+                  <FaBook />
+                )}
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ 
+                  fontSize: "14px", 
+                  fontWeight: "600", 
+                  color: BRONZE.textDark,
+                }}>
+                  {offer.bookTitle.substring(0, 25)}{offer.bookTitle.length > 25 ? '...' : ''}
+                </div>
+                <div style={{ 
+                  fontSize: "12px", 
+                  color: BRONZE.textLight,
+                  marginTop: "2px",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                }}>
+                  <span>{offer.author || "Unknown author"}</span>
+                  <span style={{ opacity: 0.5 }}>•</span>
+                  <span>{offer.distance || "Nearby"}</span>
+                </div>
+              </div>
+              {offer.price && (
+                <div style={{
+                  background: `${BRONZE.primary}15`,
+                  color: BRONZE.primary,
+                  padding: "4px 10px",
+                  borderRadius: "12px",
+                  fontSize: "12px",
+                  fontWeight: "700",
+                  border: `1px solid ${BRONZE.primary}30`,
+                }}>
+                  ${offer.price.toFixed(2)}
+                </div>
+              )}
+            </motion.div>
+          ))}
+        </div>
+      </motion.div>
+    ))
+  , [selectedOffer, getImageSource, formatTimeAgo, lastRefresh, handleMarkerClick]);
+
+  // Selected offer card component
+  // Fix just the SelectedOfferCard component - replace this section:
+
+// Selected offer card component
+const SelectedOfferCard = useMemo(() => 
+  selectedOffer ? (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: 20 }}
+      style={{
+        position: "fixed", // Changed from absolute to fixed
+        top: "50%",
+        left: "50%",
+        transform: "translate(-50%, -50%)",
+        width: window.innerWidth < 768 ? "calc(100vw - 32px)" : "400px",
+        maxWidth: "500px",
+        maxHeight: window.innerWidth < 768 ? "85vh" : "80vh",
+        background: "rgba(255, 255, 255, 0.98)",
+        backdropFilter: "blur(20px)",
+        borderRadius: "24px",
+        padding: "20px",
+        boxShadow: "0 32px 80px rgba(0,0,0,0.3)",
+        zIndex: 2000, // Higher z-index to be on top
+        overflowY: "auto",
+        border: `1px solid ${BRONZE.pale}`,
+      }}
+      onClick={(e) => e.stopPropagation()}
+    >
+      {/* Close button - MADE LARGER & MORE VISIBLE */}
+      <button
+        onClick={() => setSelectedOffer(null)}
+        style={{
+          position: "absolute",
+          top: "16px",
+          right: "16px",
+          background: `${BRONZE.textDark}`,
+          border: "none",
+          color: "white",
+          width: "44px",
+          height: "44px",
+          borderRadius: "50%",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          cursor: "pointer",
+          fontSize: "20px",
+          zIndex: 10,
+          transition: "all 0.2s ease",
+          boxShadow: "0 4px 16px rgba(0,0,0,0.2)",
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.background = `${BRONZE.dark}`;
+          e.currentTarget.style.transform = "rotate(90deg) scale(1.1)";
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.background = `${BRONZE.textDark}`;
+          e.currentTarget.style.transform = "rotate(0deg) scale(1)";
+        }}
+      >
+        <FaTimes />
+      </button>
+
+      {/* Content */}
+      <div style={{ marginBottom: "20px" }}>
+        {/* Title & Author */}
+        <h3 style={{ 
+          fontSize: window.innerWidth < 768 ? "20px" : "22px", 
+          fontWeight: "700", 
+          margin: "0 0 6px",
+          color: BRONZE.textDark,
+          lineHeight: 1.3,
+          paddingRight: "50px",
+        }}>
+          {selectedOffer.bookTitle}
+        </h3>
+        <p style={{ 
+          fontSize: "15px", 
+          color: BRONZE.textLight, 
+          margin: "0 0 12px",
+          fontStyle: "italic",
+        }}>
+          {selectedOffer.author ? `by ${selectedOffer.author}` : "Unknown Author"}
+        </p>
+
+        {/* Location & Owner */}
+        <div style={{ 
+          display: "flex", 
+          alignItems: "center", 
+          gap: "10px",
+          fontSize: "13px",
+          color: BRONZE.textLight,
+          marginBottom: "16px",
+          flexWrap: "wrap",
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+            <FaMapMarkerAlt size={12} /> 
+            <span>{selectedOffer.distance ? `${selectedOffer.distance} away` : "Nearby"}</span>
+          </div>
+          <span style={{ opacity: 0.3 }}>•</span>
+          <div>
+            {selectedOffer.ownerName || selectedOffer.ownerEmail.split("@")[0]}
+          </div>
+        </div>
+
+        {/* Type Badge */}
+        <div
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "6px",
+            padding: "6px 14px",
+            borderRadius: "20px",
+            background: `${getTypeColor(selectedOffer.type)}15`,
+            color: getTypeColor(selectedOffer.type),
+            fontSize: "12px",
+            fontWeight: "600",
+            marginBottom: "16px",
+            border: `1px solid ${getTypeColor(selectedOffer.type)}30`,
+          }}
+        >
+          {getTypeIcon(selectedOffer.type)}
+          {selectedOffer.type === 'sell' ? 'For Sale' : 
+           selectedOffer.type === 'buy' ? 'Wanted' : 
+           'Exchange'}
+        </div>
+      </div>
+
+      {/* Description with scroll if too long */}
+      {selectedOffer.description && (
+        <div style={{
+          marginBottom: "20px",
+          paddingBottom: "20px",
+          borderBottom: `1px solid ${BRONZE.pale}`,
+          maxHeight: "150px",
+          overflowY: "auto",
+        }}>
+          <h4 style={{ 
+            fontSize: "14px", 
+            fontWeight: "600", 
+            margin: "0 0 8px",
+            color: BRONZE.textDark,
+          }}>
+            Description
+          </h4>
+          <p style={{
+            fontSize: "14px",
+            color: BRONZE.textLight,
+            lineHeight: 1.5,
+            margin: 0,
+          }}>
+            {selectedOffer.description}
+          </p>
+        </div>
+      )}
+
+      {/* Price/Exchange Section */}
+      <div style={{ 
+        marginBottom: "24px",
+        padding: "16px",
+        background: BRONZE.bgLight,
+        borderRadius: "16px",
+        border: `1px solid ${BRONZE.pale}`,
+      }}>
+        <div style={{ fontSize: "12px", color: BRONZE.textLight, marginBottom: "6px" }}>
+          {selectedOffer.type === "sell" ? "Price" : 
+           selectedOffer.type === "buy" ? "Looking for" : "Exchange for"}
+        </div>
+        <div style={{ 
+          fontSize: window.innerWidth < 768 ? "24px" : "28px", 
+          fontWeight: "800", 
+          color: BRONZE.primary,
+          display: "flex",
+          alignItems: "center",
+          gap: "8px",
+          marginBottom: "8px",
+        }}>
+          {selectedOffer.type === "sell" && selectedOffer.price ? (
+            <>
+              <FaDollarSign size={window.innerWidth < 768 ? 20 : 24} /> {selectedOffer.price.toFixed(2)}
+            </>
+          ) : selectedOffer.type === "exchange" && selectedOffer.exchangeBook ? (
+            <>
+              <FaExchangeAlt size={window.innerWidth < 768 ? 20 : 24} /> Exchange
+            </>
+          ) : (
+            <>
+              <FaTag size={window.innerWidth < 768 ? 20 : 24} /> Wanted
+            </>
+          )}
+        </div>
+        
+        {selectedOffer.exchangeBook && (
+          <div style={{ 
+            fontSize: "14px", 
+            color: BRONZE.textDark, 
+            fontWeight: "500",
+            padding: "8px 12px",
+            background: "rgba(255,255,255,0.7)",
+            borderRadius: "10px",
+            borderLeft: `3px solid ${BRONZE.dark}`,
+          }}>
+            For: <span style={{ fontWeight: "600" }}>{selectedOffer.exchangeBook}</span>
+          </div>
+        )}
+      </div>
+
+      {/* Contact Button */}
+      <motion.button
+        whileHover={{ scale: 1.02 }}
+        whileTap={{ scale: 0.98 }}
+        onClick={() => handleChat(selectedOffer)}
+        style={{
+          width: "100%",
+          background: `linear-gradient(135deg, ${BRONZE.primary}, ${BRONZE.dark})`,
+          color: "white",
+          border: "none",
+          padding: window.innerWidth < 768 ? "14px" : "16px",
+          borderRadius: "16px",
+          fontSize: window.innerWidth < 768 ? "15px" : "16px",
+          fontWeight: "700",
+          cursor: "pointer",
+          marginBottom: "20px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: "10px",
+          boxShadow: `0 8px 24px ${BRONZE.primary}40`,
+        }}
+      >
+        <FaComments size={window.innerWidth < 768 ? 16 : 18} />
+        Contact Owner
+      </motion.button>
+
+      {/* Action Buttons - FIXED LAYOUT */}
+      <div style={{
+        display: "flex",
+        gap: "10px",
+        paddingTop: "16px",
+        borderTop: `1px solid ${BRONZE.pale}`,
+      }}>
+        {[
+          { icon: FaHeart, label: "Like", onClick: (e: React.MouseEvent) => handleLike(selectedOffer.id, e), color: BRONZE.primary },
+          { icon: FaComments, label: "Chat", onClick: () => handleChat(selectedOffer), color: BRONZE.dark },
+          { icon: FaShareAlt, label: "Share", onClick: (e: React.MouseEvent) => handleShare(selectedOffer.id, e), color: BRONZE.light },
+        ].map((action) => (
+          <motion.button
+            key={action.label}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={action.onClick}
+            style={{
+              flex: 1,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: "6px",
+              padding: window.innerWidth < 768 ? "10px" : "12px",
+              borderRadius: "12px",
+              border: "none",
+              background: `${action.color}10`,
+              color: action.color,
+              fontSize: window.innerWidth < 768 ? "13px" : "14px",
+              fontWeight: "600",
+              cursor: "pointer",
+              transition: "all 0.2s ease",
+              minHeight: "44px",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = `${action.color}20`;
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = `${action.color}10`;
+            }}
+          >
+            <action.icon size={window.innerWidth < 768 ? 12 : 14} />
+            {action.label}
+          </motion.button>
+        ))}
+      </div>
+    </motion.div>
+  ) : null,
+// eslint-disable-next-line react-hooks/exhaustive-deps
+[selectedOffer, filteredOffers.length, handleChat, handleLike, handleShare]);
+
+  // Loading skeleton
+  const LoadingSkeleton = () => (
+    <div style={{
+      position: "absolute",
+      top: "50%",
+      left: "50%",
+      transform: "translate(-50%, -50%)",
+      background: "rgba(255, 255, 255, 0.95)",
+      backdropFilter: "blur(20px)",
+      padding: "32px",
+      borderRadius: "24px",
+      boxShadow: "0 24px 64px rgba(0,0,0,0.15)",
+      textAlign: "center",
+      zIndex: 1002,
+      border: `1px solid ${BRONZE.pale}`,
+    }}>
+      <motion.div
+        animate={{ rotate: 360 }}
+        transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+        style={{
+          width: "60px",
+          height: "60px",
+          border: `4px solid ${BRONZE.primary}20`,
+          borderTopColor: BRONZE.primary,
+          borderRadius: "50%",
+          margin: "0 auto 20px",
+        }}
+      />
+      <p style={{ 
+        color: BRONZE.textDark, 
+        fontSize: "16px", 
+        fontWeight: "600",
+        margin: "0 0 8px",
+      }}>
+        Loading Map
+      </p>
+      <p style={{ 
+        color: BRONZE.textLight, 
+        fontSize: "14px",
+        margin: 0,
+      }}>
+        Finding books near you...
+      </p>
+    </div>
+  );
+
+  // Error state
+  const ErrorState = () => (
+    <div style={{
+      position: "absolute",
+      top: "50%",
+      left: "50%",
+      transform: "translate(-50%, -50%)",
+      background: "rgba(255, 255, 255, 0.95)",
+      backdropFilter: "blur(20px)",
+      padding: "32px",
+      borderRadius: "24px",
+      boxShadow: "0 24px 64px rgba(0,0,0,0.15)",
+      textAlign: "center",
+      zIndex: 1002,
+      border: `1px solid ${BRONZE.pale}`,
+      maxWidth: "300px",
+    }}>
+      <div style={{ fontSize: "48px", marginBottom: "16px" }}>📚</div>
+      <h3 style={{ 
+        color: BRONZE.dark, 
+        fontSize: "18px", 
+        fontWeight: "700",
+        margin: "0 0 8px",
+      }}>
+        Unable to Load Map
+      </h3>
+      <p style={{ 
+        color: BRONZE.textLight, 
+        fontSize: "14px",
+        margin: "0 0 24px",
+        lineHeight: 1.5,
+      }}>
+        {error}
+      </p>
+      <motion.button
+        whileHover={{ scale: 1.05 }}
+        whileTap={{ scale: 0.95 }}
+        onClick={() => fetchOffers(false)}
+        style={{
+          padding: "14px 28px",
+          background: `linear-gradient(135deg, ${BRONZE.primary}, ${BRONZE.dark})`,
+          color: "white",
+          border: "none",
+          borderRadius: "14px",
+          fontSize: "16px",
+          fontWeight: "600",
+          cursor: "pointer",
+          boxShadow: `0 8px 24px ${BRONZE.primary}40`,
+          width: "100%",
+        }}
+      >
+        Try Again
+      </motion.button>
+    </div>
+  );
 
   return (
     <div style={{ 
       width: "100%", 
       height: "100vh",
       position: "relative",
+      overflow: "hidden",
     }}>
       {/* Map Container */}
       <div 
@@ -408,41 +1057,51 @@ export default function MapScreen({ onBack, currentUser }: Props) {
       />
 
       {/* Header */}
-      <div style={{
-        position: "absolute",
-        top: 0,
-        left: 0,
-        right: 0,
-        background: "rgba(255,255,255,0.95)",
-        backdropFilter: "blur(10px)",
-        padding: "16px",
-        zIndex: 1000,
-        borderBottom: `1px solid ${BRONZE.pale}`,
-      }}>
+      <motion.div
+        initial={{ y: -100 }}
+        animate={{ y: 0 }}
+        style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          right: 0,
+          background: "rgba(255, 255, 255, 0.97)",
+          backdropFilter: "blur(20px)",
+          padding: "16px",
+          paddingTop: "60px",
+          zIndex: 1000,
+          borderBottom: `1px solid ${BRONZE.pale}`,
+          boxShadow: "0 8px 32px rgba(0,0,0,0.08)",
+        }}
+      >
+        {/* Top Row */}
         <div style={{ 
           display: "flex", 
           alignItems: "center", 
           gap: "12px",
-          marginBottom: "12px",
+          marginBottom: "16px",
         }}>
-          <button
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
             onClick={handleBack}
             style={{
-              width: "44px",
-              height: "44px",
-              borderRadius: "12px",
+              width: "48px",
+              height: "48px",
+              borderRadius: "14px",
               background: "white",
-              border: `2px solid ${BRONZE.light}`,
+              border: `2px solid ${BRONZE.pale}`,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               color: BRONZE.dark,
               cursor: "pointer",
-              boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+              boxShadow: "0 4px 16px rgba(0,0,0,0.08)",
+              flexShrink: 0,
             }}
           >
             <FaArrowLeft size={20} />
-          </button>
+          </motion.button>
           
           <div style={{ flex: 1 }}>
             <h1 style={{ 
@@ -450,30 +1109,55 @@ export default function MapScreen({ onBack, currentUser }: Props) {
               fontWeight: "800", 
               margin: 0, 
               color: BRONZE.dark,
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
             }}>
+              <FaMapMarkerAlt size={20} color={BRONZE.primary} />
               Book Map
             </h1>
-            <p style={{ 
+            <div style={{ 
               fontSize: "13px", 
-              color: "#666", 
-              margin: "2px 0 0",
+              color: BRONZE.textLight, 
+              margin: "4px 0 0",
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              flexWrap: "wrap",
             }}>
-              {offers.length} books nearby • Click markers for details
-            </p>
-            {currentUser && (
-              <p style={{ 
-                fontSize: "11px", 
-                color: BRONZE.primary, 
-                margin: "2px 0 0",
-              }}>
-                Logged in as: {currentUser.name}
-              </p>
-            )}
+              <span>{offers.length} books nearby</span>
+              <span style={{ opacity: 0.3 }}>•</span>
+              <span>Click markers for details</span>
+            </div>
           </div>
+          
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ rotate: 180 }}
+            onClick={handleRefresh}
+            disabled={refreshing}
+            style={{
+              width: "48px",
+              height: "48px",
+              borderRadius: "14px",
+              background: "white",
+              border: `2px solid ${refreshing ? BRONZE.light : BRONZE.pale}`,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: refreshing ? BRONZE.light : BRONZE.primary,
+              cursor: refreshing ? "not-allowed" : "pointer",
+              boxShadow: "0 4px 16px rgba(0,0,0,0.08)",
+              flexShrink: 0,
+              opacity: refreshing ? 0.7 : 1,
+            }}
+          >
+            <FaSync className={refreshing ? "spin" : ""} size={18} />
+          </motion.button>
         </div>
 
         {/* Search */}
-        <div style={{ position: "relative", marginBottom: "12px" }}>
+        <div style={{ position: "relative", marginBottom: "16px" }}>
           <FaSearch style={{ 
             position: "absolute", 
             left: "16px", 
@@ -481,6 +1165,7 @@ export default function MapScreen({ onBack, currentUser }: Props) {
             transform: "translateY(-50%)", 
             color: BRONZE.primary,
             fontSize: "18px",
+            zIndex: 1,
           }} />
           <input
             type="text"
@@ -489,499 +1174,201 @@ export default function MapScreen({ onBack, currentUser }: Props) {
             onChange={(e) => setSearchQuery(e.target.value)}
             style={{
               width: "100%",
-              padding: "12px 12px 12px 48px",
-              borderRadius: "12px",
-              border: `1px solid ${BRONZE.light}`,
+              padding: "14px 14px 14px 48px",
+              borderRadius: "14px",
+              border: `1px solid ${BRONZE.pale}`,
               background: "white",
               fontSize: "16px",
+              fontFamily: "inherit",
+              fontWeight: 500,
+              boxShadow: "0 4px 16px rgba(0,0,0,0.05)",
+              transition: "all 0.2s ease",
+            }}
+            onFocus={(e) => {
+              e.currentTarget.style.borderColor = BRONZE.primary;
+              e.currentTarget.style.boxShadow = "0 4px 24px rgba(205, 127, 50, 0.15)";
+            }}
+            onBlur={(e) => {
+              e.currentTarget.style.borderColor = BRONZE.pale;
+              e.currentTarget.style.boxShadow = "0 4px 16px rgba(0,0,0,0.05)";
             }}
           />
         </div>
 
         {/* Filter Tabs */}
-        <div style={{ display: "flex", gap: "8px", overflowX: "auto" }}>
-          {(["all", "sell", "buy", "exchange"] as const).map((f) => (
-            <button
-              key={f}
-              onClick={() => setFilter(f)}
+        <div style={{ 
+          display: "flex", 
+          gap: "8px", 
+          overflowX: "auto",
+          paddingBottom: "4px",
+          scrollbarWidth: "none",
+        }}>
+          {filterButtons.map((f) => (
+            <motion.button
+              key={f.id}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => setFilter(f.id)}
               style={{
-                padding: "8px 16px",
-                borderRadius: "20px",
-                border: "none",
-                background: filter === f ? BRONZE.primary : BRONZE.pale,
-                color: filter === f ? "white" : BRONZE.dark,
+                padding: "10px 18px",
+                borderRadius: "24px",
+                
+                background: filter === f.id ? 
+                  `linear-gradient(135deg, ${BRONZE.primary}, ${BRONZE.dark})` : 
+                  "white",
+                color: filter === f.id ? "white" : BRONZE.textLight,
                 fontSize: "14px",
-                fontWeight: filter === f ? "600" : "500",
+                fontWeight: filter === f.id ? "700" : "600",
                 whiteSpace: "nowrap",
                 display: "flex",
                 alignItems: "center",
-                gap: "4px",
+                gap: "8px",
+                cursor: "pointer",
+                boxShadow: filter === f.id ? 
+                  `0 4px 16px ${BRONZE.primary}40` : 
+                  "0 2px 8px rgba(0,0,0,0.05)",
+                border: filter === f.id ? "none" : `1px solid ${BRONZE.pale}`,
+                flexShrink: 0,
               }}
             >
-              {f === "sell" && <FaDollarSign size={10} />}
-              {f === "buy" && <FaTag size={10} />}
-              {f === "exchange" && <FaExchangeAlt size={10} />}
-              {f === "all" ? "All Books" : f === "sell" ? "For Sale" : f === "buy" ? "Wanted" : "Exchange"}
-            </button>
+              {f.icon}
+              {f.label}
+            </motion.button>
           ))}
         </div>
-      </div>
+      </motion.div>
 
-      {/* Loading/Error State */}
-      {loading && (
-        <div style={{
-          position: "absolute",
-          top: "50%",
-          left: "50%",
-          transform: "translate(-50%, -50%)",
-          background: "white",
-          padding: "24px",
-          borderRadius: "16px",
-          boxShadow: "0 8px 32px rgba(0,0,0,0.2)",
-          textAlign: "center",
-          zIndex: 1002,
-        }}>
-          <div style={{
-            width: "50px",
-            height: "50px",
-            border: `3px solid ${BRONZE.primary}`,
-            borderTopColor: "transparent",
-            borderRadius: "50%",
-            margin: "0 auto 16px",
-            animation: "spin 1s linear infinite",
-          }} />
-          <p style={{ color: BRONZE.dark, margin: 0 }}>Loading books...</p>
-        </div>
+      {/* Loading State */}
+      {loading && <LoadingSkeleton />}
+
+      {/* Error State */}
+      {error && !loading && <ErrorState />}
+
+      {/* Book List */}
+      {!loading && !error && filteredOffers.length > 0 && (
+        <OfferList offers={filteredOffers} />
       )}
 
-      {error && !loading && (
-        <div style={{
-          position: "absolute",
-          top: "50%",
-          left: "50%",
-          transform: "translate(-50%, -50%)",
-          background: "white",
-          padding: "24px",
-          borderRadius: "16px",
-          boxShadow: "0 8px 32px rgba(0,0,0,0.2)",
-          textAlign: "center",
-          zIndex: 1002,
-        }}>
-          <p style={{ color: "#d32f2f", marginBottom: "16px" }}>{error}</p>
-          <button
-            onClick={() => window.location.reload()}
-            style={{
-              background: BRONZE.primary,
-              color: "white",
-              border: "none",
-              padding: "8px 16px",
-              borderRadius: "8px",
-              cursor: "pointer",
-            }}
-          >
-            Retry
-          </button>
-        </div>
-      )}
-
-      {/* Book List Panel */}
-      {!loading && !error && offersWithCoords.length > 0 && (
+      {/* No Results */}
+      {!loading && !error && filteredOffers.length === 0 && (
         <motion.div
           initial={{ y: 300 }}
           animate={{ y: 0 }}
-          transition={{ type: "spring", damping: 25 }}
           style={{
             position: "absolute",
             bottom: 16,
             left: 16,
             right: 16,
-            background: "white",
-            borderRadius: "20px",
-            boxShadow: "0 8px 32px rgba(0,0,0,0.2)",
-            padding: "16px",
-            maxHeight: "200px",
-            overflowY: "auto",
-            zIndex: 1000,
+            background: "rgba(255, 255, 255, 0.97)",
+            backdropFilter: "blur(20px)",
+            borderRadius: "24px",
+            padding: "24px",
+            textAlign: "center",
+            zIndex: 999,
+            border: `1px solid ${BRONZE.pale}`,
+            boxShadow: "0 20px 60px rgba(0,0,0,0.15)",
           }}
-        >
-          <h3 style={{ 
-            fontSize: "16px", 
-            fontWeight: "600", 
-            margin: "0 0 12px",
-            color: BRONZE.dark,
-          }}>
-            Nearby Books ({offersWithCoords.length})
-          </h3>
-          
-          <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-            {offersWithCoords.map(offer => (
-              <div
-                key={offer.id}
-                onClick={() => {
-                  setSelectedOffer(offer);
-                  if (offer.latitude && offer.longitude && mapInstance.current) {
-                    mapInstance.current.setView([offer.latitude, offer.longitude], 15);
-                  }
-                }}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "12px",
-                  padding: "12px",
-                  borderRadius: "12px",
-                  background: selectedOffer?.id === offer.id ? BRONZE.pale : "#f8f8f8",
-                  cursor: "pointer",
-                  border: selectedOffer?.id === offer.id ? `2px solid ${BRONZE.primary}` : "none",
-                }}
-              >
-                <div style={{
-                  width: "40px",
-                  height: "40px",
-                  borderRadius: "8px",
-                  overflow: "hidden",
-                  border: `1px solid ${BRONZE.pale}`,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  background: BRONZE.primary,
-                  color: "white",
-                  fontSize: "16px",
-                }}>
-                  {offer.imageUrl || offer.imageBase64 ? (
-                    <img 
-                      src={getImageSource(offer)} 
-                      alt={offer.bookTitle}
-                      style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                    />
-                  ) : (
-                    <FaBook />
-                  )}
-                </div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ 
-                    fontSize: "14px", 
-                    fontWeight: "600", 
-                    color: BRONZE.dark,
-                  }}>
-                    {offer.bookTitle.substring(0, 25)}{offer.bookTitle.length > 25 ? '...' : ''}
-                  </div>
-                  <div style={{ 
-                    fontSize: "12px", 
-                    color: "#666",
-                    marginTop: "2px",
-                  }}>
-                    {offer.author || "Unknown"} • {offer.distance || "Nearby"}
-                  </div>
-                </div>
-                {offer.price && (
-                  <div style={{
-                    background: BRONZE.pale,
-                    color: BRONZE.dark,
-                    padding: "4px 8px",
-                    borderRadius: "8px",
-                    fontSize: "12px",
-                    fontWeight: "600",
-                  }}>
-                    ${offer.price.toFixed(2)}
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        </motion.div>
-      )}
-
-      {/* No Offers Message */}
-      {!loading && !error && offersWithCoords.length === 0 && (
-        <div style={{
-          position: "absolute",
-          bottom: 16,
-          left: 16,
-          right: 16,
-          background: "white",
-          borderRadius: "20px",
-          boxShadow: "0 8px 32px rgba(0,0,0,0.2)",
-          padding: "24px",
-          textAlign: "center",
-          zIndex: 1000,
-        }}>
-          <FaBook size={32} color={BRONZE.light} style={{ marginBottom: "12px" }} />
-          <h3 style={{ color: BRONZE.dark, marginBottom: "8px" }}>
-            No books with location data
-          </h3>
-          <p style={{ color: BRONZE.dark, opacity: 0.7, fontSize: "14px" }}>
-            {searchQuery ? "Try a different search" : "No books have location information yet"}
-          </p>
-        </div>
-      )}
-
-      {/* Selected Offer Details - RESPONSIVE CARD */}
-      {selectedOffer && (
-        <motion.div
-          initial={{ x: window.innerWidth < 768 ? 0 : 400, opacity: 0 }}
-          animate={{ x: 0, opacity: 1 }}
-          exit={{ x: window.innerWidth < 768 ? 0 : 400, opacity: 0 }}
-          style={{
-            position: "absolute",
-            top: window.innerWidth < 768 ? "50%" : "auto",
-            bottom: window.innerWidth < 768 ? "auto" : (offersWithCoords.length > 0 ? "220px" : "16px"),
-            left: window.innerWidth < 768 ? "50%" : "16px",
-            right: window.innerWidth < 768 ? "auto" : "auto",
-            transform: window.innerWidth < 768 ? "translate(-50%, -50%)" : "none",
-            width: window.innerWidth < 768 ? "calc(100% - 32px)" : "360px",
-            maxWidth: "400px",
-            background: "white",
-            borderRadius: "20px",
-            padding: "20px",
-            boxShadow: "0 16px 48px rgba(0,0,0,0.3)",
-            zIndex: 1001,
-            maxHeight: window.innerWidth < 768 ? "80vh" : "none",
-            overflowY: "auto",
-          }}
-          onClick={(e) => e.stopPropagation()}
         >
           <div style={{ 
-            display: "flex", 
-            justifyContent: "space-between", 
-            alignItems: "flex-start",
+            fontSize: "48px", 
             marginBottom: "16px",
+            opacity: 0.5,
           }}>
-            <div style={{ flex: 1 }}>
-              <h3 style={{ 
-                fontSize: "20px", 
-                fontWeight: "700", 
-                margin: "0 0 4px",
-                color: BRONZE.dark,
-              }}>
-                {selectedOffer.bookTitle}
-              </h3>
-              <p style={{ 
-                fontSize: "14px", 
-                color: "#666", 
-                margin: "0 0 8px",
-              }}>
-                {selectedOffer.author ? `by ${selectedOffer.author}` : "Unknown Author"}
-              </p>
-              <div style={{ 
-                display: "flex", 
-                alignItems: "center", 
-                gap: "8px",
-                fontSize: "13px",
-                color: "#666",
-              }}>
-                <FaMapMarkerAlt size={12} /> 
-                {selectedOffer.distance ? `${selectedOffer.distance} away` : "Nearby"} • 
-                {selectedOffer.ownerName || selectedOffer.ownerEmail.split("@")[0]}
-              </div>
-            </div>
-            <button
-              onClick={() => setSelectedOffer(null)}
-              style={{
-                background: "none",
-                border: "none",
-                color: "#666",
-                fontSize: "20px",
-                cursor: "pointer",
-                padding: "4px",
-                marginLeft: "8px",
-              }}
-            >
-              <FaTimes />
-            </button>
+            📚
           </div>
-
-          {/* Description */}
-          {selectedOffer.description && (
-            <p style={{
-              fontSize: "14px",
-              color: "#666",
-              lineHeight: 1.5,
-              marginBottom: "16px",
-              paddingBottom: "16px",
-              borderBottom: `1px solid ${BRONZE.pale}`,
-            }}>
-              {selectedOffer.description}
-            </p>
-          )}
-
-          {/* Price/Exchange */}
-          <div style={{ 
-            display: "flex", 
-            alignItems: "center", 
-            justifyContent: "space-between",
-            marginBottom: "20px",
-            padding: "12px",
-            background: BRONZE.pale,
-            borderRadius: "12px",
-            flexDirection: window.innerWidth < 768 ? "column" : "row",
-            gap: window.innerWidth < 768 ? "16px" : "0",
+          <h3 style={{ 
+            color: BRONZE.textDark, 
+            fontSize: "18px", 
+            fontWeight: "700",
+            margin: "0 0 8px",
           }}>
-            <div>
-              <div style={{ fontSize: "12px", color: "#666" }}>
-                {selectedOffer.type === "sell" ? "Price" : 
-                 selectedOffer.type === "buy" ? "Looking for" : "Exchange for"}
-              </div>
-              <div style={{ 
-                fontSize: "24px", 
-                fontWeight: "800", 
-                color: BRONZE.primary,
-                display: "flex",
-                alignItems: "center",
-                gap: "4px",
-              }}>
-                {selectedOffer.type === "sell" && selectedOffer.price ? (
-                  <>
-                    <FaDollarSign /> {selectedOffer.price.toFixed(2)}
-                  </>
-                ) : selectedOffer.type === "exchange" && selectedOffer.exchangeBook ? (
-                  <>
-                    <FaExchangeAlt /> Exchange
-                  </>
-                ) : (
-                  <>
-                    <FaTag /> Wanted
-                  </>
-                )}
-              </div>
-              {selectedOffer.exchangeBook && (
-                <div style={{ fontSize: "14px", color: BRONZE.dark, marginTop: "4px" }}>
-                  For: {selectedOffer.exchangeBook}
-                </div>
-              )}
-            </div>
-            
-            <button
-              onClick={handleContactOwner}
-              style={{
-                background: BRONZE.primary,
-                color: "white",
-                border: "none",
-                padding: "12px 24px",
-                borderRadius: "12px",
-                fontSize: "16px",
-                fontWeight: "600",
-                cursor: "pointer",
-                transition: "background 0.2s",
-                width: window.innerWidth < 768 ? "100%" : "auto",
-              }}
-              onMouseEnter={(e) => e.currentTarget.style.background = BRONZE.dark}
-              onMouseLeave={(e) => e.currentTarget.style.background = BRONZE.primary}
-            >
-              Contact Owner
-            </button>
-          </div>
-
-          {/* Action Buttons - Same as HomeScreen */}
-          <div style={{
-            display: "flex",
-            justifyContent: "space-around",
-            paddingTop: "12px",
-            borderTop: `1px solid ${BRONZE.pale}`,
-            flexWrap: window.innerWidth < 768 ? "wrap" : "nowrap",
-            gap: window.innerWidth < 768 ? "8px" : "0",
+            {searchQuery ? "No books found" : "No books with locations"}
+          </h3>
+          <p style={{ 
+            color: BRONZE.textLight, 
+            fontSize: "14px",
+            margin: 0,
           }}>
-            <button
-              onClick={(e) => handleLike(selectedOffer.id, e)}
-              style={{
-                background: "none",
-                border: "none",
-                color: BRONZE.primary,
-                display: "flex",
-                alignItems: "center",
-                gap: "6px",
-                fontSize: "14px",
-                cursor: "pointer",
-                padding: "8px",
-                borderRadius: "8px",
-                transition: "all 0.2s ease",
-                flex: window.innerWidth < 768 ? "1" : "auto",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = `${BRONZE.primary}10`;
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = "none";
-              }}
-            >
-              <FaHeart />
-              Like
-            </button>
-
-            <button
-              
-              onClick={() => {
-                const mockEvent = {
-                  stopPropagation: () => {},
-                  preventDefault: () => {}
-                } as React.MouseEvent;
-                handleChat(selectedOffer, mockEvent);
-              }}
-              style={{
-                background: "none",
-                border: "none",
-                color: BRONZE.dark,
-                display: "flex",
-                alignItems: "center",
-                gap: "6px",
-                fontSize: "14px",
-                cursor: "pointer",
-                padding: "8px",
-                borderRadius: "8px",
-                transition: "all 0.2s ease",
-                flex: window.innerWidth < 768 ? "1" : "auto",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = `${BRONZE.dark}10`;
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = "none";
-              }}
-            >
-              <FaComments />
-              Chat
-            </button>
-
-            <button
-              onClick={(e) => handleShare(selectedOffer.id, e)}
-              style={{
-                background: "none",
-                border: "none",
-                color: BRONZE.light,
-                display: "flex",
-                alignItems: "center",
-                gap: "6px",
-                fontSize: "14px",
-                cursor: "pointer",
-                padding: "8px",
-                borderRadius: "8px",
-                transition: "all 0.2s ease",
-                flex: window.innerWidth < 768 ? "1" : "auto",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = `${BRONZE.light}10`;
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = "none";
-              }}
-            >
-              <FaShareAlt />
-              Share
-            </button>
-          </div>
+            {searchQuery ? "Try a different search term" : "Check back soon for nearby books!"}
+          </p>
         </motion.div>
       )}
 
-      {/* CSS Animation */}
+      {/* Selected Offer Card - ONLY ONE CARD */}
+      <AnimatePresence mode="wait">
+        {SelectedOfferCard}
+      </AnimatePresence>
+
+      {/* CSS Styles */}
       <style>{`
         @keyframes spin {
           to { transform: rotate(360deg); }
         }
         
-        /* Responsive styles */
+        .spin {
+          animation: spin 1s linear infinite;
+        }
+        
+        .custom-marker {
+          transition: transform 0.3s ease !important;
+        }
+        
+        .custom-marker:hover {
+          transform: scale(1.2);
+        }
+        
+        .leaflet-popup-content {
+          margin: 0 !important;
+          padding: 0 !important;
+        }
+        
+        .leaflet-popup-content-wrapper {
+          border-radius: 16px !important;
+          padding: 0 !important;
+          border: 1px solid ${BRONZE.pale} !important;
+          box-shadow: 0 12px 32px rgba(0,0,0,0.15) !important;
+        }
+        
+        .leaflet-popup-tip {
+          background: white !important;
+          box-shadow: none !important;
+        }
+        
+        ::-webkit-scrollbar {
+          width: 6px;
+          height: 6px;
+        }
+        
+        ::-webkit-scrollbar-track {
+          background: ${BRONZE.bgLight};
+          border-radius: 10px;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+          background: ${BRONZE.light};
+          border-radius: 10px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+          background: ${BRONZE.primary};
+        }
+        
+        * {
+          -webkit-tap-highlight-color: transparent;
+        }
+        
+        input:focus {
+          outline: none;
+        }
+        
+        button:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+        }
+        
         @media (max-width: 768px) {
-          .mobile-full-width {
-            width: calc(100% - 32px) !important;
-            max-width: none !important;
+          .leaflet-popup {
+            max-width: 280px !important;
           }
         }
       `}</style>

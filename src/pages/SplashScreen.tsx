@@ -1,52 +1,55 @@
-// src/SplashScreen.tsx
+// src/SplashScreen.tsx - ELEGANT & SIMPLE BOOCOZMO
 import React, { useEffect, useRef } from "react";
 import { motion } from "framer-motion";
-import { FaBook, FaBookOpen, FaBookReader } from "react-icons/fa";
 
 interface SplashScreenProps {
   onFinish: () => void;
 }
 
-interface FloatingBook {
-  id: number;
-  x: number;
-  y: number;
-  size: number;
-  rotation: number;
-  delay: number;
-  icon: React.ReactNode;
-}
-
 const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
   const animationRef = useRef<HTMLDivElement>(null);
+  const [progress, setProgress] = React.useState(0);
+  const [showContent, setShowContent] = React.useState(false);
 
   useEffect(() => {
-    const timer = setTimeout(() => onFinish(), 3000);
-    return () => clearTimeout(timer);
+    // Show content immediately (fast)
+    setShowContent(true);
+    
+    // Progress bar fills in 2 seconds (fast)
+    const progressInterval = setInterval(() => {
+      setProgress(prev => {
+        if (prev >= 100) {
+          clearInterval(progressInterval);
+          return 100;
+        }
+        return prev + 1.67; // 100% in 2 seconds (100 / (2000/33))
+      });
+    }, 33);
+
+    // Wait 7 seconds total before navigating (5 seconds after loading completes)
+    const timer = setTimeout(() => onFinish(), 7000);
+
+    return () => {
+      clearTimeout(timer);
+      clearInterval(progressInterval);
+    };
   }, [onFinish]);
 
-  // Bronze color palette
+  // Elegant bronze palette
   const BRONZE = {
-    primary: "#CD7F32", // Classic bronze
+    primary: "#CD7F32",
     light: "#E6B17E",
     dark: "#B87333",
     pale: "#F5E7D3",
-    shimmer: "#FFD700", // Gold accent
+    bgLight: "#FDF8F3",
+    bgDark: "#F5F0E6",
+    textDark: "#2C1810",
+    textLight: "#5D4037",
   };
 
-  // Generate floating books
-  const floatingBooks: FloatingBook[] = [
-    { id: 1, x: 10, y: 20, size: 28, rotation: -15, delay: 0, icon: <FaBook color={BRONZE.light} /> },
-    { id: 2, x: 85, y: 15, size: 32, rotation: 10, delay: 0.3, icon: <FaBookOpen color={BRONZE.primary} /> },
-    { id: 3, x: 20, y: 75, size: 24, rotation: 5, delay: 0.6, icon: <FaBookReader color={BRONZE.light} /> },
-    { id: 4, x: 75, y: 70, size: 30, rotation: -10, delay: 0.9, icon: <FaBook color={BRONZE.primary} /> },
-    { id: 5, x: 45, y: 10, size: 26, rotation: 20, delay: 1.2, icon: <FaBookOpen color={BRONZE.light} /> },
-    { id: 6, x: 15, y: 50, size: 22, rotation: -5, delay: 1.5, icon: <FaBookReader color={BRONZE.primary} /> },
-    { id: 7, x: 80, y: 45, size: 34, rotation: 15, delay: 1.8, icon: <FaBook color={BRONZE.light} /> },
-    { id: 8, x: 40, y: 85, size: 28, rotation: -20, delay: 2.1, icon: <FaBookOpen color={BRONZE.primary} /> },
-  ];
+  // Option 1: White text on bronze background (COMMENT OUT ONE OPTION)
+  const USE_WHITE_ON_BRONZE = true; // Set to false for bronze on white
 
-  // Inline styles
   const container: React.CSSProperties = {
     position: "fixed",
     top: 0,
@@ -56,10 +59,11 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    background: "linear-gradient(135deg, #FFFFFF 0%, #F9F5F0 30%, #F5F0E6 100%)",
-    color: BRONZE.dark,
+    background: USE_WHITE_ON_BRONZE 
+      ? `linear-gradient(135deg, ${BRONZE.dark} 0%, ${BRONZE.primary} 100%)`
+      : BRONZE.bgLight,
     overflow: "hidden",
-    fontFamily: "'Georgia', 'Times New Roman', serif",
+    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
   };
 
   const content: React.CSSProperties = {
@@ -70,246 +74,301 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
     alignItems: "center",
     justifyContent: "center",
     textAlign: "center",
-    gap: "16px",
-    padding: "40px",
-    borderRadius: "24px",
-    background: "rgba(255, 255, 255, 0.85)",
-    backdropFilter: "blur(10px)",
-    boxShadow: "0 20px 60px rgba(205, 127, 50, 0.15)",
-    border: `1px solid ${BRONZE.pale}`,
+    gap: "28px",
+    padding: "48px 40px",
+    borderRadius: "28px",
+    background: USE_WHITE_ON_BRONZE 
+      ? "rgba(255, 255, 255, 0.1)"
+      : "rgba(255, 255, 255, 0.95)",
+    backdropFilter: "blur(12px)",
+    boxShadow: USE_WHITE_ON_BRONZE
+      ? "0 20px 60px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.2)"
+      : "0 20px 60px rgba(205, 127, 50, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.8)",
+    border: USE_WHITE_ON_BRONZE
+      ? "1px solid rgba(255, 255, 255, 0.15)"
+      : `1px solid ${BRONZE.pale}`,
+    maxWidth: "480px",
+    margin: "20px",
   };
 
-  const titleStyle: React.CSSProperties = {
-    marginTop: "8px",
+  const logoStyle: React.CSSProperties = {
     fontSize: "3.5rem",
-    fontWeight: 800,
-    color: BRONZE.dark,
-    letterSpacing: "0.05em",
-    textShadow: `2px 2px 4px rgba(184, 115, 51, 0.2)`,
-    fontFamily: "'Playfair Display', serif",
+    fontWeight: 700,
+    color: USE_WHITE_ON_BRONZE ? "#FFFFFF" : BRONZE.primary,
+    letterSpacing: "0.02em",
+    fontFamily: "'Merriweather', serif",
     position: "relative",
+    textShadow: USE_WHITE_ON_BRONZE
+      ? "0 2px 8px rgba(0, 0, 0, 0.2)"
+      : "0 2px 4px rgba(205, 127, 50, 0.1)",
   };
 
-  const subtitleStyle: React.CSSProperties = {
+  const taglineStyle: React.CSSProperties = {
     fontSize: "1.1rem",
-    color: "#666",
+    color: USE_WHITE_ON_BRONZE ? "rgba(255, 255, 255, 0.9)" : BRONZE.textLight,
     maxWidth: "400px",
     lineHeight: "1.6",
-    marginTop: "4px",
+    fontWeight: 400,
+    letterSpacing: "0.02em",
   };
-
-  const bronzeAccent: React.CSSProperties = {
-    position: "absolute",
-    top: "50%",
-    left: "50%",
-    transform: "translate(-50%, -50%)",
-    width: "280px",
-    height: "280px",
-    borderRadius: "50%",
-    background: `radial-gradient(circle, ${BRONZE.primary}20 0%, transparent 70%)`,
-    filter: "blur(20px)",
-    zIndex: 1,
-  };
-
-  const floatingBookStyle = (book: FloatingBook): React.CSSProperties => ({
-    position: "absolute",
-    left: `${book.x}%`,
-    top: `${book.y}%`,
-    fontSize: `${book.size}px`,
-    transform: `rotate(${book.rotation}deg)`,
-    opacity: 0.7,
-    filter: "drop-shadow(0 4px 6px rgba(205, 127, 50, 0.3))",
-    zIndex: 2,
-  });
 
   return (
     <div style={container} ref={animationRef}>
-      {/* Floating books in background */}
-      {floatingBooks.map((book) => (
-        <motion.div
-          key={book.id}
-          style={floatingBookStyle(book)}
-          initial={{ y: 100, opacity: 0, scale: 0.5 }}
-          animate={{ 
-            y: [null, -20, 0, -20],
-            opacity: 0.7,
-            scale: 1,
-            rotate: [book.rotation, book.rotation + 5, book.rotation]
-          }}
-          transition={{
-            delay: book.delay,
-            duration: 3,
-            repeat: Infinity,
-            repeatType: "reverse",
-            ease: "easeInOut",
-          }}
-        >
-          {book.icon}
-        </motion.div>
-      ))}
-
-      {/* Bronze glow effect */}
-      <motion.div
-        style={bronzeAccent}
-        initial={{ scale: 0, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        transition={{ duration: 1.5, ease: "easeOut" }}
-      />
-
-      {/* Main content card */}
-      <div style={content}>
-        {/* Decorative elements */}
-        <motion.div
-          style={{
-            position: "absolute",
-            top: "-10px",
-            width: "60px",
-            height: "4px",
-            background: BRONZE.primary,
-            borderRadius: "2px",
-          }}
-          initial={{ width: 0 }}
-          animate={{ width: "60px" }}
-          transition={{ delay: 0.5, duration: 0.8 }}
-        />
-
-        {/* Main icon with animation */}
-        <motion.div
-          initial={{ scale: 0, rotate: -180, opacity: 0 }}
-          animate={{ scale: 1, rotate: 0, opacity: 1 }}
-          transition={{ 
-            type: "spring", 
-            stiffness: 150, 
-            damping: 15,
-            delay: 0.2 
-          }}
-          style={{ position: "relative" }}
-        >
-          <div style={{
-            position: "absolute",
-            top: "50%",
-            left: "50%",
-            transform: "translate(-50%, -50%)",
-            width: "140px",
-            height: "140px",
-            borderRadius: "50%",
-            background: `radial-gradient(circle, ${BRONZE.light}30 0%, transparent 70%)`,
-            filter: "blur(15px)",
-          }} />
-          
-          <FaBookOpen 
-            size={100} 
-            color={BRONZE.primary}
-            style={{
-              filter: `drop-shadow(0 8px 16px ${BRONZE.primary}40)`,
-            }}
-          />
-          
-          {/* Shimmer effect on icon */}
-          <motion.div
-            style={{
-              position: "absolute",
-              top: 0,
-              left: 0,
-              width: "100%",
-              height: "100%",
-              background: `linear-gradient(45deg, transparent 30%, ${BRONZE.shimmer}40 50%, transparent 70%)`,
-              borderRadius: "50%",
-            }}
-            animate={{ x: [-100, 100] }}
-            transition={{
-              duration: 2,
-              repeat: Infinity,
-              repeatType: "loop",
-              ease: "linear",
-              delay: 1,
-            }}
-          />
-        </motion.div>
-
-        {/* Title and subtitle */}
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.8, duration: 0.8 }}
-        >
-          <div style={titleStyle}>
-            BookSphere
-            <motion.span
-              style={{
-                position: "absolute",
-                bottom: "-8px",
-                left: "50%",
-                transform: "translateX(-50%)",
-                width: "120px",
-                height: "3px",
-                background: `linear-gradient(90deg, transparent, ${BRONZE.primary}, transparent)`,
-                borderRadius: "2px",
-              }}
-              initial={{ width: 0 }}
-              animate={{ width: "120px" }}
-              transition={{ delay: 1.2, duration: 1 }}
-            />
-          </div>
-          
-          <motion.div
-            style={subtitleStyle}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 1.4, duration: 0.8 }}
-          >
-            Connect • Exchange • Discover
-            <br />
-            <span style={{ 
-              fontSize: "0.9rem", 
-              color: BRONZE.dark,
-              fontWeight: 500 
-            }}>
-              Your literary marketplace awaits
-            </span>
-          </motion.div>
-        </motion.div>
-
-        {/* Loading dots */}
-        <motion.div
-          style={{
-            display: "flex",
-            gap: "8px",
-            marginTop: "24px",
-          }}
-        >
-          {[0, 1, 2].map((i) => (
-            <motion.div
-              key={i}
-              style={{
-                width: "10px",
-                height: "10px",
-                borderRadius: "50%",
-                background: BRONZE.primary,
-              }}
-              animate={{ y: [0, -10, 0] }}
-              transition={{
-                duration: 0.8,
-                repeat: Infinity,
-                delay: i * 0.2,
-              }}
-            />
-          ))}
-        </motion.div>
-      </div>
-
-      {/* Subtle pattern overlay */}
+      {/* Subtle background pattern */}
       <div style={{
         position: "absolute",
         top: 0,
         left: 0,
         width: "100%",
         height: "100%",
-        backgroundImage: `radial-gradient(${BRONZE.light}10 1px, transparent 1px)`,
+        backgroundImage: USE_WHITE_ON_BRONZE
+          ? `radial-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px)`
+          : `radial-gradient(${BRONZE.light}05 1px, transparent 1px)`,
         backgroundSize: "40px 40px",
-        opacity: 0.3,
+        opacity: 0.4,
         zIndex: 1,
       }} />
+
+      {/* Main content card - FAST appearance but stays visible */}
+      <motion.div
+        style={content}
+        initial={{ scale: 0.95, opacity: 0 }}
+        animate={showContent ? { scale: 1, opacity: 1 } : {}}
+        transition={{ duration: 0.4, ease: "easeOut" }} // Fast appearance
+      >
+        {/* Decorative top line - FAST */}
+        <motion.div
+          style={{
+            position: "absolute",
+            top: "-2px",
+            width: "100px",
+            height: "4px",
+            background: USE_WHITE_ON_BRONZE 
+              ? "rgba(255, 255, 255, 0.5)"
+              : BRONZE.primary,
+            borderRadius: "2px",
+            left: "50%",
+            transform: "translateX(-50%)",
+          }}
+          initial={{ width: 0 }}
+          animate={showContent ? { width: "100px" } : {}}
+          transition={{ delay: 0.2, duration: 0.4 }} // Fast
+        />
+
+        {/* Logo container - FAST */}
+        <motion.div
+          initial={{ y: 10, opacity: 0 }}
+          animate={showContent ? { y: 0, opacity: 1 } : {}}
+          transition={{ delay: 0.1, duration: 0.3 }} // Fast
+          style={{ position: "relative" }}
+        >
+          {/* Logo background accent - Slow pulse to show it's "alive" */}
+          <motion.div
+            style={{
+              position: "absolute",
+              top: "50%",
+              left: "50%",
+              transform: "translate(-50%, -50%)",
+              width: "180px",
+              height: "180px",
+              borderRadius: "50%",
+              background: USE_WHITE_ON_BRONZE
+                ? "radial-gradient(circle, rgba(255, 255, 255, 0.08) 0%, transparent 70%)"
+                : `radial-gradient(circle, ${BRONZE.primary}08 0%, transparent 70%)`,
+              filter: "blur(15px)",
+            }}
+            animate={{ scale: [1, 1.05, 1] }}
+            transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }} // Gentle pulse while waiting
+          />
+
+          {/* Main logo */}
+          <div style={logoStyle}>
+            boocozmo
+          </div>
+
+          {/* Logo underline - FAST */}
+          <motion.div
+            style={{
+              position: "absolute",
+              bottom: "-8px",
+              left: "50%",
+              transform: "translateX(-50%)",
+              width: "140px",
+              height: "2px",
+              background: USE_WHITE_ON_BRONZE
+                ? "rgba(255, 255, 255, 0.3)"
+                : `${BRONZE.primary}40`,
+              borderRadius: "1px",
+            }}
+            initial={{ width: 0 }}
+            animate={showContent ? { width: "140px" } : {}}
+            transition={{ delay: 0.4, duration: 0.5 }} // Fast
+          />
+        </motion.div>
+
+        {/* Tagline - FAST */}
+        <motion.div
+          style={taglineStyle}
+          initial={{ opacity: 0 }}
+          animate={showContent ? { opacity: 1 } : {}}
+          transition={{ delay: 0.5, duration: 0.4 }} // Fast
+        >
+          Your literary marketplace
+          <br />
+          <span style={{ 
+            fontSize: "0.95rem", 
+            opacity: 0.8,
+            fontWeight: 300,
+            marginTop: "4px",
+            display: "block"
+          }}>
+            Connect with book lovers nearby
+          </span>
+        </motion.div>
+
+        {/* Progress indicator */}
+        <div style={{ width: "100%", maxWidth: "280px" }}>
+          {/* Progress bar container - FAST appear */}
+          <motion.div
+            style={{
+              width: "100%",
+              height: "3px",
+              background: USE_WHITE_ON_BRONZE
+                ? "rgba(255, 255, 255, 0.15)"
+                : `${BRONZE.pale}`,
+              borderRadius: "2px",
+              overflow: "hidden",
+              position: "relative",
+            }}
+            initial={{ opacity: 0 }}
+            animate={showContent ? { opacity: 1 } : {}}
+            transition={{ delay: 0.6, duration: 0.3 }} // Fast
+          >
+            {/* Progress fill - Fills in 2 seconds then stays full */}
+            <motion.div
+              style={{
+                position: "absolute",
+                top: 0,
+                left: 0,
+                height: "100%",
+                width: `${progress}%`,
+                background: USE_WHITE_ON_BRONZE
+                  ? "rgba(255, 255, 255, 0.8)"
+                  : BRONZE.primary,
+                borderRadius: "2px",
+              }}
+              transition={{ duration: 0.1 }}
+            />
+            
+            {/* Shimmer effect - Moves while progress fills, then stops */}
+            <motion.div
+              style={{
+                position: "absolute",
+                top: 0,
+                left: 0,
+                height: "100%",
+                width: "40px",
+                background: USE_WHITE_ON_BRONZE
+                  ? "linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.6), transparent)"
+                  : `linear-gradient(90deg, transparent, ${BRONZE.light}80, transparent)`,
+                borderRadius: "2px",
+                filter: "blur(1px)",
+                opacity: progress < 100 ? 1 : 0, // Hide when progress is complete
+              }}
+              animate={{ x: [0, 280, 0] }}
+              transition={{ 
+                duration: 1.5, // Fast shimmer while loading
+                repeat: progress < 100 ? Infinity : 0, // Stop when done
+                ease: "easeInOut" 
+              }}
+            />
+          </motion.div>
+
+          {/* Loading text - Shows "Loading..." then "Ready" */}
+          <motion.div
+            style={{
+              fontSize: "0.85rem",
+              color: USE_WHITE_ON_BRONZE ? "rgba(255, 255, 255, 0.7)" : BRONZE.textLight,
+              marginTop: "12px",
+              fontWeight: 400,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: "8px",
+              height: "24px", // Fixed height to prevent layout shift
+            }}
+            initial={{ opacity: 0 }}
+            animate={showContent ? { opacity: 1 } : {}}
+            transition={{ delay: 0.7, duration: 0.3 }} // Fast
+          >
+            {progress < 100 ? (
+              <motion.span
+                animate={{ opacity: [0.6, 1, 0.6] }}
+                transition={{ duration: 1.5, repeat: Infinity }}
+                style={{ display: "flex", alignItems: "center", gap: "6px" }}
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+                  <motion.circle
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke={USE_WHITE_ON_BRONZE ? "rgba(255, 255, 255, 0.5)" : BRONZE.primary}
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    animate={{ rotate: 360 }}
+                    transition={{ duration: 1, repeat: Infinity, ease: "linear" }} // Fast spinner
+                  />
+                </svg>
+                Loading your experience...
+              </motion.span>
+            ) : (
+              <motion.span
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.3 }}
+                style={{ display: "flex", alignItems: "center", gap: "6px" }}
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+                  <circle cx="12" cy="12" r="10" fill={USE_WHITE_ON_BRONZE ? "#FFFFFF" : BRONZE.primary} />
+                </svg>
+                Ready to explore!
+              </motion.span>
+            )}
+          </motion.div>
+        </div>
+
+        {/* Subtle decorative dots - Only animate while loading */}
+        <div style={{
+          display: "flex",
+          gap: "8px",
+          marginTop: "8px",
+          height: "12px", // Fixed height
+        }}>
+          {[0, 1, 2].map((i) => (
+            <motion.div
+              key={i}
+              style={{
+                width: "6px",
+                height: "6px",
+                borderRadius: "50%",
+                background: USE_WHITE_ON_BRONZE 
+                  ? "rgba(255, 255, 255, 0.3)" 
+                  : `${BRONZE.primary}30`,
+                opacity: progress < 100 ? 1 : 0.3, // Fade when done
+              }}
+              animate={progress < 100 ? { 
+                scale: [1, 1.3, 1],
+                opacity: [0.5, 1, 0.5]
+              } : {}}
+              transition={{
+                duration: 1,
+                repeat: progress < 100 ? Infinity : 0,
+                delay: i * 0.2,
+              }}
+            />
+          ))}
+        </div>
+      </motion.div>
     </div>
   );
 };
