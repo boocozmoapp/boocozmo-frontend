@@ -6,8 +6,6 @@ import {
   FaMapMarkedAlt, 
   FaPlus, 
   FaComments, 
-  FaUser, 
-  FaCamera, 
   FaEdit, 
   FaTrash, 
   FaHeart, 
@@ -17,7 +15,8 @@ import {
   FaBook,
   FaBookmark,
   FaStar,
-  FaDollarSign
+  FaDollarSign,
+  FaUsers
 } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 
@@ -61,7 +60,10 @@ export default function ProfileScreen({ currentUser, onLogout }: Props) {
     dark: "#B87333",
     pale: "#F5E7D3",
     shimmer: "#FFD700",
-    bg: "#F9F5F0",
+    bgLight: "#FDF8F3",
+    bgDark: "#F5F0E6",
+    textDark: "#2C1810",
+    textLight: "#5D4037",
   };
 
   const username = currentUser.name || currentUser.email.split("@")[0];
@@ -222,29 +224,55 @@ export default function ProfileScreen({ currentUser, onLogout }: Props) {
         display: "flex", 
         alignItems: "center", 
         justifyContent: "center",
-        background: BRONZE.bg,
+        background: BRONZE.bgLight,
+        flexDirection: "column",
+        gap: "20px",
       }}>
-        <motion.div
-          animate={{ rotate: 360 }}
-          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-          style={{
-            fontSize: "48px",
-            color: BRONZE.primary,
-          }}
-        >
-          📚
-        </motion.div>
+        {/* Horizontal loading bar */}
+        <div style={{
+          width: "200px",
+          height: "4px",
+          background: BRONZE.pale,
+          borderRadius: "2px",
+          overflow: "hidden",
+          position: "relative",
+        }}>
+          <motion.div
+            style={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              height: "100%",
+              width: "30%",
+              background: `linear-gradient(90deg, ${BRONZE.primary}, ${BRONZE.dark})`,
+              borderRadius: "2px",
+            }}
+            animate={{ x: ["0%", "200%", "0%"] }}
+            transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+          />
+        </div>
+        
+        <p style={{ 
+          color: BRONZE.textLight, 
+          fontSize: "14px", 
+          fontWeight: 500,
+          textAlign: "center",
+        }}>
+          Loading your library...
+        </p>
       </div>
     );
   }
 
   return (
     <div style={{ 
-      minHeight: "100vh", 
-      background: BRONZE.bg, 
-      display: "flex", 
+      height: "100vh",
+      width: "100vw",
+      background: BRONZE.bgLight,
+      display: "flex",
       flexDirection: "column",
-      fontFamily: "'Georgia', 'Times New Roman', serif",
+      fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+      overflow: "hidden",
     }}>
       {/* Fixed Header */}
       <motion.header 
@@ -252,12 +280,13 @@ export default function ProfileScreen({ currentUser, onLogout }: Props) {
         animate={{ y: 0, opacity: 1 }}
         style={{ 
           background: `linear-gradient(135deg, ${BRONZE.primary}, ${BRONZE.dark})`,
-          padding: "24px 16px 32px",
+          padding: "60px 20px 32px 20px",
           color: "white",
-          position: "relative",
-          borderBottomLeftRadius: "24px",
-          borderBottomRightRadius: "24px",
-          boxShadow: "0 8px 32px rgba(205, 127, 50, 0.3)",
+          position: "sticky",
+          top: 0,
+          zIndex: 50,
+          flexShrink: 0,
+          boxShadow: "0 2px 20px rgba(205, 127, 50, 0.3)",
         }}
       >
         {/* Settings and Chat Buttons */}
@@ -268,10 +297,10 @@ export default function ProfileScreen({ currentUser, onLogout }: Props) {
           marginBottom: "24px",
         }}>
           <h1 style={{ 
-            fontSize: "32px", 
-            fontWeight: 800, 
+            fontSize: "28px", 
+            fontWeight: 700, 
             margin: 0,
-            fontFamily: "'Playfair Display', serif",
+            fontFamily: "'Merriweather', serif",
           }}>
             My Library
           </h1>
@@ -282,20 +311,19 @@ export default function ProfileScreen({ currentUser, onLogout }: Props) {
               whileTap={{ scale: 0.95 }}
               onClick={() => navigate("/chat")}
               style={{
-                background: "rgba(255,255,255,0.2)",
-                border: "none",
+                background: "rgba(255,255,255,0.15)",
+                border: "1px solid rgba(255,255,255,0.3)",
                 borderRadius: "50%",
-                width: "44px",
-                height: "44px",
+                width: "40px",
+                height: "40px",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
                 color: "white",
                 cursor: "pointer",
-                backdropFilter: "blur(4px)",
               }}
             >
-              <FaComments size={20} />
+              <FaComments size={18} />
             </motion.button>
             
             <motion.button
@@ -303,20 +331,19 @@ export default function ProfileScreen({ currentUser, onLogout }: Props) {
               whileTap={{ scale: 0.95 }}
               onClick={() => setShowSettings(!showSettings)}
               style={{
-                background: "rgba(255,255,255,0.2)",
-                border: "none",
+                background: "rgba(255,255,255,0.15)",
+                border: "1px solid rgba(255,255,255,0.3)",
                 borderRadius: "50%",
-                width: "44px",
-                height: "44px",
+                width: "40px",
+                height: "40px",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
                 color: "white",
                 cursor: "pointer",
-                backdropFilter: "blur(4px)",
               }}
             >
-              <FaCog size={20} />
+              <FaCog size={18} />
             </motion.button>
           </div>
         </div>
@@ -329,52 +356,30 @@ export default function ProfileScreen({ currentUser, onLogout }: Props) {
           style={{ 
             display: "flex", 
             alignItems: "center", 
-            gap: "20px",
-            marginBottom: "32px",
+            gap: "16px",
+            marginBottom: "24px",
           }}
         >
           <div style={{ position: "relative" }}>
             <motion.div
               whileHover={{ scale: 1.05 }}
               style={{
-                width: "100px",
-                height: "100px",
+                width: "80px",
+                height: "80px",
                 borderRadius: "50%",
                 background: `linear-gradient(135deg, ${BRONZE.light}, white)`,
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                fontSize: "42px",
+                fontSize: "32px",
                 color: BRONZE.dark,
                 fontWeight: "bold",
-                border: `4px solid white`,
-                boxShadow: "0 8px 24px rgba(0, 0, 0, 0.2)",
+                border: `3px solid white`,
+                boxShadow: "0 6px 20px rgba(0, 0, 0, 0.15)",
               }}
             >
               {username[0].toUpperCase()}
             </motion.div>
-            <motion.button
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.9 }}
-              style={{
-                position: "absolute",
-                bottom: "0px",
-                right: "0px",
-                background: BRONZE.primary,
-                width: "36px",
-                height: "36px",
-                borderRadius: "50%",
-                border: "3px solid white",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                color: "white",
-                cursor: "pointer",
-                boxShadow: "0 4px 12px rgba(0, 0, 0, 0.2)",
-              }}
-            >
-              <FaCamera size={16} />
-            </motion.button>
           </div>
 
           <div style={{ flex: 1 }}>
@@ -383,9 +388,9 @@ export default function ProfileScreen({ currentUser, onLogout }: Props) {
               animate={{ x: 0, opacity: 1 }}
               transition={{ delay: 0.2 }}
               style={{ 
-                fontSize: "28px", 
+                fontSize: "24px", 
                 fontWeight: 700, 
-                margin: "0 0 6px",
+                margin: "0 0 4px",
                 color: "white",
               }}
             >
@@ -396,17 +401,17 @@ export default function ProfileScreen({ currentUser, onLogout }: Props) {
               animate={{ x: 0, opacity: 1 }}
               transition={{ delay: 0.3 }}
               style={{ 
-                fontSize: "15px", 
+                fontSize: "14px", 
                 opacity: 0.9, 
-                margin: "0 0 12px",
+                margin: "0 0 8px",
                 color: BRONZE.pale,
               }}
             >
               {userEmail}
             </motion.p>
-            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-              <FaStar color={BRONZE.shimmer} size={16} />
-              <span style={{ fontSize: "14px", fontWeight: 600 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+              <FaStar color={BRONZE.shimmer} size={14} />
+              <span style={{ fontSize: "13px", fontWeight: 600 }}>
                 {stats.rating} • {stats.badges} Badges
               </span>
             </div>
@@ -421,7 +426,7 @@ export default function ProfileScreen({ currentUser, onLogout }: Props) {
           style={{
             display: "grid",
             gridTemplateColumns: "repeat(4, 1fr)",
-            gap: "12px",
+            gap: "10px",
           }}
         >
           {[
@@ -432,33 +437,32 @@ export default function ProfileScreen({ currentUser, onLogout }: Props) {
           ].map((stat) => (
             <motion.div
               key={stat.label}
-              whileHover={{ y: -4 }}
+              whileHover={{ y: -3 }}
               style={{
-                background: "rgba(255,255,255,0.15)",
-                borderRadius: "16px",
-                padding: "16px 12px",
+                background: "rgba(255,255,255,0.1)",
+                borderRadius: "14px",
+                padding: "12px 8px",
                 textAlign: "center",
-                backdropFilter: "blur(8px)",
                 border: "1px solid rgba(255,255,255,0.1)",
               }}
             >
               <div style={{ 
-                fontSize: "28px", 
+                fontSize: "24px", 
                 fontWeight: "bold",
-                marginBottom: "6px",
+                marginBottom: "4px",
                 color: stat.color,
               }}>
                 {stat.icon}
               </div>
               <div style={{ 
-                fontSize: "20px", 
+                fontSize: "18px", 
                 fontWeight: "bold",
-                marginBottom: "4px",
+                marginBottom: "2px",
               }}>
                 {stat.value}
               </div>
               <div style={{ 
-                fontSize: "12px", 
+                fontSize: "11px", 
                 opacity: 0.9,
                 fontWeight: 500,
               }}>
@@ -473,7 +477,8 @@ export default function ProfileScreen({ currentUser, onLogout }: Props) {
       <div style={{ 
         flex: 1, 
         overflowY: "auto",
-        paddingBottom: "80px",
+        paddingBottom: "90px",
+        WebkitOverflowScrolling: "touch",
       }}>
         {/* Tabs */}
         <motion.div 
@@ -484,8 +489,8 @@ export default function ProfileScreen({ currentUser, onLogout }: Props) {
             background: "white", 
             padding: "16px 20px", 
             margin: "-20px 16px 20px",
-            borderRadius: "20px",
-            boxShadow: "0 8px 24px rgba(205, 127, 50, 0.15)",
+            borderRadius: "16px",
+            boxShadow: "0 4px 20px rgba(205, 127, 50, 0.1)",
             display: "flex",
             justifyContent: "space-around",
             position: "relative",
@@ -493,9 +498,9 @@ export default function ProfileScreen({ currentUser, onLogout }: Props) {
           }}
         >
           {[
-            { key: "books" as const, label: "My Books", icon: <FaBook size={18} /> },
-            { key: "saved" as const, label: "Saved", icon: <FaBookmark size={18} /> },
-            { key: "stats" as const, label: "Stats", icon: <FaChartLine size={18} /> },
+            { key: "books" as const, label: "My Books", icon: <FaBook size={16} /> },
+            { key: "saved" as const, label: "Saved", icon: <FaBookmark size={16} /> },
+            { key: "stats" as const, label: "Stats", icon: <FaChartLine size={16} /> },
           ].map(({ key, label, icon }) => (
             <motion.button
               key={key}
@@ -509,19 +514,19 @@ export default function ProfileScreen({ currentUser, onLogout }: Props) {
                 gap: "6px",
                 background: "none",
                 border: "none",
-                color: activeTab === key ? BRONZE.primary : "#94A3B8",
-                fontSize: "13px",
+                color: activeTab === key ? BRONZE.primary : BRONZE.textLight,
+                fontSize: "12px",
                 fontWeight: activeTab === key ? 700 : 500,
                 cursor: "pointer",
                 padding: "8px 12px",
                 borderRadius: "12px",
                 transition: "all 0.3s ease",
-                minWidth: "80px",
+                minWidth: "70px",
               }}
             >
               <div style={{ 
-                fontSize: "20px",
-                color: activeTab === key ? BRONZE.primary : "#94A3B8",
+                fontSize: "18px",
+                color: activeTab === key ? BRONZE.primary : BRONZE.textLight,
               }}>
                 {icon}
               </div>
@@ -530,11 +535,11 @@ export default function ProfileScreen({ currentUser, onLogout }: Props) {
                 <motion.div
                   layoutId="profileTabIndicator"
                   style={{
-                    width: "24px",
+                    width: "20px",
                     height: "3px",
                     background: BRONZE.primary,
                     borderRadius: "2px",
-                    marginTop: "4px",
+                    marginTop: "2px",
                   }}
                 />
               )}
@@ -562,25 +567,39 @@ export default function ProfileScreen({ currentUser, onLogout }: Props) {
                       textAlign: "center",
                       padding: "48px 20px",
                       background: "white",
-                      borderRadius: "20px",
-                      boxShadow: "0 4px 20px rgba(205, 127, 50, 0.1)",
+                      borderRadius: "16px",
+                      boxShadow: "0 4px 16px rgba(205, 127, 50, 0.08)",
+                      border: `1px solid ${BRONZE.pale}`,
                     }}
                   >
-                    <div style={{ fontSize: "64px", marginBottom: "16px", color: BRONZE.light }}>
-                      📚
+                    <div style={{ 
+                      width: "80px", 
+                      height: "80px", 
+                      borderRadius: "50%",
+                      background: `${BRONZE.primary}10`,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      margin: "0 auto 20px",
+                      fontSize: "36px",
+                      color: BRONZE.primary,
+                    }}>
+                      <FaBookOpen />
                     </div>
                     <h3 style={{ 
-                      fontSize: "20px", 
+                      fontSize: "18px", 
                       fontWeight: 700, 
-                      color: BRONZE.dark,
+                      color: BRONZE.textDark,
                       marginBottom: "8px",
                     }}>
                       No Books Listed Yet
                     </h3>
                     <p style={{ 
-                      fontSize: "15px", 
-                      color: "#666", 
+                      fontSize: "14px", 
+                      color: BRONZE.textLight, 
                       marginBottom: "24px",
+                      maxWidth: "280px",
+                      margin: "0 auto",
                     }}>
                       Share your first book with the community
                     </p>
@@ -592,15 +611,16 @@ export default function ProfileScreen({ currentUser, onLogout }: Props) {
                         background: `linear-gradient(135deg, ${BRONZE.primary}, ${BRONZE.dark})`,
                         color: "white",
                         border: "none",
-                        padding: "14px 32px",
-                        borderRadius: "14px",
-                        fontSize: "16px",
+                        padding: "14px 28px",
+                        borderRadius: "12px",
+                        fontSize: "15px",
                         fontWeight: 600,
                         cursor: "pointer",
                         display: "flex",
                         alignItems: "center",
-                        gap: "10px",
+                        gap: "8px",
                         margin: "0 auto",
+                        boxShadow: `0 4px 16px ${BRONZE.primary}40`,
                       }}
                     >
                       <FaPlus /> Add First Book
@@ -620,14 +640,15 @@ export default function ProfileScreen({ currentUser, onLogout }: Props) {
                         whileHover={{ y: -4 }}
                         style={{
                           background: "white",
-                          borderRadius: "20px",
-                          padding: "20px",
-                          boxShadow: "0 8px 24px rgba(205, 127, 50, 0.12)",
+                          borderRadius: "16px",
+                          padding: "16px",
+                          boxShadow: "0 4px 16px rgba(205, 127, 50, 0.08)",
                           display: "flex",
                           gap: "16px",
                           alignItems: "center",
                           position: "relative",
                           overflow: "hidden",
+                          border: `1px solid ${BRONZE.pale}`,
                         }}
                       >
                         {/* Book Image */}
@@ -636,11 +657,10 @@ export default function ProfileScreen({ currentUser, onLogout }: Props) {
                             src={imageUrl}
                             alt={offer.bookTitle}
                             style={{ 
-                              width: "80px", 
-                              height: "110px", 
-                              borderRadius: "12px", 
+                              width: "70px", 
+                              height: "100px", 
+                              borderRadius: "10px", 
                               objectFit: "cover",
-                              boxShadow: "0 4px 12px rgba(0, 0, 0, 0.1)",
                             }}
                             onError={(e) => {
                               (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=200&h=300&fit=crop";
@@ -649,15 +669,15 @@ export default function ProfileScreen({ currentUser, onLogout }: Props) {
                           {/* Status Badge */}
                           <div style={{
                             position: "absolute",
-                            top: "-6px",
-                            left: "-6px",
+                            top: "-4px",
+                            left: "-4px",
                             background: getOfferTypeColor(offer.type),
                             color: getOfferTypeTextColor(offer.type),
-                            padding: "4px 10px",
-                            borderRadius: "12px",
-                            fontSize: "10px",
+                            padding: "3px 8px",
+                            borderRadius: "10px",
+                            fontSize: "9px",
                             fontWeight: "700",
-                            border: `2px solid white`,
+                            border: `1.5px solid white`,
                           }}>
                             {getOfferTypeLabel(offer.type)}
                           </div>
@@ -666,42 +686,42 @@ export default function ProfileScreen({ currentUser, onLogout }: Props) {
                         {/* Book Details */}
                         <div style={{ flex: 1 }}>
                           <h3 style={{ 
-                            fontSize: "17px", 
-                            fontWeight: 700, 
-                            margin: "0 0 8px", 
-                            color: BRONZE.dark,
+                            fontSize: "16px", 
+                            fontWeight: 600, 
+                            margin: "0 0 6px", 
+                            color: BRONZE.textDark,
                             lineHeight: 1.3,
                           }}>
-                            {offer.bookTitle.length > 30 ? offer.bookTitle.slice(0, 30) + "..." : offer.bookTitle}
+                            {offer.bookTitle.length > 25 ? offer.bookTitle.slice(0, 25) + "..." : offer.bookTitle}
                           </h3>
                           
                           {offer.price && (
                             <p style={{ 
-                              fontSize: "22px", 
-                              fontWeight: "800", 
+                              fontSize: "20px", 
+                              fontWeight: "700", 
                               color: BRONZE.primary, 
-                              margin: "0 0 8px",
+                              margin: "0 0 6px",
                               display: "flex",
                               alignItems: "center",
                               gap: "4px",
                             }}>
-                              <FaDollarSign size={16} /> {offer.price}
+                              <FaDollarSign size={14} /> {offer.price}
                             </p>
                           )}
                           
                           <div style={{ 
                             display: "flex", 
                             alignItems: "center", 
-                            gap: "8px",
+                            gap: "6px",
                             flexWrap: "wrap",
                           }}>
                             {offer.condition && (
                               <span style={{
                                 background: BRONZE.pale,
                                 color: BRONZE.dark,
-                                padding: "6px 12px",
-                                borderRadius: "12px",
-                                fontSize: "12px",
+                                padding: "4px 10px",
+                                borderRadius: "10px",
+                                fontSize: "11px",
                                 fontWeight: "600",
                               }}>
                                 {offer.condition}
@@ -711,9 +731,9 @@ export default function ProfileScreen({ currentUser, onLogout }: Props) {
                               <span style={{
                                 background: BRONZE.pale,
                                 color: BRONZE.dark,
-                                padding: "6px 12px",
-                                borderRadius: "12px",
-                                fontSize: "12px",
+                                padding: "4px 10px",
+                                borderRadius: "10px",
+                                fontSize: "11px",
                                 fontWeight: "600",
                               }}>
                                 {offer.genre}
@@ -732,10 +752,10 @@ export default function ProfileScreen({ currentUser, onLogout }: Props) {
                               background: "none",
                               border: "none",
                               color: BRONZE.dark,
-                              fontSize: "24px",
+                              fontSize: "20px",
                               cursor: "pointer",
-                              padding: "8px",
-                              borderRadius: "8px",
+                              padding: "6px",
+                              borderRadius: "6px",
                             }}
                           >
                             ⋯
@@ -750,12 +770,12 @@ export default function ProfileScreen({ currentUser, onLogout }: Props) {
                                 style={{
                                   position: "absolute",
                                   right: "0",
-                                  top: "40px",
+                                  top: "32px",
                                   background: "white",
-                                  borderRadius: "16px",
-                                  boxShadow: "0 12px 32px rgba(0, 0, 0, 0.2)",
-                                  padding: "12px",
-                                  minWidth: "140px",
+                                  borderRadius: "14px",
+                                  boxShadow: "0 8px 24px rgba(0, 0, 0, 0.15)",
+                                  padding: "10px",
+                                  minWidth: "120px",
                                   zIndex: 100,
                                   border: `1px solid ${BRONZE.pale}`,
                                 }}
@@ -766,22 +786,22 @@ export default function ProfileScreen({ currentUser, onLogout }: Props) {
                                   style={{
                                     display: "flex",
                                     alignItems: "center",
-                                    gap: "10px",
+                                    gap: "8px",
                                     width: "100%",
-                                    padding: "10px 12px",
+                                    padding: "8px 10px",
                                     background: "none",
                                     border: "none",
                                     color: BRONZE.dark,
-                                    fontSize: "14px",
+                                    fontSize: "13px",
                                     fontWeight: 600,
                                     cursor: "pointer",
-                                    borderRadius: "8px",
+                                    borderRadius: "6px",
                                     transition: "all 0.3s ease",
                                   }}
                                   onMouseEnter={(e) => e.currentTarget.style.background = BRONZE.pale}
                                   onMouseLeave={(e) => e.currentTarget.style.background = "none"}
                                 >
-                                  <FaEdit /> Edit
+                                  <FaEdit size={12} /> Edit
                                 </motion.button>
                                 <motion.button
                                   whileHover={{ x: 4 }}
@@ -789,22 +809,22 @@ export default function ProfileScreen({ currentUser, onLogout }: Props) {
                                   style={{
                                     display: "flex",
                                     alignItems: "center",
-                                    gap: "10px",
+                                    gap: "8px",
                                     width: "100%",
-                                    padding: "10px 12px",
+                                    padding: "8px 10px",
                                     background: "none",
                                     border: "none",
                                     color: "#D32F2F",
-                                    fontSize: "14px",
+                                    fontSize: "13px",
                                     fontWeight: 600,
                                     cursor: "pointer",
-                                    borderRadius: "8px",
+                                    borderRadius: "6px",
                                     transition: "all 0.3s ease",
                                   }}
                                   onMouseEnter={(e) => e.currentTarget.style.background = "#FFEBEE"}
                                   onMouseLeave={(e) => e.currentTarget.style.background = "none"}
                                 >
-                                  <FaTrash /> Delete
+                                  <FaTrash size={12} /> Delete
                                 </motion.button>
                               </motion.div>
                             )}
@@ -834,25 +854,39 @@ export default function ProfileScreen({ currentUser, onLogout }: Props) {
                       textAlign: "center",
                       padding: "48px 20px",
                       background: "white",
-                      borderRadius: "20px",
-                      boxShadow: "0 4px 20px rgba(205, 127, 50, 0.1)",
+                      borderRadius: "16px",
+                      boxShadow: "0 4px 16px rgba(205, 127, 50, 0.08)",
+                      border: `1px solid ${BRONZE.pale}`,
                     }}
                   >
-                    <div style={{ fontSize: "64px", marginBottom: "16px", color: BRONZE.light }}>
-                      🔖
+                    <div style={{ 
+                      width: "80px", 
+                      height: "80px", 
+                      borderRadius: "50%",
+                      background: `${BRONZE.primary}10`,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      margin: "0 auto 20px",
+                      fontSize: "36px",
+                      color: BRONZE.primary,
+                    }}>
+                      <FaBookmark />
                     </div>
                     <h3 style={{ 
-                      fontSize: "20px", 
+                      fontSize: "18px", 
                       fontWeight: 700, 
-                      color: BRONZE.dark,
+                      color: BRONZE.textDark,
                       marginBottom: "8px",
                     }}>
                       No Saved Books
                     </h3>
                     <p style={{ 
-                      fontSize: "15px", 
-                      color: "#666", 
+                      fontSize: "14px", 
+                      color: BRONZE.textLight, 
                       marginBottom: "24px",
+                      maxWidth: "280px",
+                      margin: "0 auto",
                     }}>
                       Save books you're interested in for later
                     </p>
@@ -864,15 +898,16 @@ export default function ProfileScreen({ currentUser, onLogout }: Props) {
                         background: `linear-gradient(135deg, ${BRONZE.primary}, ${BRONZE.dark})`,
                         color: "white",
                         border: "none",
-                        padding: "14px 32px",
-                        borderRadius: "14px",
-                        fontSize: "16px",
+                        padding: "14px 28px",
+                        borderRadius: "12px",
+                        fontSize: "15px",
                         fontWeight: 600,
                         cursor: "pointer",
                         display: "flex",
                         alignItems: "center",
-                        gap: "10px",
+                        gap: "8px",
                         margin: "0 auto",
+                        boxShadow: `0 4px 16px ${BRONZE.primary}40`,
                       }}
                     >
                       <FaHeart /> Browse Books
@@ -892,25 +927,25 @@ export default function ProfileScreen({ currentUser, onLogout }: Props) {
                         whileHover={{ y: -4 }}
                         style={{
                           background: "white",
-                          borderRadius: "20px",
-                          padding: "20px",
-                          boxShadow: "0 8px 24px rgba(205, 127, 50, 0.12)",
+                          borderRadius: "16px",
+                          padding: "16px",
+                          boxShadow: "0 4px 16px rgba(205, 127, 50, 0.08)",
                           display: "flex",
                           gap: "16px",
                           alignItems: "center",
                           position: "relative",
                           overflow: "hidden",
+                          border: `1px solid ${BRONZE.pale}`,
                         }}
                       >
                         <img
                           src={imageUrl}
                           alt={offer.bookTitle}
                           style={{ 
-                            width: "80px", 
-                            height: "110px", 
-                            borderRadius: "12px", 
+                            width: "70px", 
+                            height: "100px", 
+                            borderRadius: "10px", 
                             objectFit: "cover",
-                            boxShadow: "0 4px 12px rgba(0, 0, 0, 0.1)",
                           }}
                           onError={(e) => {
                             (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=200&h=300&fit=crop";
@@ -919,21 +954,21 @@ export default function ProfileScreen({ currentUser, onLogout }: Props) {
                         
                         <div style={{ flex: 1 }}>
                           <h3 style={{ 
-                            fontSize: "17px", 
-                            fontWeight: 700, 
-                            margin: "0 0 8px", 
-                            color: BRONZE.dark,
+                            fontSize: "16px", 
+                            fontWeight: 600, 
+                            margin: "0 0 6px", 
+                            color: BRONZE.textDark,
                             lineHeight: 1.3,
                           }}>
-                            {offer.bookTitle.length > 30 ? offer.bookTitle.slice(0, 30) + "..." : offer.bookTitle}
+                            {offer.bookTitle.length > 25 ? offer.bookTitle.slice(0, 25) + "..." : offer.bookTitle}
                           </h3>
                           
                           {offer.price && (
                             <p style={{ 
-                              fontSize: "22px", 
-                              fontWeight: "800", 
+                              fontSize: "20px", 
+                              fontWeight: "700", 
                               color: BRONZE.primary, 
-                              margin: "0 0 8px",
+                              margin: "0 0 6px",
                             }}>
                               ${offer.price}
                             </p>
@@ -942,9 +977,9 @@ export default function ProfileScreen({ currentUser, onLogout }: Props) {
                           <span style={{
                             background: "#FFEBEE",
                             color: "#D32F2F",
-                            padding: "6px 14px",
-                            borderRadius: "12px",
-                            fontSize: "12px",
+                            padding: "4px 12px",
+                            borderRadius: "10px",
+                            fontSize: "11px",
                             fontWeight: "700",
                           }}>
                             Saved ❤️
@@ -958,10 +993,10 @@ export default function ProfileScreen({ currentUser, onLogout }: Props) {
                           style={{
                             background: BRONZE.pale,
                             color: BRONZE.dark,
-                            border: `2px solid ${BRONZE.light}`,
-                            padding: "10px 16px",
-                            borderRadius: "12px",
-                            fontSize: "14px",
+                            border: `1px solid ${BRONZE.light}`,
+                            padding: "8px 14px",
+                            borderRadius: "10px",
+                            fontSize: "13px",
                             fontWeight: 600,
                             cursor: "pointer",
                             display: "flex",
@@ -969,7 +1004,7 @@ export default function ProfileScreen({ currentUser, onLogout }: Props) {
                             gap: "6px",
                           }}
                         >
-                          <FaHeart /> Unsave
+                          <FaHeart size={12} /> Unsave
                         </motion.button>
                       </motion.div>
                     );
@@ -985,25 +1020,30 @@ export default function ProfileScreen({ currentUser, onLogout }: Props) {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
-                style={{ display: "flex", flexDirection: "column", gap: "24px" }}
+                style={{ display: "flex", flexDirection: "column", gap: "20px" }}
               >
                 <div style={{
                   background: "white",
-                  borderRadius: "20px",
-                  padding: "24px",
-                  boxShadow: "0 8px 24px rgba(205, 127, 50, 0.12)",
+                  borderRadius: "16px",
+                  padding: "20px",
+                  boxShadow: "0 4px 16px rgba(205, 127, 50, 0.08)",
+                  border: `1px solid ${BRONZE.pale}`,
                 }}>
                   <h3 style={{ 
-                    fontSize: "22px", 
+                    fontSize: "20px", 
                     fontWeight: 700, 
-                    color: BRONZE.dark,
-                    marginBottom: "20px",
+                    color: BRONZE.textDark,
+                    marginBottom: "16px",
                     textAlign: "center",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: "8px",
                   }}>
-                    📊 Your Reading Journey
+                    <FaChartLine /> Your Reading Journey
                   </h3>
                   
-                  <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
                     {[
                       { label: "Books Shared", value: stats.books, color: BRONZE.primary },
                       { label: "Books Saved", value: stats.saved, color: "#E91E63" },
@@ -1021,16 +1061,16 @@ export default function ProfileScreen({ currentUser, onLogout }: Props) {
                           display: "flex",
                           justifyContent: "space-between",
                           alignItems: "center",
-                          padding: "16px",
+                          padding: "14px",
                           background: BRONZE.pale,
-                          borderRadius: "14px",
+                          borderRadius: "12px",
                         }}
                       >
-                        <span style={{ fontSize: "16px", color: BRONZE.dark, fontWeight: 600 }}>
+                        <span style={{ fontSize: "14px", color: BRONZE.textDark, fontWeight: 600 }}>
                           {stat.label}
                         </span>
                         <span style={{ 
-                          fontSize: "18px", 
+                          fontSize: "16px", 
                           fontWeight: 800, 
                           color: stat.color,
                         }}>
@@ -1045,15 +1085,16 @@ export default function ProfileScreen({ currentUser, onLogout }: Props) {
                     animate={{ opacity: 1 }}
                     transition={{ delay: 0.6 }}
                     style={{
-                      marginTop: "24px",
-                      padding: "20px",
-                      background: `linear-gradient(135deg, ${BRONZE.pale}, ${BRONZE.light}20)`,
-                      borderRadius: "16px",
+                      marginTop: "20px",
+                      padding: "16px",
+                      background: `${BRONZE.primary}08`,
+                      borderRadius: "14px",
                       textAlign: "center",
+                      border: `1px solid ${BRONZE.primary}20`,
                     }}
                   >
                     <p style={{ 
-                      fontSize: "15px", 
+                      fontSize: "14px", 
                       color: BRONZE.dark,
                       fontStyle: "italic",
                       margin: 0,
@@ -1068,79 +1109,98 @@ export default function ProfileScreen({ currentUser, onLogout }: Props) {
         </div>
       </div>
 
-      {/* Bottom Navigation */}
-      <motion.nav
-        initial={{ y: 100, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ delay: 0.8, duration: 0.5 }}
+      {/* Bottom Navigation - Matching HomeScreen style */}
+      <nav
         style={{
-          position: "fixed",
-          bottom: 0,
-          left: 0,
-          right: 0,
-          background: "white",
-          borderTop: `1px solid ${BRONZE.pale}`,
           display: "flex",
           justifyContent: "space-around",
+          alignItems: "center",
           padding: "12px 0",
-          boxShadow: "0 -4px 20px rgba(205, 127, 50, 0.1)",
+          borderTop: `1px solid ${BRONZE.pale}`,
+          background: "white",
+          position: "fixed",
+          bottom: 0,
+          width: "100%",
           zIndex: 100,
+          boxShadow: "0 -4px 20px rgba(205, 127, 50, 0.08)",
         }}
       >
         {[
-          { Icon: FaBookOpen, label: "Home", path: "/", color: "#4CAF50" },
-          { Icon: FaMapMarkedAlt, label: "Map", path: "/map", color: "#2196F3" },
-          { Icon: FaPlus, label: "Post", path: "/offer", color: "#FF9800" },
-          { Icon: FaComments, label: "Community", path: "/community", color: "#9C27B0" },
-          { Icon: FaUser, label: "Profile", path: "/profile", color: BRONZE.primary, active: true },
-        ].map(({ Icon, label, path, color, active }) => (
+          { icon: FaBookOpen, label: "Home", onClick: () => navigate("/") },
+          { icon: FaMapMarkedAlt, label: "Map", onClick: () => navigate("/map") },
+          { icon: FaComments, label: "Chats", onClick: () => navigate("/chat") },
+          { icon: FaUsers, label: "Community", onClick: () => {} },
+        ].map((item) => (
           <motion.button
-            key={label}
-            whileHover={{ y: -4 }}
-            whileTap={{ scale: 0.9 }}
-            onClick={() => navigate(path)}
+            key={item.label}
+            whileTap={{ scale: 0.95 }}
+            onClick={item.onClick}
             style={{
+              background: "transparent",
+              border: "none",
+              color: BRONZE.textLight,
               display: "flex",
               flexDirection: "column",
               alignItems: "center",
-              gap: "6px",
-              background: "none",
-              border: "none",
-              color: active ? color : "#94A3B8",
-              fontSize: "12px",
+              fontSize: "20px",
               cursor: "pointer",
-              position: "relative",
+              padding: "8px 12px",
+              minWidth: "60px",
+              borderRadius: "10px",
+              transition: "all 0.2s ease",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = `${BRONZE.primary}08`;
+              e.currentTarget.style.color = BRONZE.primary;
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = "transparent";
+              e.currentTarget.style.color = BRONZE.textLight;
             }}
           >
-            <div style={{
-              width: "44px",
-              height: "44px",
-              borderRadius: "14px",
-              background: active ? `${color}15` : "transparent",
+            <item.icon />
+            <span style={{ 
+              fontSize: "11px", 
+              marginTop: "4px", 
+              fontWeight: 500,
+            }}>
+              {item.label}
+            </span>
+          </motion.button>
+        ))}
+
+        {/* Floating Add Button */}
+        <motion.div
+          style={{
+            position: "absolute",
+            top: "-25px",
+            left: "50%",
+            transform: "translateX(-50%)",
+          }}
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.9 }}
+        >
+          <button
+            onClick={() => navigate("/offer")}
+            style={{
+              width: "56px",
+              height: "56px",
+              borderRadius: "50%",
+              background: `linear-gradient(135deg, ${BRONZE.primary}, ${BRONZE.dark})`,
+              border: `3px solid white`,
+              color: "white",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              border: active ? `2px solid ${color}30` : "none",
-            }}>
-              <Icon size={22} color={active ? color : "#94A3B8"} />
-            </div>
-            {label}
-            {active && (
-              <motion.div
-                layoutId="navIndicator"
-                style={{
-                  position: "absolute",
-                  bottom: "-2px",
-                  width: "20px",
-                  height: "3px",
-                  background: color,
-                  borderRadius: "2px",
-                }}
-              />
-            )}
-          </motion.button>
-        ))}
-      </motion.nav>
+              fontSize: "24px",
+              cursor: "pointer",
+              boxShadow: "0 6px 20px rgba(205, 127, 50, 0.4)",
+            }}
+          >
+            <FaPlus />
+          </button>
+        </motion.div>
+      </nav>
 
       {/* Settings Dropdown */}
       <AnimatePresence>
@@ -1154,10 +1214,10 @@ export default function ProfileScreen({ currentUser, onLogout }: Props) {
               top: "80px",
               right: "20px",
               background: "white",
-              borderRadius: "16px",
-              boxShadow: "0 12px 32px rgba(0, 0, 0, 0.2)",
-              padding: "16px",
-              minWidth: "180px",
+              borderRadius: "14px",
+              boxShadow: "0 8px 24px rgba(0, 0, 0, 0.15)",
+              padding: "14px",
+              minWidth: "160px",
               zIndex: 1000,
               border: `1px solid ${BRONZE.pale}`,
             }}
@@ -1171,13 +1231,13 @@ export default function ProfileScreen({ currentUser, onLogout }: Props) {
               style={{
                 display: "flex",
                 alignItems: "center",
-                gap: "12px",
+                gap: "10px",
                 width: "100%",
-                padding: "12px",
+                padding: "10px",
                 background: "none",
                 border: "none",
                 color: BRONZE.dark,
-                fontSize: "15px",
+                fontSize: "14px",
                 fontWeight: 600,
                 cursor: "pointer",
                 borderRadius: "8px",
@@ -1185,13 +1245,13 @@ export default function ProfileScreen({ currentUser, onLogout }: Props) {
               onMouseEnter={(e) => e.currentTarget.style.background = BRONZE.pale}
               onMouseLeave={(e) => e.currentTarget.style.background = "none"}
             >
-              <FaCog /> Settings
+              <FaCog size={14} /> Settings
             </motion.button>
             
             <div style={{ 
               height: "1px", 
               background: BRONZE.pale, 
-              margin: "8px 0" 
+              margin: "6px 0" 
             }} />
             
             <motion.button
@@ -1203,13 +1263,13 @@ export default function ProfileScreen({ currentUser, onLogout }: Props) {
               style={{
                 display: "flex",
                 alignItems: "center",
-                gap: "12px",
+                gap: "10px",
                 width: "100%",
-                padding: "12px",
+                padding: "10px",
                 background: "none",
                 border: "none",
                 color: "#D32F2F",
-                fontSize: "15px",
+                fontSize: "14px",
                 fontWeight: 600,
                 cursor: "pointer",
                 borderRadius: "8px",
@@ -1217,7 +1277,7 @@ export default function ProfileScreen({ currentUser, onLogout }: Props) {
               onMouseEnter={(e) => e.currentTarget.style.background = "#FFEBEE"}
               onMouseLeave={(e) => e.currentTarget.style.background = "none"}
             >
-              <FaSignOutAlt /> Logout
+              <FaSignOutAlt size={14} /> Logout
             </motion.button>
           </motion.div>
         )}
@@ -1250,19 +1310,19 @@ export default function ProfileScreen({ currentUser, onLogout }: Props) {
               transition={{ type: "spring", damping: 25 }}
               style={{
                 background: "white",
-                borderRadius: "24px",
-                padding: "28px",
+                borderRadius: "20px",
+                padding: "24px",
                 width: "100%",
                 maxWidth: "400px",
-                boxShadow: "0 40px 80px rgba(0, 0, 0, 0.3)",
+                boxShadow: "0 32px 64px rgba(0, 0, 0, 0.25)",
               }}
               onClick={(e) => e.stopPropagation()}
             >
               <h3 style={{ 
-                fontSize: "24px", 
-                fontWeight: 800, 
+                fontSize: "20px", 
+                fontWeight: 700, 
                 color: BRONZE.dark,
-                margin: "0 0 24px",
+                margin: "0 0 20px",
                 textAlign: "center",
               }}>
                 Edit Book Offer
@@ -1272,10 +1332,10 @@ export default function ProfileScreen({ currentUser, onLogout }: Props) {
                 <div>
                   <label style={{ 
                     display: "block", 
-                    fontSize: "14px", 
+                    fontSize: "13px", 
                     fontWeight: 600, 
                     color: BRONZE.dark,
-                    marginBottom: "8px",
+                    marginBottom: "6px",
                   }}>
                     Book Title
                   </label>
@@ -1286,11 +1346,11 @@ export default function ProfileScreen({ currentUser, onLogout }: Props) {
                     placeholder="Enter book title"
                     style={{
                       width: "100%",
-                      padding: "14px",
-                      borderRadius: "12px",
+                      padding: "12px",
+                      borderRadius: "10px",
                       border: `1px solid ${BRONZE.light}`,
-                      fontSize: "16px",
-                      color: "#333",
+                      fontSize: "15px",
+                      color: BRONZE.textDark,
                       transition: "all 0.3s ease",
                       outline: "none",
                     }}
@@ -1302,10 +1362,10 @@ export default function ProfileScreen({ currentUser, onLogout }: Props) {
                 <div>
                   <label style={{ 
                     display: "block", 
-                    fontSize: "14px", 
+                    fontSize: "13px", 
                     fontWeight: 600, 
                     color: BRONZE.dark,
-                    marginBottom: "8px",
+                    marginBottom: "6px",
                   }}>
                     Price ($)
                   </label>
@@ -1316,11 +1376,11 @@ export default function ProfileScreen({ currentUser, onLogout }: Props) {
                     placeholder="Enter price"
                     style={{
                       width: "100%",
-                      padding: "14px",
-                      borderRadius: "12px",
+                      padding: "12px",
+                      borderRadius: "10px",
                       border: `1px solid ${BRONZE.light}`,
-                      fontSize: "16px",
-                      color: "#333",
+                      fontSize: "15px",
+                      color: BRONZE.textDark,
                       transition: "all 0.3s ease",
                       outline: "none",
                     }}
@@ -1332,10 +1392,10 @@ export default function ProfileScreen({ currentUser, onLogout }: Props) {
                 <div>
                   <label style={{ 
                     display: "block", 
-                    fontSize: "14px", 
+                    fontSize: "13px", 
                     fontWeight: 600, 
                     color: BRONZE.dark,
-                    marginBottom: "8px",
+                    marginBottom: "6px",
                   }}>
                     Condition
                   </label>
@@ -1344,11 +1404,11 @@ export default function ProfileScreen({ currentUser, onLogout }: Props) {
                     onChange={(e) => setEditCondition(e.target.value as "Excellent" | "Very Good" | "Good" | "Fair")}
                     style={{
                       width: "100%",
-                      padding: "14px",
-                      borderRadius: "12px",
+                      padding: "12px",
+                      borderRadius: "10px",
                       border: `1px solid ${BRONZE.light}`,
-                      fontSize: "16px",
-                      color: "#333",
+                      fontSize: "15px",
+                      color: BRONZE.textDark,
                       background: "white",
                       cursor: "pointer",
                       transition: "all 0.3s ease",
@@ -1364,7 +1424,7 @@ export default function ProfileScreen({ currentUser, onLogout }: Props) {
                 </div>
               </div>
               
-              <div style={{ display: "flex", gap: "12px", marginTop: "28px" }}>
+              <div style={{ display: "flex", gap: "10px", marginTop: "24px" }}>
                 <motion.button
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
@@ -1374,11 +1434,12 @@ export default function ProfileScreen({ currentUser, onLogout }: Props) {
                     background: `linear-gradient(135deg, ${BRONZE.primary}, ${BRONZE.dark})`,
                     color: "white",
                     border: "none",
-                    padding: "16px",
-                    borderRadius: "14px",
-                    fontSize: "16px",
+                    padding: "14px",
+                    borderRadius: "12px",
+                    fontSize: "15px",
                     fontWeight: 700,
                     cursor: "pointer",
+                    boxShadow: `0 4px 12px ${BRONZE.primary}40`,
                   }}
                 >
                   Save Changes
@@ -1391,10 +1452,10 @@ export default function ProfileScreen({ currentUser, onLogout }: Props) {
                     flex: 1,
                     background: BRONZE.pale,
                     color: BRONZE.dark,
-                    border: `2px solid ${BRONZE.light}`,
-                    padding: "16px",
-                    borderRadius: "14px",
-                    fontSize: "16px",
+                    border: `1px solid ${BRONZE.light}`,
+                    padding: "14px",
+                    borderRadius: "12px",
+                    fontSize: "15px",
                     fontWeight: 600,
                     cursor: "pointer",
                   }}
@@ -1406,6 +1467,49 @@ export default function ProfileScreen({ currentUser, onLogout }: Props) {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Global Styles */}
+      <style>{`
+        @keyframes spin {
+          to { transform: rotate(360deg); }
+        }
+        
+        * {
+          -webkit-tap-highlight-color: transparent;
+        }
+        
+        input:focus {
+          outline: none;
+        }
+        
+        button:disabled {
+          cursor: not-allowed;
+        }
+        
+        ::-webkit-scrollbar {
+          width: 4px;
+          height: 4px;
+        }
+        
+        ::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+          background: ${BRONZE.light};
+          border-radius: 10px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+          background: ${BRONZE.primary};
+        }
+        
+        @media (max-width: 480px) {
+          input, button {
+            font-size: 16px !important;
+          }
+        }
+      `}</style>
     </div>
   );
 }

@@ -17,7 +17,11 @@ import {
   FaTag,
   FaBook,
   FaFilter,
-  FaSync
+  FaSync,
+  FaBookOpen,
+  FaMapMarkedAlt,
+  FaPlus,
+  FaUsers
 } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import React from "react";
@@ -186,7 +190,7 @@ export default function MapScreen({ onBack, currentUser }: Props) {
       }
       clearMap();
     };
-  }, [clearMap]); // Added clearMap to dependencies
+  }, [clearMap]);
 
   // Get user location
   useEffect(() => {
@@ -330,7 +334,7 @@ export default function MapScreen({ onBack, currentUser }: Props) {
     }
   }, []);
 
-  // Initialize map - optimized to prevent re-renders on zoom/pan
+  // Initialize map
   useEffect(() => {
     if (!mapRef.current || loading) return;
 
@@ -394,7 +398,6 @@ export default function MapScreen({ onBack, currentUser }: Props) {
 
     // Cleanup function
     return () => {
-      // Don't remove map, just markers
       markersRef.current.forEach(marker => marker.remove());
       markersRef.current = [];
     };
@@ -535,7 +538,7 @@ export default function MapScreen({ onBack, currentUser }: Props) {
         transition={{ type: "spring", damping: 25 }}
         style={{
           position: "absolute",
-          bottom: 16,
+          bottom: 80, // Increased bottom margin for bottom nav
           left: 16,
           right: 16,
           background: "rgba(255, 255, 255, 0.97)",
@@ -543,7 +546,7 @@ export default function MapScreen({ onBack, currentUser }: Props) {
           borderRadius: "24px",
           boxShadow: "0 20px 60px rgba(0,0,0,0.15)",
           padding: "20px",
-          maxHeight: "200px",
+          maxHeight: "180px",
           overflowY: "auto",
           zIndex: 999,
           border: `1px solid ${BRONZE.pale}`,
@@ -654,289 +657,279 @@ export default function MapScreen({ onBack, currentUser }: Props) {
   , [selectedOffer, getImageSource, formatTimeAgo, lastRefresh, handleMarkerClick]);
 
   // Selected offer card component
-  // Fix just the SelectedOfferCard component - replace this section:
-
-// Selected offer card component
-const SelectedOfferCard = useMemo(() => 
-  selectedOffer ? (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: 20 }}
-      style={{
-        position: "fixed", // Changed from absolute to fixed
-        top: "50%",
-        left: "50%",
-        transform: "translate(-50%, -50%)",
-        width: window.innerWidth < 768 ? "calc(100vw - 32px)" : "400px",
-        maxWidth: "500px",
-        maxHeight: window.innerWidth < 768 ? "85vh" : "80vh",
-        background: "rgba(255, 255, 255, 0.98)",
-        backdropFilter: "blur(20px)",
-        borderRadius: "24px",
-        padding: "20px",
-        boxShadow: "0 32px 80px rgba(0,0,0,0.3)",
-        zIndex: 2000, // Higher z-index to be on top
-        overflowY: "auto",
-        border: `1px solid ${BRONZE.pale}`,
-      }}
-      onClick={(e) => e.stopPropagation()}
-    >
-      {/* Close button - MADE LARGER & MORE VISIBLE */}
-      <button
-        onClick={() => setSelectedOffer(null)}
+  const SelectedOfferCard = useMemo(() => 
+    selectedOffer ? (
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: 20 }}
         style={{
-          position: "absolute",
-          top: "16px",
-          right: "16px",
-          background: `${BRONZE.textDark}`,
-          border: "none",
-          color: "white",
-          width: "44px",
-          height: "44px",
-          borderRadius: "50%",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          cursor: "pointer",
-          fontSize: "20px",
-          zIndex: 10,
-          transition: "all 0.2s ease",
-          boxShadow: "0 4px 16px rgba(0,0,0,0.2)",
+          position: "fixed",
+          top: "50%",
+          left: "50%",
+          transform: "translate(-50%, -50%)",
+          width: window.innerWidth < 768 ? "calc(100vw - 32px)" : "400px",
+          maxWidth: "500px",
+          maxHeight: window.innerWidth < 768 ? "85vh" : "80vh",
+          background: "rgba(255, 255, 255, 0.98)",
+          backdropFilter: "blur(20px)",
+          borderRadius: "24px",
+          padding: "20px",
+          boxShadow: "0 32px 80px rgba(0,0,0,0.3)",
+          zIndex: 2000,
+          overflowY: "auto",
+          border: `1px solid ${BRONZE.pale}`,
         }}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.background = `${BRONZE.dark}`;
-          e.currentTarget.style.transform = "rotate(90deg) scale(1.1)";
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.background = `${BRONZE.textDark}`;
-          e.currentTarget.style.transform = "rotate(0deg) scale(1)";
-        }}
+        onClick={(e) => e.stopPropagation()}
       >
-        <FaTimes />
-      </button>
-
-      {/* Content */}
-      <div style={{ marginBottom: "20px" }}>
-        {/* Title & Author */}
-        <h3 style={{ 
-          fontSize: window.innerWidth < 768 ? "20px" : "22px", 
-          fontWeight: "700", 
-          margin: "0 0 6px",
-          color: BRONZE.textDark,
-          lineHeight: 1.3,
-          paddingRight: "50px",
-        }}>
-          {selectedOffer.bookTitle}
-        </h3>
-        <p style={{ 
-          fontSize: "15px", 
-          color: BRONZE.textLight, 
-          margin: "0 0 12px",
-          fontStyle: "italic",
-        }}>
-          {selectedOffer.author ? `by ${selectedOffer.author}` : "Unknown Author"}
-        </p>
-
-        {/* Location & Owner */}
-        <div style={{ 
-          display: "flex", 
-          alignItems: "center", 
-          gap: "10px",
-          fontSize: "13px",
-          color: BRONZE.textLight,
-          marginBottom: "16px",
-          flexWrap: "wrap",
-        }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
-            <FaMapMarkerAlt size={12} /> 
-            <span>{selectedOffer.distance ? `${selectedOffer.distance} away` : "Nearby"}</span>
-          </div>
-          <span style={{ opacity: 0.3 }}>•</span>
-          <div>
-            {selectedOffer.ownerName || selectedOffer.ownerEmail.split("@")[0]}
-          </div>
-        </div>
-
-        {/* Type Badge */}
-        <div
+        {/* Close button */}
+        <button
+          onClick={() => setSelectedOffer(null)}
           style={{
-            display: "inline-flex",
+            position: "absolute",
+            top: "16px",
+            right: "16px",
+            background: `${BRONZE.textDark}`,
+            border: "none",
+            color: "white",
+            width: "44px",
+            height: "44px",
+            borderRadius: "50%",
+            display: "flex",
             alignItems: "center",
-            gap: "6px",
-            padding: "6px 14px",
-            borderRadius: "20px",
-            background: `${getTypeColor(selectedOffer.type)}15`,
-            color: getTypeColor(selectedOffer.type),
-            fontSize: "12px",
-            fontWeight: "600",
-            marginBottom: "16px",
-            border: `1px solid ${getTypeColor(selectedOffer.type)}30`,
+            justifyContent: "center",
+            cursor: "pointer",
+            fontSize: "20px",
+            zIndex: 10,
+            transition: "all 0.2s ease",
+            boxShadow: "0 4px 16px rgba(0,0,0,0.2)",
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = `${BRONZE.dark}`;
+            e.currentTarget.style.transform = "rotate(90deg) scale(1.1)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = `${BRONZE.textDark}`;
+            e.currentTarget.style.transform = "rotate(0deg) scale(1)";
           }}
         >
-          {getTypeIcon(selectedOffer.type)}
-          {selectedOffer.type === 'sell' ? 'For Sale' : 
-           selectedOffer.type === 'buy' ? 'Wanted' : 
-           'Exchange'}
-        </div>
-      </div>
+          <FaTimes />
+        </button>
 
-      {/* Description with scroll if too long */}
-      {selectedOffer.description && (
-        <div style={{
-          marginBottom: "20px",
-          paddingBottom: "20px",
-          borderBottom: `1px solid ${BRONZE.pale}`,
-          maxHeight: "150px",
-          overflowY: "auto",
-        }}>
-          <h4 style={{ 
-            fontSize: "14px", 
-            fontWeight: "600", 
-            margin: "0 0 8px",
+        {/* Content */}
+        <div style={{ marginBottom: "20px" }}>
+          <h3 style={{ 
+            fontSize: window.innerWidth < 768 ? "20px" : "22px", 
+            fontWeight: "700", 
+            margin: "0 0 6px",
             color: BRONZE.textDark,
+            lineHeight: 1.3,
+            paddingRight: "50px",
           }}>
-            Description
-          </h4>
-          <p style={{
-            fontSize: "14px",
-            color: BRONZE.textLight,
-            lineHeight: 1.5,
-            margin: 0,
+            {selectedOffer.bookTitle}
+          </h3>
+          <p style={{ 
+            fontSize: "15px", 
+            color: BRONZE.textLight, 
+            margin: "0 0 12px",
+            fontStyle: "italic",
           }}>
-            {selectedOffer.description}
+            {selectedOffer.author ? `by ${selectedOffer.author}` : "Unknown Author"}
           </p>
-        </div>
-      )}
 
-      {/* Price/Exchange Section */}
-      <div style={{ 
-        marginBottom: "24px",
-        padding: "16px",
-        background: BRONZE.bgLight,
-        borderRadius: "16px",
-        border: `1px solid ${BRONZE.pale}`,
-      }}>
-        <div style={{ fontSize: "12px", color: BRONZE.textLight, marginBottom: "6px" }}>
-          {selectedOffer.type === "sell" ? "Price" : 
-           selectedOffer.type === "buy" ? "Looking for" : "Exchange for"}
-        </div>
-        <div style={{ 
-          fontSize: window.innerWidth < 768 ? "24px" : "28px", 
-          fontWeight: "800", 
-          color: BRONZE.primary,
-          display: "flex",
-          alignItems: "center",
-          gap: "8px",
-          marginBottom: "8px",
-        }}>
-          {selectedOffer.type === "sell" && selectedOffer.price ? (
-            <>
-              <FaDollarSign size={window.innerWidth < 768 ? 20 : 24} /> {selectedOffer.price.toFixed(2)}
-            </>
-          ) : selectedOffer.type === "exchange" && selectedOffer.exchangeBook ? (
-            <>
-              <FaExchangeAlt size={window.innerWidth < 768 ? 20 : 24} /> Exchange
-            </>
-          ) : (
-            <>
-              <FaTag size={window.innerWidth < 768 ? 20 : 24} /> Wanted
-            </>
-          )}
-        </div>
-        
-        {selectedOffer.exchangeBook && (
           <div style={{ 
-            fontSize: "14px", 
-            color: BRONZE.textDark, 
-            fontWeight: "500",
-            padding: "8px 12px",
-            background: "rgba(255,255,255,0.7)",
-            borderRadius: "10px",
-            borderLeft: `3px solid ${BRONZE.dark}`,
+            display: "flex", 
+            alignItems: "center", 
+            gap: "10px",
+            fontSize: "13px",
+            color: BRONZE.textLight,
+            marginBottom: "16px",
+            flexWrap: "wrap",
           }}>
-            For: <span style={{ fontWeight: "600" }}>{selectedOffer.exchangeBook}</span>
+            <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+              <FaMapMarkerAlt size={12} /> 
+              <span>{selectedOffer.distance ? `${selectedOffer.distance} away` : "Nearby"}</span>
+            </div>
+            <span style={{ opacity: 0.3 }}>•</span>
+            <div>
+              {selectedOffer.ownerName || selectedOffer.ownerEmail.split("@")[0]}
+            </div>
           </div>
-        )}
-      </div>
 
-      {/* Contact Button */}
-      <motion.button
-        whileHover={{ scale: 1.02 }}
-        whileTap={{ scale: 0.98 }}
-        onClick={() => handleChat(selectedOffer)}
-        style={{
-          width: "100%",
-          background: `linear-gradient(135deg, ${BRONZE.primary}, ${BRONZE.dark})`,
-          color: "white",
-          border: "none",
-          padding: window.innerWidth < 768 ? "14px" : "16px",
-          borderRadius: "16px",
-          fontSize: window.innerWidth < 768 ? "15px" : "16px",
-          fontWeight: "700",
-          cursor: "pointer",
-          marginBottom: "20px",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: "10px",
-          boxShadow: `0 8px 24px ${BRONZE.primary}40`,
-        }}
-      >
-        <FaComments size={window.innerWidth < 768 ? 16 : 18} />
-        Contact Owner
-      </motion.button>
-
-      {/* Action Buttons - FIXED LAYOUT */}
-      <div style={{
-        display: "flex",
-        gap: "10px",
-        paddingTop: "16px",
-        borderTop: `1px solid ${BRONZE.pale}`,
-      }}>
-        {[
-          { icon: FaHeart, label: "Like", onClick: (e: React.MouseEvent) => handleLike(selectedOffer.id, e), color: BRONZE.primary },
-          { icon: FaComments, label: "Chat", onClick: () => handleChat(selectedOffer), color: BRONZE.dark },
-          { icon: FaShareAlt, label: "Share", onClick: (e: React.MouseEvent) => handleShare(selectedOffer.id, e), color: BRONZE.light },
-        ].map((action) => (
-          <motion.button
-            key={action.label}
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={action.onClick}
+          <div
             style={{
-              flex: 1,
-              display: "flex",
+              display: "inline-flex",
               alignItems: "center",
-              justifyContent: "center",
               gap: "6px",
-              padding: window.innerWidth < 768 ? "10px" : "12px",
-              borderRadius: "12px",
-              border: "none",
-              background: `${action.color}10`,
-              color: action.color,
-              fontSize: window.innerWidth < 768 ? "13px" : "14px",
+              padding: "6px 14px",
+              borderRadius: "20px",
+              background: `${getTypeColor(selectedOffer.type)}15`,
+              color: getTypeColor(selectedOffer.type),
+              fontSize: "12px",
               fontWeight: "600",
-              cursor: "pointer",
-              transition: "all 0.2s ease",
-              minHeight: "44px",
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = `${action.color}20`;
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = `${action.color}10`;
+              marginBottom: "16px",
+              border: `1px solid ${getTypeColor(selectedOffer.type)}30`,
             }}
           >
-            <action.icon size={window.innerWidth < 768 ? 12 : 14} />
-            {action.label}
-          </motion.button>
-        ))}
-      </div>
-    </motion.div>
-  ) : null,
-// eslint-disable-next-line react-hooks/exhaustive-deps
-[selectedOffer, filteredOffers.length, handleChat, handleLike, handleShare]);
+            {getTypeIcon(selectedOffer.type)}
+            {selectedOffer.type === 'sell' ? 'For Sale' : 
+             selectedOffer.type === 'buy' ? 'Wanted' : 
+             'Exchange'}
+          </div>
+        </div>
+
+        {selectedOffer.description && (
+          <div style={{
+            marginBottom: "20px",
+            paddingBottom: "20px",
+            borderBottom: `1px solid ${BRONZE.pale}`,
+            maxHeight: "150px",
+            overflowY: "auto",
+          }}>
+            <h4 style={{ 
+              fontSize: "14px", 
+              fontWeight: "600", 
+              margin: "0 0 8px",
+              color: BRONZE.textDark,
+            }}>
+              Description
+            </h4>
+            <p style={{
+              fontSize: "14px",
+              color: BRONZE.textLight,
+              lineHeight: 1.5,
+              margin: 0,
+            }}>
+              {selectedOffer.description}
+            </p>
+          </div>
+        )}
+
+        <div style={{ 
+          marginBottom: "24px",
+          padding: "16px",
+          background: BRONZE.bgLight,
+          borderRadius: "16px",
+          border: `1px solid ${BRONZE.pale}`,
+        }}>
+          <div style={{ fontSize: "12px", color: BRONZE.textLight, marginBottom: "6px" }}>
+            {selectedOffer.type === "sell" ? "Price" : 
+             selectedOffer.type === "buy" ? "Looking for" : "Exchange for"}
+          </div>
+          <div style={{ 
+            fontSize: window.innerWidth < 768 ? "24px" : "28px", 
+            fontWeight: "800", 
+            color: BRONZE.primary,
+            display: "flex",
+            alignItems: "center",
+            gap: "8px",
+            marginBottom: "8px",
+          }}>
+            {selectedOffer.type === "sell" && selectedOffer.price ? (
+              <>
+                <FaDollarSign size={window.innerWidth < 768 ? 20 : 24} /> {selectedOffer.price.toFixed(2)}
+              </>
+            ) : selectedOffer.type === "exchange" && selectedOffer.exchangeBook ? (
+              <>
+                <FaExchangeAlt size={window.innerWidth < 768 ? 20 : 24} /> Exchange
+              </>
+            ) : (
+              <>
+                <FaTag size={window.innerWidth < 768 ? 20 : 24} /> Wanted
+              </>
+            )}
+          </div>
+          
+          {selectedOffer.exchangeBook && (
+            <div style={{ 
+              fontSize: "14px", 
+              color: BRONZE.textDark, 
+              fontWeight: "500",
+              padding: "8px 12px",
+              background: "rgba(255,255,255,0.7)",
+              borderRadius: "10px",
+              borderLeft: `3px solid ${BRONZE.dark}`,
+            }}>
+              For: <span style={{ fontWeight: "600" }}>{selectedOffer.exchangeBook}</span>
+            </div>
+          )}
+        </div>
+
+        <motion.button
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+          onClick={() => handleChat(selectedOffer)}
+          style={{
+            width: "100%",
+            background: `linear-gradient(135deg, ${BRONZE.primary}, ${BRONZE.dark})`,
+            color: "white",
+            border: "none",
+            padding: window.innerWidth < 768 ? "14px" : "16px",
+            borderRadius: "16px",
+            fontSize: window.innerWidth < 768 ? "15px" : "16px",
+            fontWeight: "700",
+            cursor: "pointer",
+            marginBottom: "20px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: "10px",
+            boxShadow: `0 8px 24px ${BRONZE.primary}40`,
+          }}
+        >
+          <FaComments size={window.innerWidth < 768 ? 16 : 18} />
+          Contact Owner
+        </motion.button>
+
+        <div style={{
+          display: "flex",
+          gap: "10px",
+          paddingTop: "16px",
+          borderTop: `1px solid ${BRONZE.pale}`,
+        }}>
+          {[
+            { icon: FaHeart, label: "Like", onClick: (e: React.MouseEvent) => handleLike(selectedOffer.id, e), color: BRONZE.primary },
+            { icon: FaComments, label: "Chat", onClick: () => handleChat(selectedOffer), color: BRONZE.dark },
+            { icon: FaShareAlt, label: "Share", onClick: (e: React.MouseEvent) => handleShare(selectedOffer.id, e), color: BRONZE.light },
+          ].map((action) => (
+            <motion.button
+              key={action.label}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={action.onClick}
+              style={{
+                flex: 1,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "6px",
+                padding: window.innerWidth < 768 ? "10px" : "12px",
+                borderRadius: "12px",
+                border: "none",
+                background: `${action.color}10`,
+                color: action.color,
+                fontSize: window.innerWidth < 768 ? "13px" : "14px",
+                fontWeight: "600",
+                cursor: "pointer",
+                transition: "all 0.2s ease",
+                minHeight: "44px",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = `${action.color}20`;
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = `${action.color}10`;
+              }}
+            >
+              <action.icon size={window.innerWidth < 768 ? 12 : 14} />
+              {action.label}
+            </motion.button>
+          ))}
+        </div>
+      </motion.div>
+    ) : null,
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  [selectedOffer, filteredOffers.length, handleChat, handleLike, handleShare]);
 
   // Loading skeleton
   const LoadingSkeleton = () => (
@@ -1067,28 +1060,28 @@ const SelectedOfferCard = useMemo(() =>
           right: 0,
           background: "rgba(255, 255, 255, 0.97)",
           backdropFilter: "blur(20px)",
-          padding: "16px",
+          padding: "20px",
           paddingTop: "60px",
           zIndex: 1000,
           borderBottom: `1px solid ${BRONZE.pale}`,
           boxShadow: "0 8px 32px rgba(0,0,0,0.08)",
         }}
       >
-        {/* Top Row */}
+        {/* Top Row - LARGER ICONS */}
         <div style={{ 
           display: "flex", 
           alignItems: "center", 
-          gap: "12px",
-          marginBottom: "16px",
+          gap: "16px",
+          marginBottom: "20px",
         }}>
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={handleBack}
             style={{
-              width: "48px",
-              height: "48px",
-              borderRadius: "14px",
+              width: "52px", // Increased from 48px
+              height: "52px", // Increased from 48px
+              borderRadius: "16px", // Increased from 14px
               background: "white",
               border: `2px solid ${BRONZE.pale}`,
               display: "flex",
@@ -1096,33 +1089,33 @@ const SelectedOfferCard = useMemo(() =>
               justifyContent: "center",
               color: BRONZE.dark,
               cursor: "pointer",
-              boxShadow: "0 4px 16px rgba(0,0,0,0.08)",
+              boxShadow: "0 4px 20px rgba(0,0,0,0.1)",
               flexShrink: 0,
             }}
           >
-            <FaArrowLeft size={20} />
+            <FaArrowLeft size={24} /> {/* Increased from 20 */}
           </motion.button>
           
           <div style={{ flex: 1 }}>
             <h1 style={{ 
-              fontSize: "24px", 
+              fontSize: "26px", // Increased from 24px
               fontWeight: "800", 
               margin: 0, 
               color: BRONZE.dark,
               display: "flex",
               alignItems: "center",
-              gap: "8px",
+              gap: "10px", // Increased from 8px
             }}>
-              <FaMapMarkerAlt size={20} color={BRONZE.primary} />
+              <FaMapMarkerAlt size={24} color={BRONZE.primary} /> {/* Increased from 20 */}
               Book Map
             </h1>
             <div style={{ 
-              fontSize: "13px", 
+              fontSize: "14px", // Increased from 13px
               color: BRONZE.textLight, 
-              margin: "4px 0 0",
+              margin: "6px 0 0", // Increased margin
               display: "flex",
               alignItems: "center",
-              gap: "8px",
+              gap: "10px", // Increased from 8px
               flexWrap: "wrap",
             }}>
               <span>{offers.length} books nearby</span>
@@ -1137,9 +1130,9 @@ const SelectedOfferCard = useMemo(() =>
             onClick={handleRefresh}
             disabled={refreshing}
             style={{
-              width: "48px",
-              height: "48px",
-              borderRadius: "14px",
+              width: "52px", // Increased from 48px
+              height: "52px", // Increased from 48px
+              borderRadius: "16px", // Increased from 14px
               background: "white",
               border: `2px solid ${refreshing ? BRONZE.light : BRONZE.pale}`,
               display: "flex",
@@ -1147,24 +1140,24 @@ const SelectedOfferCard = useMemo(() =>
               justifyContent: "center",
               color: refreshing ? BRONZE.light : BRONZE.primary,
               cursor: refreshing ? "not-allowed" : "pointer",
-              boxShadow: "0 4px 16px rgba(0,0,0,0.08)",
+              boxShadow: "0 4px 20px rgba(0,0,0,0.1)",
               flexShrink: 0,
               opacity: refreshing ? 0.7 : 1,
             }}
           >
-            <FaSync className={refreshing ? "spin" : ""} size={18} />
+            <FaSync className={refreshing ? "spin" : ""} size={22} /> {/* Increased from 18 */}
           </motion.button>
         </div>
 
         {/* Search */}
-        <div style={{ position: "relative", marginBottom: "16px" }}>
+        <div style={{ position: "relative", marginBottom: "20px" }}>
           <FaSearch style={{ 
             position: "absolute", 
-            left: "16px", 
+            left: "18px", // Increased from 16px
             top: "50%", 
             transform: "translateY(-50%)", 
             color: BRONZE.primary,
-            fontSize: "18px",
+            fontSize: "20px", // Increased from 18px
             zIndex: 1,
           }} />
           <input
@@ -1174,23 +1167,23 @@ const SelectedOfferCard = useMemo(() =>
             onChange={(e) => setSearchQuery(e.target.value)}
             style={{
               width: "100%",
-              padding: "14px 14px 14px 48px",
-              borderRadius: "14px",
+              padding: "16px 16px 16px 52px", // Increased padding-left
+              borderRadius: "16px", // Increased from 14px
               border: `1px solid ${BRONZE.pale}`,
               background: "white",
               fontSize: "16px",
               fontFamily: "inherit",
               fontWeight: 500,
-              boxShadow: "0 4px 16px rgba(0,0,0,0.05)",
+              boxShadow: "0 4px 20px rgba(0,0,0,0.08)",
               transition: "all 0.2s ease",
             }}
             onFocus={(e) => {
               e.currentTarget.style.borderColor = BRONZE.primary;
-              e.currentTarget.style.boxShadow = "0 4px 24px rgba(205, 127, 50, 0.15)";
+              e.currentTarget.style.boxShadow = "0 4px 28px rgba(205, 127, 50, 0.2)";
             }}
             onBlur={(e) => {
               e.currentTarget.style.borderColor = BRONZE.pale;
-              e.currentTarget.style.boxShadow = "0 4px 16px rgba(0,0,0,0.05)";
+              e.currentTarget.style.boxShadow = "0 4px 20px rgba(0,0,0,0.08)";
             }}
           />
         </div>
@@ -1198,9 +1191,9 @@ const SelectedOfferCard = useMemo(() =>
         {/* Filter Tabs */}
         <div style={{ 
           display: "flex", 
-          gap: "8px", 
+          gap: "10px", // Increased from 8px
           overflowX: "auto",
-          paddingBottom: "4px",
+          paddingBottom: "6px", // Increased from 4px
           scrollbarWidth: "none",
         }}>
           {filterButtons.map((f) => (
@@ -1210,9 +1203,8 @@ const SelectedOfferCard = useMemo(() =>
               whileTap={{ scale: 0.95 }}
               onClick={() => setFilter(f.id)}
               style={{
-                padding: "10px 18px",
+                padding: "12px 20px", // Increased from 10px 18px
                 borderRadius: "24px",
-                
                 background: filter === f.id ? 
                   `linear-gradient(135deg, ${BRONZE.primary}, ${BRONZE.dark})` : 
                   "white",
@@ -1222,13 +1214,14 @@ const SelectedOfferCard = useMemo(() =>
                 whiteSpace: "nowrap",
                 display: "flex",
                 alignItems: "center",
-                gap: "8px",
+                gap: "10px", // Increased from 8px
                 cursor: "pointer",
                 boxShadow: filter === f.id ? 
-                  `0 4px 16px ${BRONZE.primary}40` : 
-                  "0 2px 8px rgba(0,0,0,0.05)",
+                  `0 4px 20px ${BRONZE.primary}50` : 
+                  "0 2px 12px rgba(0,0,0,0.08)",
                 border: filter === f.id ? "none" : `1px solid ${BRONZE.pale}`,
                 flexShrink: 0,
+                minHeight: "48px", // Added min height
               }}
             >
               {f.icon}
@@ -1256,7 +1249,7 @@ const SelectedOfferCard = useMemo(() =>
           animate={{ y: 0 }}
           style={{
             position: "absolute",
-            bottom: 16,
+            bottom: 80, // Increased from 16px
             left: 16,
             right: 16,
             background: "rgba(255, 255, 255, 0.97)",
@@ -1294,10 +1287,107 @@ const SelectedOfferCard = useMemo(() =>
         </motion.div>
       )}
 
-      {/* Selected Offer Card - ONLY ONE CARD */}
+      {/* Selected Offer Card */}
       <AnimatePresence mode="wait">
         {SelectedOfferCard}
       </AnimatePresence>
+
+      {/* Bottom Navigation - Matching Other Screens */}
+      <nav
+        style={{
+          display: "flex",
+          justifyContent: "space-around",
+          alignItems: "center",
+          padding: "12px 0",
+          borderTop: `1px solid ${BRONZE.pale}`,
+          background: "white",
+          position: "fixed",
+          bottom: 0,
+          width: "100%",
+          zIndex: 1000,
+          boxShadow: "0 -4px 20px rgba(205, 127, 50, 0.08)",
+        }}
+      >
+        {[
+          { icon: FaBookOpen, label: "Home", onClick: () => navigate("/") },
+          { icon: FaMapMarkedAlt, label: "Map", active: true, onClick: () => {} }, // Current screen
+          { icon: FaComments, label: "Chats", onClick: () => navigate("/chat") },
+          { icon: FaUsers, label: "Community", onClick: () => {} },
+        ].map((item) => (
+          <motion.button
+            key={item.label}
+            whileTap={{ scale: 0.95 }}
+            onClick={item.onClick}
+            style={{
+              background: "transparent",
+              border: "none",
+              color: item.active ? BRONZE.primary : BRONZE.textLight,
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              fontSize: "20px",
+              cursor: "pointer",
+              padding: "8px 12px",
+              minWidth: "60px",
+              borderRadius: "10px",
+              transition: "all 0.2s ease",
+            }}
+            onMouseEnter={(e) => {
+              if (!item.active) {
+                e.currentTarget.style.background = `${BRONZE.primary}08`;
+                e.currentTarget.style.color = BRONZE.primary;
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (!item.active) {
+                e.currentTarget.style.background = "transparent";
+                e.currentTarget.style.color = BRONZE.textLight;
+              }
+            }}
+          >
+            <item.icon />
+            <span style={{ 
+              fontSize: "11px", 
+              marginTop: "4px", 
+              fontWeight: item.active ? "600" : "500",
+            }}>
+              {item.label}
+            </span>
+          </motion.button>
+        ))}
+
+        {/* Floating Add Button */}
+        <motion.div
+          style={{
+            position: "absolute",
+            top: "-25px",
+            left: "50%",
+            transform: "translateX(-50%)",
+          }}
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.9 }}
+        >
+          <button
+            onClick={() => navigate("/offer")}
+            style={{
+              width: "56px",
+              height: "56px",
+              borderRadius: "50%",
+              background: `linear-gradient(135deg, ${BRONZE.primary}, ${BRONZE.dark})`,
+              border: `3px solid white`,
+              color: "white",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: "24px",
+              cursor: "pointer",
+              boxShadow: "0 6px 20px rgba(205, 127, 50, 0.4)",
+            }}
+          >
+            <FaPlus />
+          </button>
+        </motion.div>
+      </nav>
 
       {/* CSS Styles */}
       <style>{`
