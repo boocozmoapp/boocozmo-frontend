@@ -1,374 +1,354 @@
-// src/SplashScreen.tsx - ELEGANT & SIMPLE BOOCOZMO
-import React, { useEffect, useRef } from "react";
+// src/SplashScreen.tsx - PINTEREST LITERARY STYLE (Reliable 5-second delay)
+import React, { useEffect } from "react";
 import { motion } from "framer-motion";
+import { FaBookOpen, FaBookmark, FaUsers, FaMapMarkerAlt } from "react-icons/fa";
 
 interface SplashScreenProps {
   onFinish: () => void;
 }
 
 const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
-  const animationRef = useRef<HTMLDivElement>(null);
   const [progress, setProgress] = React.useState(0);
   const [showContent, setShowContent] = React.useState(false);
 
   useEffect(() => {
-    // Show content immediately (fast)
+    // 1. Show content immediately
     setShowContent(true);
-    
-    // Progress bar fills in 2 seconds (fast)
+
+    // 2. Fill progress bar over ~2 seconds
+    const startTime = Date.now();
+    const duration = 2000; // 2 seconds for loading animation
+
     const progressInterval = setInterval(() => {
-      setProgress(prev => {
-        if (prev >= 100) {
-          clearInterval(progressInterval);
-          return 100;
-        }
-        return prev + 1.67; // 100% in 2 seconds (100 / (2000/33))
-      });
-    }, 33);
+      const elapsed = Date.now() - startTime;
+      const newProgress = Math.min((elapsed / duration) * 100, 100);
 
-    // Wait 7 seconds total before navigating (5 seconds after loading completes)
-    const timer = setTimeout(() => onFinish(), 7000);
+      setProgress(newProgress);
 
+      if (newProgress >= 100) {
+        clearInterval(progressInterval);
+      }
+    }, 30);
+
+    // 3. Wait full 5 seconds before calling onFinish()
+    const totalTimer = setTimeout(() => {
+      onFinish();
+    }, 5000); // Exactly 5 seconds
+
+    // Cleanup
     return () => {
-      clearTimeout(timer);
       clearInterval(progressInterval);
+      clearTimeout(totalTimer);
     };
-  }, [onFinish]);
+  }, [onFinish]); // Only run once
 
-  // Elegant bronze palette
-  const BRONZE = {
-    primary: "#CD7F32",
-    light: "#E6B17E",
-    dark: "#B87333",
-    pale: "#F5E7D3",
-    bgLight: "#FDF8F3",
-    bgDark: "#F5F0E6",
-    textDark: "#2C1810",
-    textLight: "#5D4037",
-  };
-
-  // Option 1: White text on bronze background (COMMENT OUT ONE OPTION)
-  const USE_WHITE_ON_BRONZE = true; // Set to false for bronze on white
-
-  const container: React.CSSProperties = {
-    position: "fixed",
-    top: 0,
-    left: 0,
-    width: "100vw",
-    height: "100vh",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    background: USE_WHITE_ON_BRONZE 
-      ? `linear-gradient(135deg, ${BRONZE.dark} 0%, ${BRONZE.primary} 100%)`
-      : BRONZE.bgLight,
-    overflow: "hidden",
-    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-  };
-
-  const content: React.CSSProperties = {
-    position: "relative",
-    zIndex: 20,
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
-    justifyContent: "center",
-    textAlign: "center",
-    gap: "28px",
-    padding: "48px 40px",
-    borderRadius: "28px",
-    background: USE_WHITE_ON_BRONZE 
-      ? "rgba(255, 255, 255, 0.1)"
-      : "rgba(255, 255, 255, 0.95)",
-    backdropFilter: "blur(12px)",
-    boxShadow: USE_WHITE_ON_BRONZE
-      ? "0 20px 60px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.2)"
-      : "0 20px 60px rgba(205, 127, 50, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.8)",
-    border: USE_WHITE_ON_BRONZE
-      ? "1px solid rgba(255, 255, 255, 0.15)"
-      : `1px solid ${BRONZE.pale}`,
-    maxWidth: "480px",
-    margin: "20px",
-  };
-
-  const logoStyle: React.CSSProperties = {
-    fontSize: "3.5rem",
-    fontWeight: 700,
-    color: USE_WHITE_ON_BRONZE ? "#FFFFFF" : BRONZE.primary,
-    letterSpacing: "0.02em",
-    fontFamily: "'Merriweather', serif",
-    position: "relative",
-    textShadow: USE_WHITE_ON_BRONZE
-      ? "0 2px 8px rgba(0, 0, 0, 0.2)"
-      : "0 2px 4px rgba(205, 127, 50, 0.1)",
-  };
-
-  const taglineStyle: React.CSSProperties = {
-    fontSize: "1.1rem",
-    color: USE_WHITE_ON_BRONZE ? "rgba(255, 255, 255, 0.9)" : BRONZE.textLight,
-    maxWidth: "400px",
-    lineHeight: "1.6",
-    fontWeight: 400,
-    letterSpacing: "0.02em",
+  // Pinterest color palette
+  const PINTEREST = {
+    primary: "#E60023",
+    dark: "#A3081A",
+    light: "#FF4D6D",
+    bg: "#FFFFFF",
+    textDark: "#000000",
+    textLight: "#5F5F5F",
+    textMuted: "#8E8E8E",
+    border: "#E1E1E1",
+    hoverBg: "#F5F5F5",
+    grayLight: "#F7F7F7",
+    redLight: "#FFE2E6"
   };
 
   return (
-    <div style={container} ref={animationRef}>
-      {/* Subtle background pattern */}
+    <div style={{
+      position: "fixed",
+      top: 0,
+      left: 0,
+      width: "100vw",
+      height: "100vh",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      background: PINTEREST.bg,
+      overflow: "hidden",
+      fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+    }}>
+      {/* Background grid */}
       <div style={{
         position: "absolute",
         top: 0,
         left: 0,
         width: "100%",
         height: "100%",
-        backgroundImage: USE_WHITE_ON_BRONZE
-          ? `radial-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px)`
-          : `radial-gradient(${BRONZE.light}05 1px, transparent 1px)`,
+        backgroundImage: `
+          linear-gradient(to right, ${PINTEREST.border} 1px, transparent 1px),
+          linear-gradient(to bottom, ${PINTEREST.border} 1px, transparent 1px)
+        `,
         backgroundSize: "40px 40px",
-        opacity: 0.4,
+        opacity: 0.3,
         zIndex: 1,
       }} />
 
-      {/* Main content card - FAST appearance but stays visible */}
+      {/* Floating books */}
+      <div style={{
+        position: "absolute",
+        top: 0,
+        left: 0,
+        width: "100%",
+        height: "100%",
+        pointerEvents: "none",
+      }}>
+        {[...Array(6)].map((_, i) => (
+          <motion.div
+            key={i}
+            style={{
+              position: "absolute",
+              fontSize: "24px",
+              color: i % 3 === 0 ? PINTEREST.primary : 
+                     i % 3 === 1 ? PINTEREST.textLight : PINTEREST.textMuted,
+              opacity: 0.15,
+              rotate: `${(i * 15) - 45}deg`,
+            }}
+            initial={{ 
+              x: Math.random() * window.innerWidth,
+              y: Math.random() * window.innerHeight,
+              scale: 0
+            }}
+            animate={{ 
+              scale: 1,
+              rotate: [`${(i * 15) - 45}deg`, `${(i * 15) - 30}deg`],
+            }}
+            transition={{ 
+              delay: i * 0.1,
+              duration: 0.8,
+              repeat: Infinity,
+              repeatType: "reverse"
+            }}
+          >
+            {i % 2 === 0 ? "📚" : "📖"}
+          </motion.div>
+        ))}
+      </div>
+
+      {/* Main card */}
       <motion.div
-        style={content}
-        initial={{ scale: 0.95, opacity: 0 }}
-        animate={showContent ? { scale: 1, opacity: 1 } : {}}
-        transition={{ duration: 0.4, ease: "easeOut" }} // Fast appearance
+        style={{
+          position: "relative",
+          zIndex: 20,
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          textAlign: "center",
+          gap: "32px",
+          padding: "48px 40px",
+          borderRadius: "24px",
+          background: "rgba(255, 255, 255, 0.95)",
+          backdropFilter: "blur(20px)",
+          boxShadow: "0 32px 80px rgba(0, 0, 0, 0.08), 0 8px 24px rgba(0, 0, 0, 0.04)",
+          border: `1px solid ${PINTEREST.border}`,
+          maxWidth: "500px",
+          margin: "20px",
+        }}
+        initial={{ scale: 0.95, opacity: 0, y: 20 }}
+        animate={showContent ? { scale: 1, opacity: 1, y: 0 } : {}}
+        transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
       >
-        {/* Decorative top line - FAST */}
+        {/* Logo badge */}
         <motion.div
           style={{
-            position: "absolute",
-            top: "-2px",
-            width: "100px",
-            height: "4px",
-            background: USE_WHITE_ON_BRONZE 
-              ? "rgba(255, 255, 255, 0.5)"
-              : BRONZE.primary,
-            borderRadius: "2px",
-            left: "50%",
-            transform: "translateX(-50%)",
+            width: "80px",
+            height: "80px",
+            borderRadius: "50%",
+            background: PINTEREST.primary,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            color: "white",
+            fontSize: "32px",
+            fontWeight: "700",
+            marginBottom: "16px",
+            boxShadow: "0 8px 32px rgba(230, 0, 35, 0.3)",
           }}
-          initial={{ width: 0 }}
-          animate={showContent ? { width: "100px" } : {}}
-          transition={{ delay: 0.2, duration: 0.4 }} // Fast
-        />
-
-        {/* Logo container - FAST */}
-        <motion.div
-          initial={{ y: 10, opacity: 0 }}
-          animate={showContent ? { y: 0, opacity: 1 } : {}}
-          transition={{ delay: 0.1, duration: 0.3 }} // Fast
-          style={{ position: "relative" }}
+          animate={{ 
+            rotate: [0, 10, -10, 0],
+            scale: [1, 1.1, 1]
+          }}
+          transition={{ 
+            delay: 0.5,
+            duration: 0.8,
+            ease: "easeInOut"
+          }}
         >
-          {/* Logo background accent - Slow pulse to show it's "alive" */}
-          <motion.div
-            style={{
-              position: "absolute",
-              top: "50%",
-              left: "50%",
-              transform: "translate(-50%, -50%)",
-              width: "180px",
-              height: "180px",
-              borderRadius: "50%",
-              background: USE_WHITE_ON_BRONZE
-                ? "radial-gradient(circle, rgba(255, 255, 255, 0.08) 0%, transparent 70%)"
-                : `radial-gradient(circle, ${BRONZE.primary}08 0%, transparent 70%)`,
-              filter: "blur(15px)",
-            }}
-            animate={{ scale: [1, 1.05, 1] }}
-            transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }} // Gentle pulse while waiting
-          />
-
-          {/* Main logo */}
-          <div style={logoStyle}>
-            boocozmo
-          </div>
-
-          {/* Logo underline - FAST */}
-          <motion.div
-            style={{
-              position: "absolute",
-              bottom: "-8px",
-              left: "50%",
-              transform: "translateX(-50%)",
-              width: "140px",
-              height: "2px",
-              background: USE_WHITE_ON_BRONZE
-                ? "rgba(255, 255, 255, 0.3)"
-                : `${BRONZE.primary}40`,
-              borderRadius: "1px",
-            }}
-            initial={{ width: 0 }}
-            animate={showContent ? { width: "140px" } : {}}
-            transition={{ delay: 0.4, duration: 0.5 }} // Fast
-          />
+          B
         </motion.div>
 
-        {/* Tagline - FAST */}
+        {/* Logo text */}
+        <motion.h1
+          style={{
+            fontSize: "3rem",
+            fontWeight: 800,
+            color: PINTEREST.textDark,
+            letterSpacing: "-0.02em",
+            margin: 0,
+            background: `linear-gradient(135deg, ${PINTEREST.textDark} 0%, ${PINTEREST.textLight} 100%)`,
+            WebkitBackgroundClip: "text",
+            WebkitTextFillColor: "transparent",
+          }}
+          initial={{ opacity: 0, y: 10 }}
+          animate={showContent ? { opacity: 1, y: 0 } : {}}
+          transition={{ delay: 0.3, duration: 0.4 }}
+        >
+          Boocozmo
+        </motion.h1>
+
+        {/* Tagline */}
         <motion.div
-          style={taglineStyle}
+          style={{
+            fontSize: "1.125rem",
+            color: PINTEREST.textLight,
+            maxWidth: "400px",
+            lineHeight: "1.6",
+            fontWeight: 400,
+            letterSpacing: "0.01em",
+          }}
           initial={{ opacity: 0 }}
           animate={showContent ? { opacity: 1 } : {}}
-          transition={{ delay: 0.5, duration: 0.4 }} // Fast
+          transition={{ delay: 0.5, duration: 0.4 }}
         >
-          Your literary marketplace
+          Where book lovers connect
           <br />
           <span style={{ 
             fontSize: "0.95rem", 
-            opacity: 0.8,
+            color: PINTEREST.textMuted,
             fontWeight: 300,
             marginTop: "4px",
             display: "block"
           }}>
-            Connect with book lovers nearby
+            Discover, share, and exchange literary treasures
           </span>
         </motion.div>
 
-        {/* Progress indicator */}
-        <div style={{ width: "100%", maxWidth: "280px" }}>
-          {/* Progress bar container - FAST appear */}
-          <motion.div
-            style={{
-              width: "100%",
-              height: "3px",
-              background: USE_WHITE_ON_BRONZE
-                ? "rgba(255, 255, 255, 0.15)"
-                : `${BRONZE.pale}`,
-              borderRadius: "2px",
-              overflow: "hidden",
-              position: "relative",
-            }}
-            initial={{ opacity: 0 }}
-            animate={showContent ? { opacity: 1 } : {}}
-            transition={{ delay: 0.6, duration: 0.3 }} // Fast
-          >
-            {/* Progress fill - Fills in 2 seconds then stays full */}
+        {/* Feature icons */}
+        <motion.div
+          style={{
+            display: "flex",
+            gap: "24px",
+            marginTop: "8px",
+          }}
+          initial={{ opacity: 0 }}
+          animate={showContent ? { opacity: 1 } : {}}
+          transition={{ delay: 0.7, duration: 0.4 }}
+        >
+          {[
+            { Icon: FaBookOpen, label: "Discover", color: PINTEREST.primary },
+            { Icon: FaBookmark, label: "Save", color: PINTEREST.textLight },
+            { Icon: FaUsers, label: "Connect", color: PINTEREST.primary },
+            { Icon: FaMapMarkerAlt, label: "Local", color: PINTEREST.textLight },
+          ].map((item, index) => (
+            <motion.div
+              key={item.label}
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                gap: "4px",
+              }}
+              initial={{ y: 20, opacity: 0 }}
+              animate={showContent ? { y: 0, opacity: 1 } : {}}
+              transition={{ delay: 0.8 + index * 0.1, duration: 0.3 }}
+            >
+              <div style={{
+                width: "40px",
+                height: "40px",
+                borderRadius: "12px",
+                background: PINTEREST.grayLight,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: item.color,
+                fontSize: "18px",
+              }}>
+                <item.Icon />
+              </div>
+              <span style={{
+                fontSize: "0.75rem",
+                color: PINTEREST.textMuted,
+                fontWeight: 500,
+              }}>
+                {item.label}
+              </span>
+            </motion.div>
+          ))}
+        </motion.div>
+
+        {/* Progress bar */}
+        <div style={{ width: "100%", maxWidth: "280px", marginTop: "24px" }}>
+          <div style={{
+            width: "100%",
+            height: "4px",
+            background: PINTEREST.border,
+            borderRadius: "2px",
+            overflow: "hidden",
+          }}>
             <motion.div
               style={{
-                position: "absolute",
-                top: 0,
-                left: 0,
                 height: "100%",
                 width: `${progress}%`,
-                background: USE_WHITE_ON_BRONZE
-                  ? "rgba(255, 255, 255, 0.8)"
-                  : BRONZE.primary,
+                background: `linear-gradient(90deg, ${PINTEREST.primary}, ${PINTEREST.light})`,
                 borderRadius: "2px",
               }}
-              transition={{ duration: 0.1 }}
             />
-            
-            {/* Shimmer effect - Moves while progress fills, then stops */}
-            <motion.div
-              style={{
-                position: "absolute",
-                top: 0,
-                left: 0,
-                height: "100%",
-                width: "40px",
-                background: USE_WHITE_ON_BRONZE
-                  ? "linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.6), transparent)"
-                  : `linear-gradient(90deg, transparent, ${BRONZE.light}80, transparent)`,
-                borderRadius: "2px",
-                filter: "blur(1px)",
-                opacity: progress < 100 ? 1 : 0, // Hide when progress is complete
-              }}
-              animate={{ x: [0, 280, 0] }}
-              transition={{ 
-                duration: 1.5, // Fast shimmer while loading
-                repeat: progress < 100 ? Infinity : 0, // Stop when done
-                ease: "easeInOut" 
-              }}
-            />
-          </motion.div>
+          </div>
 
-          {/* Loading text - Shows "Loading..." then "Ready" */}
-          <motion.div
-            style={{
-              fontSize: "0.85rem",
-              color: USE_WHITE_ON_BRONZE ? "rgba(255, 255, 255, 0.7)" : BRONZE.textLight,
-              marginTop: "12px",
-              fontWeight: 400,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: "8px",
-              height: "24px", // Fixed height to prevent layout shift
-            }}
-            initial={{ opacity: 0 }}
-            animate={showContent ? { opacity: 1 } : {}}
-            transition={{ delay: 0.7, duration: 0.3 }} // Fast
-          >
-            {progress < 100 ? (
-              <motion.span
-                animate={{ opacity: [0.6, 1, 0.6] }}
-                transition={{ duration: 1.5, repeat: Infinity }}
-                style={{ display: "flex", alignItems: "center", gap: "6px" }}
-              >
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
-                  <motion.circle
-                    cx="12"
-                    cy="12"
-                    r="10"
-                    stroke={USE_WHITE_ON_BRONZE ? "rgba(255, 255, 255, 0.5)" : BRONZE.primary}
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    animate={{ rotate: 360 }}
-                    transition={{ duration: 1, repeat: Infinity, ease: "linear" }} // Fast spinner
-                  />
-                </svg>
-                Loading your experience...
-              </motion.span>
-            ) : (
-              <motion.span
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.3 }}
-                style={{ display: "flex", alignItems: "center", gap: "6px" }}
-              >
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
-                  <circle cx="12" cy="12" r="10" fill={USE_WHITE_ON_BRONZE ? "#FFFFFF" : BRONZE.primary} />
-                </svg>
-                Ready to explore!
-              </motion.span>
-            )}
-          </motion.div>
+          {/* Status text */}
+          <div style={{
+            fontSize: "0.875rem",
+            color: PINTEREST.textMuted,
+            marginTop: "12px",
+            textAlign: "center",
+            fontWeight: 500,
+          }}>
+            {progress < 100 ? "Loading community..." : "Ready to explore!"}
+          </div>
         </div>
 
-        {/* Subtle decorative dots - Only animate while loading */}
+        {/* Copyright */}
         <div style={{
-          display: "flex",
-          gap: "8px",
-          marginTop: "8px",
-          height: "12px", // Fixed height
+          fontSize: "0.75rem",
+          color: PINTEREST.textMuted,
+          marginTop: "24px",
+          opacity: 0.6,
         }}>
-          {[0, 1, 2].map((i) => (
-            <motion.div
-              key={i}
-              style={{
-                width: "6px",
-                height: "6px",
-                borderRadius: "50%",
-                background: USE_WHITE_ON_BRONZE 
-                  ? "rgba(255, 255, 255, 0.3)" 
-                  : `${BRONZE.primary}30`,
-                opacity: progress < 100 ? 1 : 0.3, // Fade when done
-              }}
-              animate={progress < 100 ? { 
-                scale: [1, 1.3, 1],
-                opacity: [0.5, 1, 0.5]
-              } : {}}
-              transition={{
-                duration: 1,
-                repeat: progress < 100 ? Infinity : 0,
-                delay: i * 0.2,
-              }}
-            />
-          ))}
+          © {new Date().getFullYear()} Boocozmo • A literary community
         </div>
       </motion.div>
+
+      {/* Bottom hint */}
+      {progress >= 100 && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 0.7, y: 0 }}
+          style={{
+            position: "absolute",
+            bottom: "40px",
+            fontSize: "0.875rem",
+            color: PINTEREST.textMuted,
+            display: "flex",
+            alignItems: "center",
+            gap: "8px",
+          }}
+        >
+          <span style={{ animation: "bounce 2s infinite" }}>↓</span>
+          Entering your book community
+          <span style={{ animation: "bounce 2s infinite", animationDelay: "0.5s" }}>↓</span>
+        </motion.div>
+      )}
+
+      <style>{`
+        @keyframes bounce {
+          0%, 100% { transform: translateY(0); }
+          50% { transform: translateY(-4px); }
+        }
+      `}</style>
     </div>
   );
 };

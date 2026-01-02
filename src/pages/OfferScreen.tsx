@@ -1,3 +1,4 @@
+// src/pages/OfferScreen.tsx - PINTEREST-STYLE REDESIGN (Matching HomeScreen, ChatScreen, SingleChat)
 import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -7,12 +8,24 @@ import {
   FaMapMarkerAlt,
   FaDollarSign,
   FaExchangeAlt,
-  FaStar,
   FaPaperPlane,
   FaLocationArrow,
   FaTrash,
   FaChevronDown,
-  FaChevronUp
+  FaChevronUp,
+  FaEllipsisH,
+  FaTimes,
+  FaHome,
+  FaMapMarkedAlt,
+  FaPlus,
+  FaComments,
+  FaBell,
+  FaBookmark,
+  FaCompass,
+  FaBook,
+  FaStar,
+  FaCog,
+  FaUsers
 } from "react-icons/fa";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -22,25 +35,36 @@ const API_BASE = "https://boocozmo-api.onrender.com";
 type Props = {
   onBack?: () => void;
   currentUser: { email: string; name: string; id: string };
+  onProfilePress?: () => void;
+  onMapPress?: () => void;
+  onAddPress?: () => void;
 };
 
-// Modern color palette
-const MODERN = {
-  primary: "#3B82F6",     // Modern blue
-  secondary: "#8B5CF6",   // Purple
-  accent: "#10B981",      // Emerald
-  danger: "#EF4444",      // Red
-  warning: "#F59E0B",     // Amber
-  light: "#F8FAFC",       // Light slate
-  dark: "#1E293B",        // Dark slate
-  gray: "#64748B",        // Slate
-  border: "#E2E8F0",      // Light border
-  card: "#FFFFFF",
-  gradient: "linear-gradient(135deg, #3B82F6 0%, #8B5CF6 100%)",
-  gradientHover: "linear-gradient(135deg, #2563EB 0%, #7C3AED 100%)"
+// Exact Pinterest colors from previous screens
+const PINTEREST = {
+  primary: "#E60023",
+  dark: "#A3081A",
+  light: "#FF4D6D",
+  bg: "#FFFFFF",
+  sidebarBg: "#FFFFFF",
+  textDark: "#000000",
+  textLight: "#5F5F5F",
+  textMuted: "#8E8E8E",
+  border: "#E1E1E1",
+  hoverBg: "#F5F5F5",
+  icon: "#767676",
+  redLight: "#FFE2E6",
+  grayLight: "#F7F7F7",
+  overlay: "rgba(0, 0, 0, 0.7)"
 };
 
-export default function OfferScreen({ onBack, currentUser }: Props) {
+export default function OfferScreen({ 
+  onBack, 
+  currentUser,
+  onProfilePress,
+  onMapPress,
+  onAddPress 
+}: Props) {
   const [description, setDescription] = useState("");
   const [condition, setCondition] = useState<"Excellent" | "Very Good" | "Good" | "Fair">("Excellent");
   const [action, setAction] = useState<"sell" | "trade">("sell");
@@ -52,6 +76,7 @@ export default function OfferScreen({ onBack, currentUser }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [showLocationPicker, setShowLocationPicker] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const [latitude, setLatitude] = useState<number | null>(null);
   const [longitude, setLongitude] = useState<number | null>(null);
@@ -117,7 +142,7 @@ export default function OfferScreen({ onBack, currentUser }: Props) {
     });
   }, []);
 
-  // Auto-detect location with better UX
+  // Auto-detect location
   const detectLocation = useCallback(() => {
     setIsLocating(true);
     if (navigator.geolocation) {
@@ -129,7 +154,6 @@ export default function OfferScreen({ onBack, currentUser }: Props) {
           setLocationSet(true);
           setIsLocating(false);
           
-          // Center map on detected location
           if (mapInstance.current) {
             mapInstance.current.setView([latitude, longitude], 15);
             if (markerInstance.current) {
@@ -184,7 +208,7 @@ export default function OfferScreen({ onBack, currentUser }: Props) {
           width: 40px;
           height: 40px;
           border-radius: 50%;
-          background: ${MODERN.primary};
+          background: ${PINTEREST.primary};
           border: 3px solid white;
           display: flex;
           align-items: center;
@@ -192,8 +216,7 @@ export default function OfferScreen({ onBack, currentUser }: Props) {
           color: white;
           font-size: 16px;
           font-weight: bold;
-          box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
-          cursor: pointer;
+          box-shadow: 0 4px 12px rgba(230, 0, 35, 0.4);
         ">
           📚
         </div>
@@ -232,7 +255,7 @@ export default function OfferScreen({ onBack, currentUser }: Props) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Update map center when location changes
+  // Update map center
   useEffect(() => {
     if (mapInstance.current && latitude && longitude) {
       mapInstance.current.setView([latitude, longitude], 15);
@@ -243,7 +266,6 @@ export default function OfferScreen({ onBack, currentUser }: Props) {
     const file = e.target.files?.[0] ?? null;
     if (!file) return;
     
-    // Check file size (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
       setError("Image size must be less than 5MB");
       return;
@@ -251,7 +273,6 @@ export default function OfferScreen({ onBack, currentUser }: Props) {
     
     setImage(file);
     
-    // Create preview
     const reader = new FileReader();
     reader.onload = (event) => {
       setImagePreview(event.target?.result as string);
@@ -268,10 +289,10 @@ export default function OfferScreen({ onBack, currentUser }: Props) {
   };
 
   const conditionOptions = [
-    { value: "Excellent", color: MODERN.accent, icon: "✨" },
-    { value: "Very Good", color: MODERN.primary, icon: "👍" },
-    { value: "Good", color: MODERN.warning, icon: "👌" },
-    { value: "Fair", color: MODERN.gray, icon: "📖" },
+    { value: "Excellent", color: "#10B981", icon: "✨" },
+    { value: "Very Good", color: PINTEREST.primary, icon: "👍" },
+    { value: "Good", color: "#F59E0B", icon: "👌" },
+    { value: "Fair", color: "#64748B", icon: "📖" },
   ] as const;
 
   const handleSubmit = async () => {
@@ -327,13 +348,6 @@ export default function OfferScreen({ onBack, currentUser }: Props) {
         ownerId: currentUser.id,
       };
 
-      const payloadSize = JSON.stringify(payload).length;
-      if (payloadSize > 10000000) {
-        setError("Image is too large. Please choose a smaller image.");
-        setLoading(false);
-        return;
-      }
-
       const resp = await fetch(`${API_BASE}/submit-offer`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -347,7 +361,6 @@ export default function OfferScreen({ onBack, currentUser }: Props) {
 
       setSuccess(true);
       setTimeout(() => {
-        // Reset form
         setDescription("");
         setPrice("");
         setExchangeBook("");
@@ -355,7 +368,6 @@ export default function OfferScreen({ onBack, currentUser }: Props) {
         setImagePreview(null);
         setError(null);
         setSuccess(false);
-        // Navigate back after success
         setTimeout(() => {
           if (onBack) onBack();
         }, 1500);
@@ -367,751 +379,916 @@ export default function OfferScreen({ onBack, currentUser }: Props) {
     }
   };
 
+  // Sidebar items (same as other screens)
+  const navItems = [
+    { icon: FaHome, label: "Home", onClick: () => {} },
+    { icon: FaCompass, label: "Discover", onClick: () => {} },
+    { icon: FaBook, label: "My Books", onClick: () => {} },
+    { icon: FaBookmark, label: "Saved", onClick: () => {} },
+    { icon: FaUsers, label: "Following", onClick: () => {} },
+    { icon: FaMapMarkedAlt, label: "Map", onClick: onMapPress },
+    { icon: FaComments, label: "Messages", onClick: () => {} },
+    { icon: FaBell, label: "Notifications", onClick: () => {} },
+    { icon: FaStar, label: "Top Picks", onClick: () => {} },
+  ];
+
   return (
     <div style={{
       height: "100vh",
       width: "100vw",
-      background: MODERN.light,
-      fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+      background: PINTEREST.bg,
+      display: "flex",
+      fontFamily: "'Inter', -apple-system, sans-serif",
       overflow: "hidden",
     }}>
-      {/* Fixed Header */}
-      <motion.div
-        initial={{ y: -20, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
+      {/* Sidebar - Identical to other screens */}
+      <motion.aside
+        initial={{ x: -300 }}
+        animate={{ x: sidebarOpen ? 0 : -300 }}
+        transition={{ type: "spring", damping: 25 }}
         style={{
+          width: "240px",
+          background: PINTEREST.sidebarBg,
+          borderRight: `1px solid ${PINTEREST.border}`,
           position: "fixed",
           top: 0,
           left: 0,
-          right: 0,
-          background: "white",
-          padding: "12px 16px",
+          bottom: 0,
+          zIndex: 100,
+          padding: "20px 16px",
+          overflowY: "auto",
           display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          boxShadow: "0 2px 10px rgba(0,0,0,0.05)",
-          zIndex: 1000,
+          flexDirection: "column",
         }}
       >
-        <button
-          onClick={onBack}
+        <div style={{ marginBottom: "24px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            <div style={{
+              width: "32px",
+              height: "32px",
+              borderRadius: "50%",
+              background: PINTEREST.primary,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: "white",
+              fontWeight: "700",
+              fontSize: "14px",
+            }}>
+              B
+            </div>
+            <span style={{
+              fontSize: "20px",
+              fontWeight: "700",
+              color: PINTEREST.primary,
+            }}>
+              Boocozmo
+            </span>
+          </div>
+        </div>
+
+        <motion.div
+          whileHover={{ scale: 1.02 }}
+          onClick={onProfilePress}
           style={{
-            background: "none",
-            border: "none",
-            color: MODERN.dark,
-            fontSize: "20px",
+            display: "flex",
+            alignItems: "center",
+            gap: "12px",
+            padding: "12px",
+            borderRadius: "12px",
+            background: PINTEREST.hoverBg,
+            marginBottom: "24px",
             cursor: "pointer",
-            padding: "8px",
-            borderRadius: "8px",
+          }}
+        >
+          <div style={{
+            width: "40px",
+            height: "40px",
+            borderRadius: "50%",
+            background: `linear-gradient(135deg, ${PINTEREST.primary}, ${PINTEREST.dark})`,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
+            color: "white",
+            fontWeight: "600",
+            fontSize: "16px",
+          }}>
+            {currentUser.name.charAt(0).toUpperCase()}
+          </div>
+          <div>
+            <div style={{ fontSize: "14px", fontWeight: "600", color: PINTEREST.textDark }}>
+              {currentUser.name.split(' ')[0]}
+            </div>
+            <div style={{ fontSize: "12px", color: PINTEREST.textLight }}>
+              View profile
+            </div>
+          </div>
+        </motion.div>
+
+        <nav style={{ flex: 1 }}>
+          {navItems.map((item) => (
+            <motion.button
+              key={item.label}
+              whileHover={{ x: 4 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={item.onClick}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "12px",
+                width: "100%",
+                padding: "12px",
+                background: "transparent",
+                border: "none",
+                color: PINTEREST.textDark,
+                fontSize: "14px",
+                fontWeight: "500",
+                cursor: "pointer",
+                borderRadius: "12px",
+                marginBottom: "4px",
+                textAlign: "left",
+              }}
+            >
+              <item.icon size={18} />
+              {item.label}
+            </motion.button>
+          ))}
+        </nav>
+
+        <motion.button
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          onClick={onAddPress}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "12px",
+            padding: "14px",
+            background: PINTEREST.primary,
+            color: "white",
+            border: "none",
+            borderRadius: "24px",
+            fontSize: "14px",
+            fontWeight: "600",
+            cursor: "pointer",
+            width: "100%",
+            justifyContent: "center",
+            marginTop: "20px",
           }}
         >
-          <FaArrowLeft />
-        </button>
-        
-        <h1 style={{
-          fontSize: "18px",
-          fontWeight: "700",
-          color: MODERN.dark,
-          margin: 0,
-        }}>
-          Share a Book
-        </h1>
-        
-        <div style={{ width: "44px" }} /> {/* Spacer for alignment */}
-      </motion.div>
+          <FaPlus /> Share a Book
+        </motion.button>
+
+        <motion.button
+          whileHover={{ x: 4 }}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "12px",
+            width: "100%",
+            padding: "12px",
+            background: "transparent",
+            border: "none",
+            color: PINTEREST.textLight,
+            fontSize: "14px",
+            fontWeight: "500",
+            cursor: "pointer",
+            borderRadius: "12px",
+            marginTop: "12px",
+            textAlign: "left",
+          }}
+        >
+          <FaCog size={18} />
+          Settings
+        </motion.button>
+      </motion.aside>
 
       {/* Main Content */}
-      <div style={{
-        height: "100%",
-        paddingTop: "60px",
-        paddingBottom: "80px",
-        overflowY: "auto",
-        WebkitOverflowScrolling: "touch",
+      <div style={{ 
+        flex: 1, 
+        marginLeft: sidebarOpen ? "240px" : "0",
+        transition: "margin-left 0.3s ease",
+        display: "flex",
+        flexDirection: "column",
       }}>
-        <div style={{ padding: "16px", maxWidth: "600px", margin: "0 auto" }}>
-          {/* Book Description */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
+        {/* Header */}
+        <header style={{
+          padding: "12px 20px",
+          background: PINTEREST.bg,
+          position: "sticky",
+          top: 0,
+          zIndex: 50,
+          borderBottom: `1px solid ${PINTEREST.border}`,
+          display: "flex",
+          alignItems: "center",
+          gap: "16px",
+        }}>
+          <motion.button
+            whileTap={{ scale: 0.9 }}
+            onClick={() => setSidebarOpen(!sidebarOpen)}
             style={{
-              background: MODERN.card,
-              borderRadius: "16px",
-              padding: "20px",
-              marginBottom: "16px",
-              boxShadow: "0 4px 12px rgba(0,0,0,0.05)",
+              width: "40px",
+              height: "40px",
+              borderRadius: "50%",
+              background: PINTEREST.hoverBg,
+              border: "none",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: PINTEREST.textDark,
+              cursor: "pointer",
             }}
           >
-            <label style={{
-              display: "block",
-              fontSize: "14px",
-              fontWeight: "600",
-              color: MODERN.dark,
-              marginBottom: "8px",
-            }}>
-              Book Description *
-            </label>
-            <textarea
-              placeholder="Tell others about this book, include title, author, and any details..."
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              style={{
-                width: "100%",
-                minHeight: "120px",
-                padding: "12px",
-                borderRadius: "12px",
-                border: `1px solid ${MODERN.border}`,
-                background: "white",
-                fontSize: "16px",
-                resize: "none",
-                boxSizing: "border-box",
-                fontFamily: "inherit",
-                lineHeight: 1.5,
-              }}
-            />
-            <div style={{
-              fontSize: "12px",
-              color: MODERN.gray,
-              marginTop: "8px",
-              textAlign: "right",
-            }}>
-              {description.length}/500
-            </div>
-          </motion.div>
+            {sidebarOpen ? <FaTimes /> : <FaEllipsisH />}
+          </motion.button>
 
-          {/* Condition Selection */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.15 }}
+          <motion.button
+            whileTap={{ scale: 0.9 }}
+            onClick={onBack}
             style={{
-              background: MODERN.card,
-              borderRadius: "16px",
-              padding: "20px",
-              marginBottom: "16px",
-              boxShadow: "0 4px 12px rgba(0,0,0,0.05)",
+              width: "40px",
+              height: "40px",
+              borderRadius: "50%",
+              background: PINTEREST.hoverBg,
+              border: "none",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: PINTEREST.textDark,
+              cursor: "pointer",
             }}
           >
-            <label style={{
-              display: "block",
-              fontSize: "14px",
-              fontWeight: "600",
-              color: MODERN.dark,
-              marginBottom: "12px",
-            }}>
-              Condition
-            </label>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
-              {conditionOptions.map((opt) => (
+            <FaArrowLeft size={18} />
+          </motion.button>
+
+          <h1 style={{
+            fontSize: "20px",
+            fontWeight: "700",
+            color: PINTEREST.textDark,
+            margin: 0,
+          }}>
+            Share a Book
+          </h1>
+        </header>
+
+        {/* Scrollable Form */}
+        <main style={{
+          flex: 1,
+          overflowY: "auto",
+          padding: "20px",
+        }}>
+          <div style={{ maxWidth: "600px", margin: "0 auto" }}>
+            {/* Book Description */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              style={{
+                background: "white",
+                borderRadius: "16px",
+                padding: "20px",
+                marginBottom: "16px",
+                boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
+                border: `1px solid ${PINTEREST.border}`,
+              }}
+            >
+              <label style={{
+                display: "block",
+                fontSize: "14px",
+                fontWeight: "600",
+                color: PINTEREST.textDark,
+                marginBottom: "8px",
+              }}>
+                Book Description *
+              </label>
+              <textarea
+                placeholder="Tell others about this book, include title, author, and any details..."
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                style={{
+                  width: "100%",
+                  minHeight: "120px",
+                  padding: "12px",
+                  borderRadius: "12px",
+                  border: `1px solid ${PINTEREST.border}`,
+                  background: PINTEREST.grayLight,
+                  fontSize: "16px",
+                  resize: "none",
+                  boxSizing: "border-box",
+                  fontFamily: "inherit",
+                  lineHeight: 1.5,
+                }}
+              />
+              <div style={{
+                fontSize: "12px",
+                color: PINTEREST.textMuted,
+                marginTop: "8px",
+                textAlign: "right",
+              }}>
+                {description.length}/500
+              </div>
+            </motion.div>
+
+            {/* Condition */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+              style={{
+                background: "white",
+                borderRadius: "16px",
+                padding: "20px",
+                marginBottom: "16px",
+                boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
+                border: `1px solid ${PINTEREST.border}`,
+              }}
+            >
+              <label style={{
+                display: "block",
+                fontSize: "14px",
+                fontWeight: "600",
+                color: PINTEREST.textDark,
+                marginBottom: "12px",
+              }}>
+                Condition
+              </label>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+                {conditionOptions.map((opt) => (
+                  <motion.button
+                    key={opt.value}
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => setCondition(opt.value)}
+                    style={{
+                      flex: 1,
+                      minWidth: "80px",
+                      padding: "12px 8px",
+                      borderRadius: "12px",
+                      border: `2px solid ${condition === opt.value ? opt.color : PINTEREST.border}`,
+                      background: condition === opt.value ? `${opt.color}15` : "white",
+                      color: condition === opt.value ? opt.color : PINTEREST.textDark,
+                      fontSize: "14px",
+                      fontWeight: "600",
+                      cursor: "pointer",
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      gap: "4px",
+                    }}
+                  >
+                    <span style={{ fontSize: "18px" }}>{opt.icon}</span>
+                    {opt.value}
+                  </motion.button>
+                ))}
+              </div>
+            </motion.div>
+
+            {/* Action Type */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.15 }}
+              style={{
+                background: "white",
+                borderRadius: "16px",
+                padding: "20px",
+                marginBottom: "16px",
+                boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
+                border: `1px solid ${PINTEREST.border}`,
+              }}
+            >
+              <label style={{
+                display: "block",
+                fontSize: "14px",
+                fontWeight: "600",
+                color: PINTEREST.textDark,
+                marginBottom: "12px",
+              }}>
+                I want to...
+              </label>
+              <div style={{ display: "flex", gap: "12px" }}>
                 <motion.button
-                  key={opt.value}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => setCondition(opt.value)}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => setAction("sell")}
                   style={{
                     flex: 1,
-                    minWidth: "80px",
-                    padding: "12px 8px",
+                    padding: "16px",
                     borderRadius: "12px",
-                    border: `2px solid ${condition === opt.value ? opt.color : MODERN.border}`,
-                    background: condition === opt.value ? `${opt.color}15` : "white",
-                    color: condition === opt.value ? opt.color : MODERN.dark,
+                    border: `2px solid ${action === "sell" ? PINTEREST.primary : PINTEREST.border}`,
+                    background: action === "sell" ? PINTEREST.redLight : "white",
+                    color: action === "sell" ? PINTEREST.primary : PINTEREST.textDark,
+                    fontWeight: "600",
+                    fontSize: "15px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: "8px",
+                    cursor: "pointer",
+                  }}
+                >
+                  <FaDollarSign />
+                  Sell
+                </motion.button>
+                
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => setAction("trade")}
+                  style={{
+                    flex: 1,
+                    padding: "16px",
+                    borderRadius: "12px",
+                    border: `2px solid ${action === "trade" ? "#00A86B" : PINTEREST.border}`,
+                    background: action === "trade" ? "#00A86B15" : "white",
+                    color: action === "trade" ? "#00A86B" : PINTEREST.textDark,
+                    fontWeight: "600",
+                    fontSize: "15px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: "8px",
+                    cursor: "pointer",
+                  }}
+                >
+                  <FaExchangeAlt />
+                  Trade
+                </motion.button>
+              </div>
+            </motion.div>
+
+            {/* Price or Trade For */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              style={{
+                background: "white",
+                borderRadius: "16px",
+                padding: "20px",
+                marginBottom: "16px",
+                boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
+                border: `1px solid ${PINTEREST.border}`,
+              }}
+            >
+              <label style={{
+                display: "block",
+                fontSize: "14px",
+                fontWeight: "600",
+                color: PINTEREST.textDark,
+                marginBottom: "8px",
+              }}>
+                {action === "sell" ? "Price *" : "Trade For *"}
+              </label>
+              {action === "sell" ? (
+                <div style={{ position: "relative" }}>
+                  <FaDollarSign style={{
+                    position: "absolute",
+                    left: "12px",
+                    top: "50%",
+                    transform: "translateY(-50%)",
+                    color: PINTEREST.textMuted,
+                  }} />
+                  <input
+                    type="number"
+                    placeholder="0.00"
+                    value={price}
+                    onChange={(e) => setPrice(e.target.value)}
+                    style={{
+                      width: "100%",
+                      padding: "12px 12px 12px 36px",
+                      borderRadius: "12px",
+                      border: `1px solid ${PINTEREST.border}`,
+                      background: PINTEREST.grayLight,
+                      fontSize: "16px",
+                      boxSizing: "border-box",
+                    }}
+                  />
+                </div>
+              ) : (
+                <div style={{ position: "relative" }}>
+                  <FaExchangeAlt style={{
+                    position: "absolute",
+                    left: "12px",
+                    top: "50%",
+                    transform: "translateY(-50%)",
+                    color: PINTEREST.textMuted,
+                  }} />
+                  <input
+                    type="text"
+                    placeholder="What book are you looking for?"
+                    value={exchangeBook}
+                    onChange={(e) => setExchangeBook(e.target.value)}
+                    style={{
+                      width: "100%",
+                      padding: "12px 12px 12px 36px",
+                      borderRadius: "12px",
+                      border: `1px solid ${PINTEREST.border}`,
+                      background: PINTEREST.grayLight,
+                      fontSize: "16px",
+                      boxSizing: "border-box",
+                    }}
+                  />
+                </div>
+              )}
+            </motion.div>
+
+            {/* Image Upload */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.25 }}
+              style={{
+                background: "white",
+                borderRadius: "16px",
+                padding: "20px",
+                marginBottom: "16px",
+                boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
+                border: `1px solid ${PINTEREST.border}`,
+              }}
+            >
+              <label style={{
+                display: "block",
+                fontSize: "14px",
+                fontWeight: "600",
+                color: PINTEREST.textDark,
+                marginBottom: "12px",
+              }}>
+                Photo (Optional)
+              </label>
+              
+              <div style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: "12px",
+              }}>
+                {imagePreview ? (
+                  <div style={{ position: "relative" }}>
+                    <img
+                      src={imagePreview}
+                      alt="Preview"
+                      style={{
+                        width: "100%",
+                        height: "200px",
+                        objectFit: "cover",
+                        borderRadius: "12px",
+                      }}
+                    />
+                    <motion.button
+                      whileHover={{ scale: 1.1 }}
+                      whileTap={{ scale: 0.9 }}
+                      onClick={removeImage}
+                      style={{
+                        position: "absolute",
+                        top: "8px",
+                        right: "8px",
+                        background: PINTEREST.primary,
+                        color: "white",
+                        border: "none",
+                        width: "32px",
+                        height: "32px",
+                        borderRadius: "50%",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        cursor: "pointer",
+                        fontSize: "14px",
+                        boxShadow: "0 2px 8px rgba(0,0,0,0.3)",
+                      }}
+                    >
+                      <FaTrash />
+                    </motion.button>
+                  </div>
+                ) : (
+                  <motion.div
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => fileInputRef.current?.click()}
+                    style={{
+                      padding: "40px 20px",
+                      borderRadius: "12px",
+                      border: `2px dashed ${PINTEREST.border}`,
+                      background: PINTEREST.grayLight,
+                      textAlign: "center",
+                      cursor: "pointer",
+                      transition: "all 0.2s ease",
+                    }}
+                  >
+                    <FaCamera style={{
+                      fontSize: "32px",
+                      color: PINTEREST.primary,
+                      marginBottom: "12px",
+                    }} />
+                    <div style={{
+                      fontSize: "15px",
+                      fontWeight: "600",
+                      color: PINTEREST.textDark,
+                      marginBottom: "4px",
+                    }}>
+                      Tap to add photo
+                    </div>
+                    <div style={{
+                      fontSize: "12px",
+                      color: PINTEREST.textMuted,
+                    }}>
+                      JPG or PNG, max 5MB
+                    </div>
+                  </motion.div>
+                )}
+                
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImagePick}
+                  style={{ display: "none" }}
+                />
+                
+                {image && (
+                  <div style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    padding: "8px 12px",
+                    background: PINTEREST.redLight,
+                    borderRadius: "8px",
+                    fontSize: "13px",
+                    color: PINTEREST.textDark,
+                  }}>
+                    <span style={{ fontWeight: "500" }}>
+                      {image.name} ({(image.size / 1024 / 1024).toFixed(2)} MB)
+                    </span>
+                    <FaCheckCircle color={PINTEREST.primary} />
+                  </div>
+                )}
+              </div>
+            </motion.div>
+
+            {/* Location */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+              style={{
+                background: "white",
+                borderRadius: "16px",
+                padding: "20px",
+                marginBottom: "16px",
+                boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
+                border: `1px solid ${PINTEREST.border}`,
+              }}
+            >
+              <div style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                marginBottom: "12px",
+              }}>
+                <label style={{
+                  fontSize: "14px",
+                  fontWeight: "600",
+                  color: PINTEREST.textDark,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                }}>
+                  <FaMapMarkerAlt color={PINTEREST.primary} />
+                  Location *
+                </label>
+                
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => setShowLocationPicker(!showLocationPicker)}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    color: PINTEREST.primary,
                     fontSize: "14px",
                     fontWeight: "600",
                     cursor: "pointer",
                     display: "flex",
-                    flexDirection: "column",
                     alignItems: "center",
                     gap: "4px",
                   }}
                 >
-                  <span style={{ fontSize: "18px" }}>{opt.icon}</span>
-                  {opt.value}
+                  {showLocationPicker ? <FaChevronUp /> : <FaChevronDown />}
+                  {showLocationPicker ? "Hide Map" : "Set Location"}
                 </motion.button>
-              ))}
-            </div>
-          </motion.div>
-
-          {/* Action Type */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            style={{
-              background: MODERN.card,
-              borderRadius: "16px",
-              padding: "20px",
-              marginBottom: "16px",
-              boxShadow: "0 4px 12px rgba(0,0,0,0.05)",
-            }}
-          >
-            <label style={{
-              display: "block",
-              fontSize: "14px",
-              fontWeight: "600",
-              color: MODERN.dark,
-              marginBottom: "12px",
-            }}>
-              I want to...
-            </label>
-            <div style={{ display: "flex", gap: "12px" }}>
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={() => setAction("sell")}
-                style={{
-                  flex: 1,
-                  padding: "16px",
-                  borderRadius: "12px",
-                  border: `2px solid ${action === "sell" ? MODERN.primary : MODERN.border}`,
-                  background: action === "sell" ? `${MODERN.primary}10` : "white",
-                  color: action === "sell" ? MODERN.primary : MODERN.dark,
-                  fontWeight: "600",
-                  fontSize: "15px",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: "8px",
-                  cursor: "pointer",
-                }}
-              >
-                <FaDollarSign />
-                Sell
-              </motion.button>
-              
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={() => setAction("trade")}
-                style={{
-                  flex: 1,
-                  padding: "16px",
-                  borderRadius: "12px",
-                  border: `2px solid ${action === "trade" ? MODERN.secondary : MODERN.border}`,
-                  background: action === "trade" ? `${MODERN.secondary}10` : "white",
-                  color: action === "trade" ? MODERN.secondary : MODERN.dark,
-                  fontWeight: "600",
-                  fontSize: "15px",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: "8px",
-                  cursor: "pointer",
-                }}
-              >
-                <FaExchangeAlt />
-                Trade
-              </motion.button>
-            </div>
-          </motion.div>
-
-          {/* Price or Trade For */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.25 }}
-            style={{
-              background: MODERN.card,
-              borderRadius: "16px",
-              padding: "20px",
-              marginBottom: "16px",
-              boxShadow: "0 4px 12px rgba(0,0,0,0.05)",
-            }}
-          >
-            <label style={{
-              display: "block",
-              fontSize: "14px",
-              fontWeight: "600",
-              color: MODERN.dark,
-              marginBottom: "8px",
-            }}>
-              {action === "sell" ? "Price *" : "Trade For *"}
-            </label>
-            {action === "sell" ? (
-              <div style={{ position: "relative" }}>
-                <FaDollarSign style={{
-                  position: "absolute",
-                  left: "12px",
-                  top: "50%",
-                  transform: "translateY(-50%)",
-                  color: MODERN.gray,
-                }} />
-                <input
-                  type="number"
-                  placeholder="0.00"
-                  value={price}
-                  onChange={(e) => setPrice(e.target.value)}
-                  style={{
-                    width: "100%",
-                    padding: "12px 12px 12px 36px",
-                    borderRadius: "12px",
-                    border: `1px solid ${MODERN.border}`,
-                    background: "white",
-                    fontSize: "16px",
-                    boxSizing: "border-box",
-                  }}
-                />
               </div>
-            ) : (
-              <div style={{ position: "relative" }}>
-                <FaExchangeAlt style={{
-                  position: "absolute",
-                  left: "12px",
-                  top: "50%",
-                  transform: "translateY(-50%)",
-                  color: MODERN.gray,
-                }} />
-                <input
-                  type="text"
-                  placeholder="What book are you looking for?"
-                  value={exchangeBook}
-                  onChange={(e) => setExchangeBook(e.target.value)}
-                  style={{
-                    width: "100%",
-                    padding: "12px 12px 12px 36px",
-                    borderRadius: "12px",
-                    border: `1px solid ${MODERN.border}`,
-                    background: "white",
-                    fontSize: "16px",
-                    boxSizing: "border-box",
-                  }}
-                />
-              </div>
-            )}
-          </motion.div>
 
-          {/* Image Upload */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-            style={{
-              background: MODERN.card,
-              borderRadius: "16px",
-              padding: "20px",
-              marginBottom: "16px",
-              boxShadow: "0 4px 12px rgba(0,0,0,0.05)",
-            }}
-          >
-            <label style={{
-              display: "block",
-              fontSize: "14px",
-              fontWeight: "600",
-              color: MODERN.dark,
-              marginBottom: "12px",
-            }}>
-              Photo (Optional)
-            </label>
-            
-            <div style={{
-              display: "flex",
-              flexDirection: "column",
-              gap: "12px",
-            }}>
-              {imagePreview ? (
-                <div style={{ position: "relative" }}>
-                  <img
-                    src={imagePreview}
-                    alt="Preview"
-                    style={{
-                      width: "100%",
-                      height: "200px",
-                      objectFit: "cover",
-                      borderRadius: "12px",
-                    }}
-                  />
-                  <motion.button
-                    whileHover={{ scale: 1.1 }}
-                    whileTap={{ scale: 0.9 }}
-                    onClick={removeImage}
-                    style={{
-                      position: "absolute",
-                      top: "8px",
-                      right: "8px",
-                      background: MODERN.danger,
-                      color: "white",
-                      border: "none",
-                      width: "32px",
-                      height: "32px",
-                      borderRadius: "50%",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      cursor: "pointer",
-                      fontSize: "14px",
-                      boxShadow: "0 2px 8px rgba(0,0,0,0.2)",
-                    }}
-                  >
-                    <FaTrash />
-                  </motion.button>
-                </div>
-              ) : (
-                <motion.div
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() => fileInputRef.current?.click()}
-                  style={{
-                    padding: "40px 20px",
-                    borderRadius: "12px",
-                    border: `2px dashed ${MODERN.border}`,
-                    background: "white",
-                    textAlign: "center",
-                    cursor: "pointer",
-                    transition: "all 0.2s ease",
-                  }}
-                >
-                  <FaCamera style={{
-                    fontSize: "32px",
-                    color: MODERN.primary,
-                    marginBottom: "12px",
-                  }} />
-                  <div style={{
-                    fontSize: "15px",
-                    fontWeight: "600",
-                    color: MODERN.dark,
-                    marginBottom: "4px",
-                  }}>
-                    Tap to add photo
-                  </div>
-                  <div style={{
-                    fontSize: "12px",
-                    color: MODERN.gray,
-                  }}>
-                    JPG or PNG, max 5MB
-                  </div>
-                </motion.div>
-              )}
-              
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                onChange={handleImagePick}
-                style={{ display: "none" }}
-              />
-              
-              {image && (
-                <div style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  padding: "8px 12px",
-                  background: `${MODERN.primary}10`,
-                  borderRadius: "8px",
-                  fontSize: "13px",
-                  color: MODERN.dark,
-                }}>
-                  <span style={{ fontWeight: "500" }}>
-                    {image.name} ({(image.size / 1024 / 1024).toFixed(2)} MB)
-                  </span>
-                  <FaCheckCircle color={MODERN.accent} />
-                </div>
-              )}
-            </div>
-          </motion.div>
-
-          {/* Location Section */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.35 }}
-            style={{
-              background: MODERN.card,
-              borderRadius: "16px",
-              padding: "20px",
-              marginBottom: "16px",
-              boxShadow: "0 4px 12px rgba(0,0,0,0.05)",
-            }}
-          >
-            <div style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              marginBottom: "12px",
-            }}>
-              <label style={{
-                fontSize: "14px",
-                fontWeight: "600",
-                color: MODERN.dark,
+              <div style={{
                 display: "flex",
                 alignItems: "center",
                 gap: "8px",
+                marginBottom: showLocationPicker ? "12px" : "0",
               }}>
-                <FaMapMarkerAlt color={MODERN.primary} />
-                Location *
-              </label>
-              
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => setShowLocationPicker(!showLocationPicker)}
-                style={{
-                  background: "none",
-                  border: "none",
-                  color: MODERN.primary,
-                  fontSize: "14px",
-                  fontWeight: "600",
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "4px",
-                }}
-              >
-                {showLocationPicker ? <FaChevronUp /> : <FaChevronDown />}
-                {showLocationPicker ? "Hide Map" : "Set Location"}
-              </motion.button>
-            </div>
-
-            <div style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-              marginBottom: showLocationPicker ? "12px" : "0",
-            }}>
-              <div style={{
-                flex: 1,
-                padding: "12px",
-                background: MODERN.light,
-                borderRadius: "8px",
-                fontSize: "13px",
-                color: locationSet ? MODERN.dark : MODERN.gray,
-                fontWeight: locationSet ? "500" : "400",
-              }}>
-                {locationSet 
-                  ? `${latitude?.toFixed(6)}, ${longitude?.toFixed(6)}`
-                  : "Location not set"
-                }
-              </div>
-              
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={detectLocation}
-                disabled={isLocating}
-                style={{
+                <div style={{
+                  flex: 1,
                   padding: "12px",
+                  background: PINTEREST.grayLight,
                   borderRadius: "8px",
-                  border: "none",
-                  background: MODERN.gradient,
-                  color: "white",
-                  fontSize: "14px",
-                  fontWeight: "600",
-                  cursor: isLocating ? "not-allowed" : "pointer",
-                  opacity: isLocating ? 0.7 : 1,
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "6px",
-                }}
-              >
-                {isLocating ? (
-                  <>
-                    <div style={{
-                      width: "12px",
-                      height: "12px",
-                      border: "2px solid white",
-                      borderTopColor: "transparent",
-                      borderRadius: "50%",
-                      animation: "spin 1s linear infinite",
-                    }} />
-                    Detecting...
-                  </>
-                ) : (
-                  <>
-                    <FaLocationArrow />
-                    Detect
-                  </>
-                )}
-              </motion.button>
-            </div>
-
-            <AnimatePresence>
-              {showLocationPicker && (
-                <motion.div
-                  initial={{ height: 0, opacity: 0 }}
-                  animate={{ height: "300px", opacity: 1 }}
-                  exit={{ height: 0, opacity: 0 }}
+                  fontSize: "13px",
+                  color: locationSet ? PINTEREST.textDark : PINTEREST.textMuted,
+                  fontWeight: locationSet ? "500" : "400",
+                }}>
+                  {locationSet 
+                    ? `${latitude?.toFixed(6)}, ${longitude?.toFixed(6)}`
+                    : "Location not set"
+                  }
+                </div>
+                
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={detectLocation}
+                  disabled={isLocating}
                   style={{
-                    overflow: "hidden",
-                    marginTop: "12px",
+                    padding: "12px",
+                    borderRadius: "8px",
+                    border: "none",
+                    background: PINTEREST.primary,
+                    color: "white",
+                    fontSize: "14px",
+                    fontWeight: "600",
+                    cursor: isLocating ? "not-allowed" : "pointer",
+                    opacity: isLocating ? 0.7 : 1,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "6px",
                   }}
                 >
-                  <div
-                    ref={mapRef}
+                  {isLocating ? (
+                    <>
+                      <div style={{
+                        width: "12px",
+                        height: "12px",
+                        border: "2px solid white",
+                        borderTopColor: "transparent",
+                        borderRadius: "50%",
+                        animation: "spin 1s linear infinite",
+                      }} />
+                      Detecting...
+                    </>
+                  ) : (
+                    <>
+                      <FaLocationArrow />
+                      Detect
+                    </>
+                  )}
+                </motion.button>
+              </div>
+
+              <AnimatePresence>
+                {showLocationPicker && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "300px", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
                     style={{
-                      width: "100%",
-                      height: "100%",
-                      borderRadius: "12px",
                       overflow: "hidden",
-                      border: `2px solid ${MODERN.primary}`,
+                      marginTop: "12px",
                     }}
-                  />
+                  >
+                    <div
+                      ref={mapRef}
+                      style={{
+                        width: "100%",
+                        height: "100%",
+                        borderRadius: "12px",
+                        overflow: "hidden",
+                        border: `2px solid ${PINTEREST.primary}`,
+                      }}
+                    />
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </motion.div>
+
+            {/* Error & Success Messages */}
+            <AnimatePresence>
+              {error && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  style={{
+                    background: PINTEREST.redLight,
+                    borderLeft: `4px solid ${PINTEREST.primary}`,
+                    padding: "12px 16px",
+                    borderRadius: "8px",
+                    marginBottom: "16px",
+                    fontSize: "14px",
+                    color: PINTEREST.textDark,
+                  }}
+                >
+                  {error}
                 </motion.div>
               )}
             </AnimatePresence>
-            
-            <div style={{
-              fontSize: "12px",
-              color: MODERN.gray,
-              marginTop: "8px",
+
+            <AnimatePresence>
+              {success && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.9 }}
+                  style={{
+                    background: "#E6F7EE",
+                    borderLeft: "4px solid #10B981",
+                    padding: "12px 16px",
+                    borderRadius: "8px",
+                    marginBottom: "16px",
+                    fontSize: "14px",
+                    color: PINTEREST.textDark,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
+                  }}
+                >
+                  <FaCheckCircle color="#10B981" />
+                  Book posted successfully! Redirecting...
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        </main>
+
+        {/* Fixed Submit Button */}
+        <div style={{
+          padding: "16px 20px",
+          background: PINTEREST.bg,
+          borderTop: `1px solid ${PINTEREST.border}`,
+        }}>
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={handleSubmit}
+            disabled={loading}
+            style={{
+              width: "100%",
+              padding: "16px",
+              borderRadius: "24px",
+              border: "none",
+              background: loading ? PINTEREST.hoverBg : PINTEREST.primary,
+              color: "white",
+              fontSize: "16px",
+              fontWeight: "700",
+              cursor: loading ? "not-allowed" : "pointer",
               display: "flex",
               alignItems: "center",
-              gap: "4px",
-            }}>
-              <FaStar size={10} />
-              Your location helps others find books nearby
-            </div>
-          </motion.div>
-
-          {/* Error Message */}
-          <AnimatePresence>
-            {error && (
-              <motion.div
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                style={{
-                  background: `${MODERN.danger}15`,
-                  borderLeft: `4px solid ${MODERN.danger}`,
-                  padding: "12px 16px",
-                  borderRadius: "8px",
-                  marginBottom: "16px",
-                  fontSize: "14px",
-                  color: MODERN.dark,
-                }}
-              >
-                {error}
-              </motion.div>
+              justifyContent: "center",
+              gap: "8px",
+            }}
+          >
+            {loading ? (
+              <>
+                <div style={{
+                  width: "16px",
+                  height: "16px",
+                  border: "2px solid white",
+                  borderTopColor: "transparent",
+                  borderRadius: "50%",
+                  animation: "spin 1s linear infinite",
+                }} />
+                Posting...
+              </>
+            ) : (
+              <>
+                <FaPaperPlane />
+                Post Your Book
+              </>
             )}
-          </AnimatePresence>
-
-          {/* Success Message */}
-          <AnimatePresence>
-            {success && (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.9 }}
-                style={{
-                  background: `${MODERN.accent}15`,
-                  borderLeft: `4px solid ${MODERN.accent}`,
-                  padding: "12px 16px",
-                  borderRadius: "8px",
-                  marginBottom: "16px",
-                  fontSize: "14px",
-                  color: MODERN.dark,
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "8px",
-                }}
-              >
-                <FaCheckCircle color={MODERN.accent} />
-                Book posted successfully! Redirecting...
-              </motion.div>
-            )}
-          </AnimatePresence>
+          </motion.button>
         </div>
       </div>
 
-      {/* Fixed Submit Button */}
-      <motion.div
-        initial={{ y: 100 }}
-        animate={{ y: 0 }}
-        style={{
-          position: "fixed",
-          bottom: 0,
-          left: 0,
-          right: 0,
-          padding: "16px",
-          background: "white",
-          boxShadow: "0 -4px 20px rgba(0,0,0,0.1)",
-          zIndex: 1000,
-        }}
-      >
-        <motion.button
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
-          onClick={handleSubmit}
-          disabled={loading}
-          style={{
-            width: "100%",
-            padding: "16px",
-            borderRadius: "12px",
-            border: "none",
-            background: loading ? MODERN.gray : MODERN.gradient,
-            color: "white",
-            fontSize: "16px",
-            fontWeight: "700",
-            cursor: loading ? "not-allowed" : "pointer",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: "8px",
-            boxShadow: loading ? "none" : "0 6px 20px rgba(59, 130, 246, 0.3)",
-          }}
-        >
-          {loading ? (
-            <>
-              <div style={{
-                width: "16px",
-                height: "16px",
-                border: "2px solid white",
-                borderTopColor: "transparent",
-                borderRadius: "50%",
-                animation: "spin 1s linear infinite",
-              }} />
-              Posting...
-            </>
-          ) : (
-            <>
-              <FaPaperPlane />
-              Post Your Book
-            </>
-          )}
-        </motion.button>
-      </motion.div>
-
       {/* Global Styles */}
-      <style>
-        {`
-          @keyframes spin {
-            to { transform: rotate(360deg); }
-          }
-          
-          .custom-map-marker {
-            transition: transform 0.2s ease;
-          }
-          
-          .custom-map-marker:hover {
-            transform: scale(1.1);
-          }
-          
-          input:focus, textarea:focus {
-            outline: none;
-            border-color: ${MODERN.primary} !important;
-            box-shadow: 0 0 0 3px ${MODERN.primary}20;
-          }
-          
-          ::-webkit-scrollbar {
-            width: 6px;
-          }
-          
-          ::-webkit-scrollbar-track {
-            background: ${MODERN.light};
-          }
-          
-          ::-webkit-scrollbar-thumb {
-            background: ${MODERN.border};
-            border-radius: 3px;
-          }
-          
-          ::-webkit-scrollbar-thumb:hover {
-            background: ${MODERN.gray};
-          }
-        `}
-      </style>
+      <style>{`
+        @keyframes spin {
+          to { transform: rotate(360deg); }
+        }
+        * { -webkit-tap-highlight-color: transparent; }
+        input:focus, textarea:focus {
+          outline: none;
+          border-color: ${PINTEREST.primary} !important;
+          box-shadow: 0 0 0 3px ${PINTEREST.redLight};
+        }
+        ::-webkit-scrollbar {
+          width: 8px;
+        }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb {
+          background: ${PINTEREST.border};
+          border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+          background: ${PINTEREST.textLight};
+        }
+        @media (max-width: 768px) {
+          aside { display: none; }
+          div[style*="marginLeft"] { margin-left: 0 !important; }
+        }
+      `}</style>
     </div>
   );
 }
