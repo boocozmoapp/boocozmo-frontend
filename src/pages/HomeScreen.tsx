@@ -1,4 +1,4 @@
-// src/pages/HomeScreen.tsx - SIMPLIFIED PINTEREST STYLE
+// src/pages/HomeScreen.tsx - COMPLETE FIXED VERSION
 import { useEffect, useState, useCallback, useMemo, useRef, memo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -21,6 +21,10 @@ import {
   FaTag,
   FaEllipsisH,
   FaHeart,
+  FaShareAlt,
+  FaBookmark as FaBookmarkSolid,
+  FaMapMarkerAlt,
+  FaCheck,
 } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 
@@ -59,6 +63,9 @@ type Offer = {
   description?: string;
   genre?: string;
   author?: string;
+  lastUpdated?: string;
+  saved?: boolean;
+  liked?: boolean;
 };
 
 type Props = {
@@ -72,6 +79,24 @@ type Props = {
 const getRandomHeight = (index: number) => {
   const heights = [260, 280, 240, 300, 220, 260, 280, 240];
   return heights[index % heights.length];
+};
+
+// Retry wrapper with timeout
+const fetchWithTimeout = async (url: string, options: RequestInit = {}, timeout = 10000) => {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+    return response;
+  } catch (error) {
+    clearTimeout(timeoutId);
+    throw error;
+  }
 };
 
 export default function HomeScreen({
@@ -88,7 +113,11 @@ export default function HomeScreen({
   const [error, setError] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [hoveredOffer, setHoveredOffer] = useState<number | null>(null);
+  const [selectedOffer, setSelectedOffer] = useState<Offer | null>(null);
   const [isLiked, setIsLiked] = useState<Record<number, boolean>>({});
+  const [isSaved, setIsSaved] = useState<Record<number, boolean>>({});
+  const [imageErrors, setImageErrors] = useState<Record<number, boolean>>({});
+  const [chatLoading, setChatLoading] = useState(false);
 
   const abortControllerRef = useRef<AbortController | null>(null);
 
@@ -100,38 +129,27 @@ export default function HomeScreen({
 
     setLoading(true);
     setError(null);
+    setImageErrors({});
 
     try {
-      // Try with authorization first
-      let response;
-      try {
-        response = await fetch(`${API_BASE}/offers`, {
-          signal: abortControllerRef.current.signal,
-          headers: {
-            "Authorization": `Bearer ${currentUser.token}`,
-            "Cache-Control": "no-cache",
-          },
-        });
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      } catch (authError) {
-        // If fails with auth, try without it
-        response = await fetch(`${API_BASE}/offers`, {
-          signal: abortControllerRef.current.signal,
-          headers: {
-            "Cache-Control": "no-cache",
-          },
-        });
-      }
+      const response = await fetchWithTimeout(`${API_BASE}/offers`, {
+        signal: abortControllerRef.current.signal,
+        headers: {
+          "Authorization": `Bearer ${currentUser.token}`,
+          "Cache-Control": "no-cache",
+        },
+      }, 15000);
 
       if (!response.ok) {
+        if (response.status === 401) {
+          throw new Error("Session expired. Please login again.");
+        }
         const errData = await response.json().catch(() => ({}));
         throw new Error(errData.error || "Failed to load offers");
       }
 
       const data = await response.json();
-      console.log("API Response:", data);
       
-      // Handle different response formats
       let rawOffers = [];
       if (Array.isArray(data)) {
         rawOffers = data;
@@ -140,22 +158,34 @@ export default function HomeScreen({
       } else if (data.data && Array.isArray(data.data)) {
         rawOffers = data.data;
       }
-      
-      console.log("Raw offers count:", rawOffers.length);
 
       // Process offers
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const processed: Offer[] = rawOffers.map((o: any, index: number) => {
-        let imageUrl = o.imageUrl || o.imageBase64 || null;
-
+        let imageUrl = null;
+        
+        if (o.imageUrl) {
+          if (o.imageUrl.startsWith('data:image/')) {
+            imageUrl = o.imageUrl;
+          } else if (o.imageUrl.startsWith('http')) {
+            imageUrl = o.imageUrl;
+          } else if (o.imageUrl.startsWith('/')) {
+            imageUrl = `${API_BASE}${o.imageUrl}`;
+          } else {
+            imageUrl = `${API_BASE}/uploads/${o.imageUrl}`;
+          }
+        }
+        
         if (!imageUrl) {
-          // Simple book covers
           const fallbacks = [
-            "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=300&h=400&fit=crop",
-            "https://images.unsplash.com/photo-1541963463532-d68292c34b19?w=300&h=380&fit=crop",
-            "https://images.unsplash.com/photo-1512820790803-83ca734da794?w=300&h-420&fit=crop",
+            "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=300&h=400&fit=crop&q=80",
+            "https://images.unsplash.com/photo-1541963463532-d68292c34b19?w=300&h=380&fit=crop&q=80",
+            "https://images.unsplash.com/photo-1512820790803-83ca734da794?w=300&h=420&fit=crop&q=80",
+            "https://images.unsplash.com/photo-1516979187457-637abb4f9353?w=300&h=400&fit=crop&q=80",
+            "https://images.unsplash.com/photo-1532012197267-da84d127e765?w=300&h=380&fit=crop&q=80",
+            "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&h=400&fit=crop&q=80",
           ];
-          imageUrl = fallbacks[Math.floor(Math.random() * fallbacks.length)];
+          imageUrl = fallbacks[index % fallbacks.length];
         }
 
         return {
@@ -172,21 +202,23 @@ export default function HomeScreen({
           longitude: o.longitude ? parseFloat(o.longitude) : null,
           ownerName: o.ownerName || o.ownerEmail?.split("@")[0] || "User",
           distance: o.distance || "Nearby",
-          description: o.description || "",
+          description: o.description || `A great book about ${o.genre || "fiction"}. Perfect condition!`,
           genre: o.genre || "Fiction",
           author: o.author || "Unknown Author",
+          lastUpdated: o.lastUpdated || o.created_at || new Date().toISOString(),
         };
       });
 
-      console.log("Processed offers:", processed.length);
       setOffers(processed);
       
-      // Initialize random likes
       const likes: Record<number, boolean> = {};
+      const saves: Record<number, boolean> = {};
       processed.forEach(offer => {
         likes[offer.id] = Math.random() > 0.5;
+        saves[offer.id] = Math.random() > 0.7;
       });
       setIsLiked(likes);
+      setIsSaved(saves);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       if (err.name !== "AbortError") {
@@ -227,7 +259,32 @@ export default function HomeScreen({
     return result;
   }, [offers, selectedFilter, searchQuery]);
 
-  const getImageSource = useCallback((offer: Offer) => offer.imageUrl || "", []);
+  const getImageSource = useCallback((offer: Offer) => {
+    if (offer.imageUrl) {
+      return offer.imageUrl;
+    }
+    
+    if (offer.imageBase64) {
+      if (offer.imageBase64.startsWith('data:image/')) {
+        return offer.imageBase64;
+      }
+      return `data:image/jpeg;base64,${offer.imageBase64}`;
+    }
+    
+    const fallbacks = [
+      "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=300&h=400&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1541963463532-d68292c34b19?w=300&h=380&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1512820790803-83ca734da794?w=300&h=420&fit=crop&q=80",
+    ];
+    return fallbacks[offer.id % fallbacks.length];
+  }, []);
+
+  const handleImageError = useCallback((offerId: number) => {
+    setImageErrors(prev => ({
+      ...prev,
+      [offerId]: true
+    }));
+  }, []);
 
   const handleLike = useCallback((e: React.MouseEvent, id: number) => {
     e.stopPropagation();
@@ -237,11 +294,19 @@ export default function HomeScreen({
     }));
   }, []);
 
+  const handleSave = useCallback((e: React.MouseEvent, id: number) => {
+    e.stopPropagation();
+    setIsSaved(prev => ({
+      ...prev,
+      [id]: !prev[id]
+    }));
+  }, []);
+
   const getTypeLabel = (type: string) => {
     switch (type) {
-      case "sell": return "Sell";
-      case "exchange": return "Trade";
-      case "buy": return "Want";
+      case "sell": return "For Sale";
+      case "exchange": return "Exchange";
+      case "buy": return "Wanted";
       default: return "";
     }
   };
@@ -266,20 +331,146 @@ export default function HomeScreen({
 
   const formatPrice = (price: number | null) => price ? `$${price.toFixed(2)}` : "Free";
 
+  const formatTimeAgo = (dateString: string): string => {
+    const diff = Date.now() - new Date(dateString).getTime();
+    const minutes = Math.floor(diff / 60000);
+    if (minutes < 1) return "Just now";
+    if (minutes < 60) return `${minutes}m ago`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours}h ago`;
+    return `${Math.floor(hours / 24)}d ago`;
+  };
+
+  // ==================== CHAT FUNCTIONALITY ====================
+  const handleChat = useCallback(async (offer: Offer) => {
+    if (offer.ownerEmail === currentUser.email) {
+      alert("This is your own listing!");
+      return;
+    }
+
+    setChatLoading(true);
+    
+    try {
+      // Step 1: Get all chats for current user
+      const chatsResponse = await fetchWithTimeout(`${API_BASE}/chats`, {
+        headers: {
+          "Authorization": `Bearer ${currentUser.token}`,
+          "Content-Type": "application/json",
+        },
+      }, 8000);
+
+      if (!chatsResponse.ok) {
+        throw new Error("Failed to fetch chats");
+      }
+
+      const chats = await chatsResponse.json();
+      
+      // Find existing chat with this user for this offer
+      let existingChat = null;
+      if (Array.isArray(chats)) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        existingChat = chats.find((chat: any) => 
+          ((chat.user1 === currentUser.email && chat.user2 === offer.ownerEmail) ||
+           (chat.user1 === offer.ownerEmail && chat.user2 === currentUser.email)) &&
+          chat.offer_id === offer.id
+        );
+      }
+
+      let chatId = existingChat?.id;
+
+      // Step 2: Create new chat if none exists
+      if (!chatId) {
+        const messageResponse = await fetchWithTimeout(`${API_BASE}/send-message`, {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${currentUser.token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            receiver: offer.ownerEmail,
+            content: `Hi! I'm interested in your book "${offer.bookTitle}"`,
+            offer_id: offer.id,
+            useExistingChat: false,
+          }),
+        }, 10000);
+
+        if (!messageResponse.ok) {
+          const errData = await messageResponse.json().catch(() => ({}));
+          throw new Error(errData.error || "Failed to start chat");
+        }
+
+        const result = await messageResponse.json();
+        chatId = result.message?.chat_id || result.chat_id;
+      }
+
+      if (chatId) {
+        // Navigate to chat screen with proper state
+        navigate(`/chat/${chatId}`, {
+          state: {
+            chat: {
+              id: chatId,
+              user1: currentUser.email,
+              user2: offer.ownerEmail,
+              other_user_name: offer.ownerName || offer.ownerEmail.split("@")[0],
+              offer_title: offer.bookTitle,
+              offer_id: offer.id,
+              token: currentUser.token,
+            },
+          },
+        });
+        
+        // Close offer detail modal
+        setSelectedOffer(null);
+      }
+    } catch (error) {
+      console.error("Chat error:", error);
+      alert("Failed to start chat. Please try again.");
+    } finally {
+      setChatLoading(false);
+    }
+  }, [currentUser.email, currentUser.token, navigate]);
+
+  const handleCardClick = useCallback((offer: Offer) => {
+    setSelectedOffer(offer);
+  }, []);
+
+  const handleCloseDetail = useCallback(() => {
+    setSelectedOffer(null);
+  }, []);
+
   const filterButtons = [
     { id: "all" as const, label: "All", icon: <FaFilter size={12} /> },
     { id: "sell" as const, label: "For Sale", icon: <FaDollarSign size={12} /> },
-    { id: "exchange" as const, label: "Trade", icon: <FaExchangeAlt size={12} /> },
+    { id: "exchange" as const, label: "Exchange", icon: <FaExchangeAlt size={12} /> },
     { id: "buy" as const, label: "Wanted", icon: <FaTag size={12} /> },
   ];
 
+  const navItems = [
+    { icon: FaHome, label: "Home", active: true, onClick: () => navigate("/") },
+    { icon: FaCompass, label: "Discover", onClick: () => {} },
+    { icon: FaBookOpen, label: "My Library", onClick: () => navigate("/my-library") },
+    { icon: FaBookmark, label: "Saved", onClick: () => {} },
+    { icon: FaUsers, label: "Following", onClick: () => {} },
+    { icon: FaMapMarkedAlt, label: "Map", onClick: onMapPress },
+    { icon: FaComments, label: "Messages", onClick: () => navigate("/chat") },
+    { icon: FaBell, label: "Notifications", onClick: () => {} },
+    { icon: FaStar, label: "Top Picks", onClick: () => {} },
+  ];
+
+  // Pinterest Card Component
   const PinterestCard = useMemo(
     () =>
       memo(({ offer, index }: { offer: Offer; index: number }) => {
-        const img = getImageSource(offer);
+        const imgSrc = getImageSource(offer);
         const hovered = hoveredOffer === offer.id;
         const liked = isLiked[offer.id] || false;
+        const saved = isSaved[offer.id] || false;
         const cardHeight = getRandomHeight(index);
+        const hasImageError = imageErrors[offer.id];
+        
+        const displaySrc = hasImageError 
+          ? "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=300&h=400&fit=crop&q=80"
+          : imgSrc;
 
         return (
           <motion.div
@@ -295,6 +486,7 @@ export default function HomeScreen({
             }}
             onMouseEnter={() => setHoveredOffer(offer.id)}
             onMouseLeave={() => setHoveredOffer(null)}
+            onClick={() => handleCardClick(offer)}
             style={{
               position: "relative",
               cursor: "pointer",
@@ -318,8 +510,9 @@ export default function HomeScreen({
               background: PINTEREST.grayLight 
             }}>
               <img
-                src={img}
+                src={displaySrc}
                 alt={offer.bookTitle}
+                onError={() => handleImageError(offer.id)}
                 style={{
                   width: "100%",
                   height: "100%",
@@ -328,7 +521,7 @@ export default function HomeScreen({
                 loading="lazy"
               />
 
-              {/* Simple Type Badge */}
+              {/* Type Badge */}
               <div style={{
                 position: "absolute",
                 top: "8px",
@@ -356,7 +549,7 @@ export default function HomeScreen({
                 style={{
                   position: "absolute",
                   top: "8px",
-                  right: "8px",
+                  right: "36px",
                   width: "28px",
                   height: "28px",
                   borderRadius: "50%",
@@ -373,6 +566,33 @@ export default function HomeScreen({
                 <FaHeart 
                   color={liked ? PINTEREST.primary : PINTEREST.textLight}
                   fill={liked ? PINTEREST.primary : "none"}
+                />
+              </motion.button>
+
+              {/* Save Button */}
+              <motion.button
+                onClick={(e) => handleSave(e, offer.id)}
+                whileTap={{ scale: 0.9 }}
+                style={{
+                  position: "absolute",
+                  top: "8px",
+                  right: "8px",
+                  width: "28px",
+                  height: "28px",
+                  borderRadius: "50%",
+                  background: "rgba(255, 255, 255, 0.9)",
+                  border: "none",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  cursor: "pointer",
+                  zIndex: 2,
+                  fontSize: "12px",
+                }}
+              >
+                <FaBookmark 
+                  color={saved ? PINTEREST.primary : PINTEREST.textLight}
+                  fill={saved ? PINTEREST.primary : "none"}
                 />
               </motion.button>
 
@@ -482,20 +702,8 @@ export default function HomeScreen({
           </motion.div>
         );
       }),
-    [getImageSource, hoveredOffer, isLiked, handleLike]
+    [getImageSource, hoveredOffer, isLiked, isSaved, handleLike, handleSave, handleImageError, imageErrors, handleCardClick]
   );
-
-  const navItems = [
-    { icon: FaHome, label: "Home", active: true, onClick: () => navigate("/") },
-    { icon: FaCompass, label: "Discover", onClick: () => {} },
-    { icon: FaBookOpen, label: "My Books", onClick: () => navigate("/profile") },
-    { icon: FaBookmark, label: "Saved", onClick: () => {} },
-    { icon: FaUsers, label: "Following", onClick: () => {} },
-    { icon: FaMapMarkedAlt, label: "Map", onClick: onMapPress },
-    { icon: FaComments, label: "Messages", onClick: () => navigate("/chat") },
-    { icon: FaBell, label: "Notifications", onClick: () => {} },
-    { icon: FaStar, label: "Top Picks", onClick: () => {} },
-  ];
 
   return (
     <div style={{ 
@@ -827,7 +1035,7 @@ export default function HomeScreen({
           gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
           gap: "12px",
           alignContent: "start",
-          minHeight: 0, // Important for scrollable container
+          minHeight: 0,
         }}>
           {loading ? (
             Array.from({ length: 6 }).map((_, i) => (
@@ -955,6 +1163,387 @@ export default function HomeScreen({
         </main>
       </div>
 
+      {/* Selected Offer Detail Modal - PERFECTLY CENTERED */}
+<AnimatePresence>
+  {selectedOffer && (
+    <>
+      {/* Overlay */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        onClick={handleCloseDetail}
+        style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: "rgba(0, 0, 0, 0.7)",
+          backdropFilter: "blur(4px)",
+          zIndex: 2000,
+        }}
+      />
+      
+      {/* CENTERING WRAPPER */}
+      <div style={{
+        position: "fixed",
+        top: 0,
+        left: 0,
+        width: "100%",
+        height: "100%",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        zIndex: 2001,
+        pointerEvents: "none",
+      }}>
+        {/* Detail Modal */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: 0.95 }}
+          transition={{ type: "spring", damping: 25, stiffness: 300 }}
+          style={{
+            width: "calc(100% - 40px)",
+            maxWidth: "400px",
+            maxHeight: "85vh",
+            background: "rgba(255, 255, 255, 0.98)",
+            backdropFilter: "blur(20px)",
+            borderRadius: "20px",
+            padding: "20px",
+            boxShadow: "0 32px 80px rgba(0,0,0,0.3)",
+            overflowY: "auto",
+            border: `1px solid ${PINTEREST.border}`,
+            boxSizing: "border-box",
+            pointerEvents: "auto",
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Close button */}
+          <motion.button
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+            onClick={handleCloseDetail}
+            style={{
+              position: "absolute",
+              top: "16px",
+              right: "16px",
+              background: PINTEREST.primary,
+              border: "none",
+              color: "white",
+              width: "40px",
+              height: "40px",
+              borderRadius: "50%",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              cursor: "pointer",
+              fontSize: "18px",
+              zIndex: 10,
+              boxShadow: "0 4px 16px rgba(0,0,0,0.2)",
+            }}
+          >
+            <FaTimes />
+          </motion.button>
+
+          {/* Content - KEEP ALL YOUR EXISTING CONTENT HERE */}
+          <div style={{ marginBottom: "20px" }}>
+            {/* Book Image */}
+            <div style={{
+              width: "100%",
+              height: "180px",
+              borderRadius: "12px",
+              overflow: "hidden",
+              marginBottom: "16px",
+              background: PINTEREST.grayLight,
+            }}>
+              <img
+                src={getImageSource(selectedOffer)}
+                alt={selectedOffer.bookTitle}
+                onError={() => handleImageError(selectedOffer.id)}
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  objectFit: "cover",
+                }}
+              />
+            </div>
+
+            {/* Title and Author */}
+            <h3 style={{ 
+              fontSize: "18px", 
+              fontWeight: "700", 
+              margin: "0 0 6px",
+              color: PINTEREST.textDark,
+              lineHeight: 1.3,
+              paddingRight: "40px",
+            }}>
+              {selectedOffer.bookTitle}
+            </h3>
+            <p style={{ 
+              fontSize: "14px", 
+              color: PINTEREST.textLight, 
+              margin: "0 0 12px",
+              fontStyle: "italic",
+            }}>
+              {selectedOffer.author ? `by ${selectedOffer.author}` : "Unknown Author"}
+            </p>
+
+            {/* Metadata */}
+            <div style={{ 
+              display: "flex", 
+              alignItems: "center", 
+              gap: "8px",
+              fontSize: "12px",
+              color: PINTEREST.textLight,
+              marginBottom: "16px",
+              flexWrap: "wrap",
+            }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+                <FaMapMarkerAlt size={11} /> 
+                <span>{selectedOffer.distance ? `${selectedOffer.distance} away` : "Nearby"}</span>
+              </div>
+              <span style={{ opacity: 0.3 }}>•</span>
+              <div>
+                {selectedOffer.ownerName || selectedOffer.ownerEmail.split("@")[0]}
+              </div>
+              {selectedOffer.lastUpdated && (
+                <>
+                  <span style={{ opacity: 0.3 }}>•</span>
+                  <div>
+                    {formatTimeAgo(selectedOffer.lastUpdated)}
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Type Badge */}
+            <div
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "6px",
+                padding: "6px 12px",
+                borderRadius: "16px",
+                background: `${getTypeColor(selectedOffer.type)}15`,
+                color: getTypeColor(selectedOffer.type),
+                fontSize: "11px",
+                fontWeight: "600",
+                marginBottom: "16px",
+                border: `1px solid ${getTypeColor(selectedOffer.type)}30`,
+              }}
+            >
+              {getTypeIcon(selectedOffer.type)}
+              {getTypeLabel(selectedOffer.type)}
+            </div>
+          </div>
+
+          {/* Description */}
+          {selectedOffer.description && (
+            <div style={{
+              marginBottom: "20px",
+              paddingBottom: "20px",
+              borderBottom: `1px solid ${PINTEREST.border}`,
+              maxHeight: "100px",
+              overflowY: "auto",
+            }}>
+              <h4 style={{ 
+                fontSize: "13px", 
+                fontWeight: "600", 
+                margin: "0 0 8px",
+                color: PINTEREST.textDark,
+              }}>
+                Description
+              </h4>
+              <p style={{
+                fontSize: "13px",
+                color: PINTEREST.textLight,
+                lineHeight: 1.5,
+                margin: 0,
+              }}>
+                {selectedOffer.description}
+              </p>
+            </div>
+          )}
+
+          {/* Price/Exchange Info */}
+          <div style={{ 
+            marginBottom: "24px",
+            padding: "16px",
+            background: PINTEREST.grayLight,
+            borderRadius: "12px",
+            border: `1px solid ${PINTEREST.border}`,
+          }}>
+            <div style={{ fontSize: "11px", color: PINTEREST.textLight, marginBottom: "6px" }}>
+              {selectedOffer.type === "sell" ? "Price" : 
+               selectedOffer.type === "buy" ? "Looking for" : "Exchange for"}
+            </div>
+            <div style={{ 
+              fontSize: "22px", 
+              fontWeight: "800", 
+              color: PINTEREST.primary,
+              display: "flex",
+              alignItems: "center",
+              gap: "6px",
+              marginBottom: "8px",
+            }}>
+              {selectedOffer.type === "sell" && selectedOffer.price ? (
+                <>
+                  <FaDollarSign size={18} /> {formatPrice(selectedOffer.price)}
+                </>
+              ) : selectedOffer.type === "exchange" && selectedOffer.exchangeBook ? (
+                <>
+                  <FaExchangeAlt size={18} /> Exchange
+                </>
+              ) : (
+                <>
+                  <FaTag size={18} /> Wanted
+                </>
+              )}
+            </div>
+            
+            {selectedOffer.exchangeBook && (
+              <div style={{ 
+                fontSize: "13px", 
+                color: PINTEREST.textDark, 
+                fontWeight: "500",
+                padding: "8px 12px",
+                background: "rgba(255,255,255,0.7)",
+                borderRadius: "8px",
+                borderLeft: `3px solid #00A86B`,
+              }}>
+                For: <span style={{ fontWeight: "600" }}>{selectedOffer.exchangeBook}</span>
+              </div>
+            )}
+          </div>
+
+          {/* Chat Button */}
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={() => handleChat(selectedOffer)}
+            disabled={chatLoading || selectedOffer.ownerEmail === currentUser.email}
+            style={{
+              width: "100%",
+              background: selectedOffer.ownerEmail === currentUser.email ? PINTEREST.textLight : PINTEREST.primary,
+              color: "white",
+              border: "none",
+              padding: "14px",
+              borderRadius: "12px",
+              fontSize: "14px",
+              fontWeight: "700",
+              cursor: selectedOffer.ownerEmail === currentUser.email ? "not-allowed" : (chatLoading ? "wait" : "pointer"),
+              marginBottom: "16px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: "8px",
+              opacity: chatLoading ? 0.8 : 1,
+            }}
+          >
+            {chatLoading ? (
+              <>
+                <motion.div
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                  style={{
+                    width: "16px",
+                    height: "16px",
+                    border: `2px solid rgba(255,255,255,0.3)`,
+                    borderTopColor: "white",
+                    borderRadius: "50%",
+                  }}
+                />
+                Starting Chat...
+              </>
+            ) : selectedOffer.ownerEmail === currentUser.email ? (
+              <>
+                <FaCheck size={14} />
+                This is Your Book
+              </>
+            ) : (
+              <>
+                <FaComments size={14} />
+                Contact Owner
+              </>
+            )}
+          </motion.button>
+
+          {/* Action Buttons */}
+          <div style={{
+            display: "flex",
+            gap: "8px",
+            paddingTop: "16px",
+            borderTop: `1px solid ${PINTEREST.border}`,
+          }}>
+            {[
+              { 
+                icon: FaHeart, 
+                label: "Like", 
+                onClick: (e: React.MouseEvent) => handleLike(e, selectedOffer.id), 
+                color: isLiked[selectedOffer.id] ? PINTEREST.primary : PINTEREST.textLight,
+                disabled: false,
+              },
+              { 
+                icon: FaBookmarkSolid, 
+                label: "Save", 
+                onClick: (e: React.MouseEvent) => handleSave(e, selectedOffer.id), 
+                color: isSaved[selectedOffer.id] ? PINTEREST.primary : PINTEREST.textLight,
+                disabled: false,
+              },
+              { 
+                icon: FaShareAlt, 
+                label: "Share", 
+                onClick: (e: React.MouseEvent) => {
+                  e.stopPropagation();
+                  if (navigator.share) {
+                    navigator.share({
+                      title: selectedOffer.bookTitle,
+                      text: `Check out "${selectedOffer.bookTitle}" by ${selectedOffer.author} on Boocozmo`,
+                      url: `${window.location.origin}/offer/${selectedOffer.id}`,
+                    });
+                  }
+                }, 
+                color: PINTEREST.textLight,
+                disabled: false,
+              },
+            ].map((action) => (
+              <motion.button
+                key={action.label}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={action.onClick}
+                disabled={action.disabled}
+                style={{
+                  flex: 1,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: "6px",
+                  padding: "10px",
+                  borderRadius: "10px",
+                  border: "none",
+                  background: `${action.color}10`,
+                  color: action.color,
+                  fontSize: "12px",
+                  fontWeight: "600",
+                  cursor: action.disabled ? "not-allowed" : "pointer",
+                  transition: "all 0.2s ease",
+                  minHeight: "40px",
+                  opacity: action.disabled ? 0.5 : 1,
+                }}
+              >
+                <action.icon size={12} />
+                {action.label}
+              </motion.button>
+            ))}
+          </div>
+        </motion.div>
+      </div>
+    </>
+  )}
+</AnimatePresence>
       <style>{`
         @keyframes pulse {
           0%, 100% { opacity: 1; }
@@ -985,13 +1574,21 @@ export default function HomeScreen({
           border-color: ${PINTEREST.primary} !important;
         }
         
-        /* Hide scrollbar for filter tabs */
         div::-webkit-scrollbar {
           display: none;
         }
         
         * {
           -webkit-tap-highlight-color: transparent;
+        }
+        
+        img {
+          transition: opacity 0.3s ease;
+        }
+        
+        button:disabled {
+          opacity: 0.5;
+          cursor: not-allowed !important;
         }
       `}</style>
     </div>

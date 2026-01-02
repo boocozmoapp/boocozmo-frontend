@@ -1,4 +1,4 @@
-// src/App.tsx - COMPLETE FIXED VERSION (JWT Token Support + No TypeScript Errors)
+// src/App.tsx - COMPLETE FIXED VERSION with MyLibraryScreen
 import { useEffect, useState } from "react";
 import { BrowserRouter, Routes, Route, useNavigate } from "react-router-dom";
 import SplashScreen from "./pages/SplashScreen";
@@ -11,6 +11,7 @@ import MapScreen from "./pages/MapScreen";
 import ChatScreen from "./pages/ChatScreen";
 import SingleChat from "./pages/SingleChat";
 import OfferDetailScreen from "./pages/OfferDetailScreen";
+import MyLibraryScreen from "./pages/MyLibraryScreen"; // ADD THIS IMPORT
 import "leaflet/dist/leaflet.css";
 
 const API_BASE = "https://boocozmo-api.onrender.com";
@@ -90,7 +91,11 @@ function AppContent() {
     navigate("/login");
   };
 
-  const goTo = (path: string) => () => navigate(path);
+  const goTo = (path: string) => {
+  return () => {
+    navigate(path);
+  };
+};
 
   if (isLoadingUser) {
     return (
@@ -224,7 +229,11 @@ function AppContent() {
         path="/map"
         element={
           user ? (
-            <MapScreen onBack={goTo("/")} currentUser={user} />
+            <MapScreen currentUser={{
+              email: "",
+              name: "",
+              token: ""
+            }}/>
           ) : (
             <LoginScreen
               onLoginSuccess={handleAuthSuccess}
@@ -261,6 +270,24 @@ function AppContent() {
           )
         }
       />
+
+      {/* ADD THIS NEW ROUTE - My Library Screen */}
+      <Route
+        path="/my-library"
+        element={
+          user ? (
+            <MyLibraryScreen
+              currentUser={user}
+              onBack={goTo("/")}
+            />
+          ) : (
+            <LoginScreen
+              onLoginSuccess={handleAuthSuccess}
+              onGoToSignup={goTo("/signup")}
+            />
+          )
+        }
+      />
     </Routes>
   );
 }
@@ -275,9 +302,7 @@ export default function App() {
 
   return (
     <BrowserRouter>
-      {showSplash ? <SplashScreen onFinish={function (): void {
-        throw new Error("Function not implemented.");
-      } } /> : <AppContent />}
+      {showSplash ? <SplashScreen onFinish={() => setShowSplash(false)} /> : <AppContent />}
     </BrowserRouter>
   );
 }
