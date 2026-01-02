@@ -1,10 +1,44 @@
-// src/pages/SingleChat.tsx - FIXED WITH INVISIBLE POLLING
+// src/pages/SingleChat.tsx - PINTEREST-STYLE REDESIGN (Matching HomeScreen & ChatScreen Theme)
 import { useState, useEffect, useRef, useCallback } from "react";
 import { motion } from "framer-motion";
-import { FaArrowLeft, FaPaperPlane } from "react-icons/fa";
+import { 
+  FaArrowLeft, 
+  FaPaperPlane, 
+  FaEllipsisH, 
+  FaTimes,
+  FaHome,
+  FaMapMarkedAlt,
+  FaPlus,
+  FaComments,
+  FaBell,
+  FaBookmark,
+  FaCompass,
+  FaBook,
+  FaStar,
+  FaCog,
+  FaUsers
+} from "react-icons/fa";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 
 const API_BASE = "https://boocozmo-api.onrender.com";
+
+// Exact Pinterest colors from previous screens
+const PINTEREST = {
+  primary: "#E60023",
+  dark: "#A3081A",
+  light: "#FF4D6D",
+  bg: "#FFFFFF",
+  sidebarBg: "#FFFFFF",
+  textDark: "#000000",
+  textLight: "#5F5F5F",
+  textMuted: "#8E8E8E",
+  border: "#E1E1E1",
+  hoverBg: "#F5F5F5",
+  icon: "#767676",
+  redLight: "#FFE2E6",
+  grayLight: "#F7F7F7",
+  overlay: "rgba(0, 0, 0, 0.7)"
+};
 
 type Message = {
   id: number;
@@ -32,9 +66,17 @@ type Chat = {
 
 type SingleChatProps = {
   currentUser: { email: string; name: string; id: string };
+  onProfilePress?: () => void;
+  onMapPress?: () => void;
+  onAddPress?: () => void;
 };
 
-export default function SingleChat({ currentUser }: SingleChatProps) {
+export default function SingleChat({ 
+  currentUser,
+  onProfilePress,
+  onMapPress,
+  onAddPress 
+}: SingleChatProps) {
   const { chatId } = useParams<{ chatId: string }>();
   const navigate = useNavigate();
   const location = useLocation();
@@ -43,12 +85,12 @@ export default function SingleChat({ currentUser }: SingleChatProps) {
   const [newMessage, setNewMessage] = useState("");
   const [loading, setLoading] = useState(true);
   const [isPolling, setIsPolling] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const lastMessageIdRef = useRef<number | null>(null);
   const pollTimeoutRef = useRef<number | null>(null);
   const isMountedRef = useRef(true);
 
-  // Get the latest message ID for efficient polling
   useEffect(() => {
     if (messages.length > 0) {
       const latestId = Math.max(...messages.map(m => m.id));
@@ -56,7 +98,6 @@ export default function SingleChat({ currentUser }: SingleChatProps) {
     }
   }, [messages]);
 
-  // Cleanup on unmount
   useEffect(() => {
     return () => {
       isMountedRef.current = false;
@@ -69,18 +110,14 @@ export default function SingleChat({ currentUser }: SingleChatProps) {
   const fetchChatAndMessages = useCallback(async (silent = false) => {
     if (!chatId || !isMountedRef.current) return;
 
-    if (!silent) {
-      setIsPolling(true);
-    }
+    if (!silent) setIsPolling(true);
 
     try {
-      // 1. Fetch chat details
       const chatResp = await fetch(`${API_BASE}/chats/${chatId}`);
       
       if (chatResp.ok) {
         const chatData = await chatResp.json();
         
-        // Update chat data silently
         if (chatData.chat && isMountedRef.current) {
           setChat(prevChat => ({
             ...prevChat,
@@ -88,13 +125,11 @@ export default function SingleChat({ currentUser }: SingleChatProps) {
           }));
         }
 
-        // Get messages - either from response or separate endpoint
         let newMessages: Message[] = [];
         
         if (chatData.messages) {
           newMessages = chatData.messages;
         } else {
-          // Fetch messages with last message ID for efficient polling
           const query = lastMessageIdRef.current 
             ? `chat_id=${chatId}&since_id=${lastMessageIdRef.current}`
             : `chat_id=${chatId}&limit=100`;
@@ -106,21 +141,17 @@ export default function SingleChat({ currentUser }: SingleChatProps) {
           }
         }
 
-        // Only update if we got new messages
         if (newMessages.length > 0 && isMountedRef.current) {
           setMessages(prev => {
-            // Filter out duplicates and merge
             const existingIds = new Set(prev.map(m => m.id));
             const trulyNew = newMessages.filter(m => !existingIds.has(m.id));
             
             if (trulyNew.length === 0) return prev;
             
-            // Merge and sort by ID
             const merged = [...prev, ...trulyNew].sort((a, b) => a.id - b.id);
             return merged;
           });
         }
-
       }
     } catch (err) {
       console.error("Error in background fetch:", err);
@@ -132,7 +163,6 @@ export default function SingleChat({ currentUser }: SingleChatProps) {
     }
   }, [chatId]);
 
-  // Initial load
   useEffect(() => {
     if (!chatId) {
       navigate("/chat");
@@ -143,7 +173,6 @@ export default function SingleChat({ currentUser }: SingleChatProps) {
       setLoading(true);
       await fetchChatAndMessages(false);
       
-      // Check location state for chat data if API fails
       const state = location.state as { chat?: Chat };
       if (!chat && state?.chat && isMountedRef.current) {
         setChat(state.chat);
@@ -152,11 +181,9 @@ export default function SingleChat({ currentUser }: SingleChatProps) {
 
     initialLoad();
 
-    // Setup smart polling with backoff
     const pollWithBackoff = (attempt = 0) => {
       if (!isMountedRef.current) return;
 
-      // Calculate delay: start with 3s, max at 10s
       const baseDelay = 3000;
       const maxDelay = 10000;
       const backoffFactor = Math.min(1.2, 1 + (attempt * 0.1));
@@ -165,31 +192,24 @@ export default function SingleChat({ currentUser }: SingleChatProps) {
       pollTimeoutRef.current = setTimeout(async () => {
         try {
           await fetchChatAndMessages(true);
-          
-          // Reset backoff on successful fetch
           pollWithBackoff(0);
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         } catch (err) {
-          // Increase backoff on error
           pollWithBackoff(attempt + 1);
         }
       }, delay);
     };
 
-    // Start polling after initial load
     const initialPollDelay = setTimeout(() => {
       pollWithBackoff(0);
     }, 3000);
 
     return () => {
-      if (pollTimeoutRef.current) {
-        clearTimeout(pollTimeoutRef.current);
-      }
+      if (pollTimeoutRef.current) clearTimeout(pollTimeoutRef.current);
       clearTimeout(initialPollDelay);
     };
   }, [chatId, navigate, location.state, fetchChatAndMessages, chat]);
 
-  // Scroll to bottom when new messages arrive
   useEffect(() => {
     if (messagesEndRef.current && !isPolling) {
       const scrollContainer = messagesEndRef.current.parentElement?.parentElement;
@@ -198,9 +218,7 @@ export default function SingleChat({ currentUser }: SingleChatProps) {
           scrollContainer.scrollHeight - scrollContainer.scrollTop - scrollContainer.clientHeight < 100;
         
         if (isNearBottom) {
-          requestAnimationFrame(() => {
-            messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-          });
+          messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
         }
       }
     }
@@ -209,13 +227,8 @@ export default function SingleChat({ currentUser }: SingleChatProps) {
   const handleSend = async () => {
     if (!newMessage.trim() || !chatId) return;
 
-    // Get the other user's email
     const otherUserEmail = chat?.user1 === currentUser.email ? chat?.user2 : chat?.user1;
-    
-    if (!otherUserEmail) {
-      console.error("Cannot determine other user");
-      return;
-    }
+    if (!otherUserEmail) return;
 
     const messageToSend = {
       sender: currentUser.email,
@@ -226,9 +239,8 @@ export default function SingleChat({ currentUser }: SingleChatProps) {
       useExistingChat: true
     };
 
-    // Optimistic update
     const optimisticMessage: Message = {
-      id: Date.now(), // Temporary ID
+      id: Date.now(),
       senderEmail: currentUser.email,
       content: newMessage.trim(),
       created_at: new Date().toISOString(),
@@ -249,9 +261,6 @@ export default function SingleChat({ currentUser }: SingleChatProps) {
 
       if (resp.ok) {
         const data = await resp.json();
-        console.log("Message sent successfully");
-        
-        // Replace optimistic message with real one
         if (data.message) {
           setMessages(prev => 
             prev.map(msg => 
@@ -259,16 +268,10 @@ export default function SingleChat({ currentUser }: SingleChatProps) {
             )
           );
         }
-        
-        // Trigger immediate poll for quick sync
         setTimeout(() => fetchChatAndMessages(true), 500);
-      } else {
-        // Keep optimistic message but mark as failed?
-        console.error("Failed to send message");
       }
     } catch (err) {
       console.error("Error sending message:", err);
-      // Keep optimistic message for now
     }
   };
 
@@ -282,261 +285,434 @@ export default function SingleChat({ currentUser }: SingleChatProps) {
   };
 
   const getOtherUserName = () => {
-    if (chat?.other_user_name) return chat.other_user_name;
-    if (chat) {
-      return chat.user1 === currentUser.email ? chat.user2 : chat.user1;
-    }
-    return "Book Exchange";
+    return chat?.other_user_name || chat?.user1 === currentUser.email ? chat?.user2 : chat?.user1 || "Book Exchange";
   };
 
   const getOfferTitle = () => {
     return chat?.offer_title || chat?.title || "Book conversation";
   };
 
+  // Sidebar items - same as other screens
+  const navItems = [
+    { icon: FaHome, label: "Home", onClick: () => navigate("/") },
+    { icon: FaCompass, label: "Discover", onClick: () => {} },
+    { icon: FaBook, label: "My Books", onClick: () => navigate("/profile") },
+    { icon: FaBookmark, label: "Saved", onClick: () => {} },
+    { icon: FaUsers, label: "Following", onClick: () => {} },
+    { icon: FaMapMarkedAlt, label: "Map", onClick: onMapPress },
+    { icon: FaComments, label: "Messages", active: true, onClick: () => navigate("/chat") },
+    { icon: FaBell, label: "Notifications", onClick: () => {} },
+    { icon: FaStar, label: "Top Picks", onClick: () => {} },
+  ];
+
   return (
-    <div style={{ 
-      height: "100vh", 
-      display: "flex", 
-      flexDirection: "column", 
-      background: "#f5f0e6",
-      fontFamily: "'Georgia', 'Times New Roman', serif" 
+    <div style={{
+      height: "100vh",
+      width: "100vw",
+      background: PINTEREST.bg,
+      display: "flex",
+      fontFamily: "'Inter', -apple-system, sans-serif",
+      overflow: "hidden",
     }}>
-      {/* Chat Header with subtle polling indicator */}
-      <header style={{
-        background: "white",
-        padding: "16px",
-        borderBottom: "1px solid #e0e0e0",
-        display: "flex",
-        alignItems: "center",
-        gap: "16px",
-        flexShrink: 0,
-        boxShadow: "0 2px 8px rgba(205, 127, 50, 0.1)",
-        position: "relative",
-      }}>
-        {isPolling && (
-          <div style={{
-            position: "absolute",
-            top: 0,
-            left: 0,
-            width: "100%",
-            height: "2px",
-            background: "linear-gradient(90deg, transparent, #CD7F32, transparent)",
-            animation: "shimmer 2s infinite",
-          }} />
-        )}
-        
-        <button
-          onClick={() => navigate("/chat")}
+      {/* Sidebar - Identical to Home & Chat screens */}
+      <motion.aside
+        initial={{ x: -300 }}
+        animate={{ x: sidebarOpen ? 0 : -300 }}
+        transition={{ type: "spring", damping: 25 }}
+        style={{
+          width: "240px",
+          background: PINTEREST.sidebarBg,
+          borderRight: `1px solid ${PINTEREST.border}`,
+          position: "fixed",
+          top: 0,
+          left: 0,
+          bottom: 0,
+          zIndex: 100,
+          padding: "20px 16px",
+          overflowY: "auto",
+          display: "flex",
+          flexDirection: "column",
+        }}
+      >
+        <div style={{ marginBottom: "24px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            <div style={{
+              width: "32px",
+              height: "32px",
+              borderRadius: "50%",
+              background: PINTEREST.primary,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: "white",
+              fontWeight: "700",
+              fontSize: "14px",
+            }}>
+              B
+            </div>
+            <span style={{
+              fontSize: "20px",
+              fontWeight: "700",
+              color: PINTEREST.primary,
+            }}>
+              Boocozmo
+            </span>
+          </div>
+        </div>
+
+        <motion.div
+          whileHover={{ scale: 1.02 }}
+          onClick={onProfilePress}
           style={{
-            background: "none",
-            border: "none",
-            fontSize: "20px",
-            color: "#CD7F32",
+            display: "flex",
+            alignItems: "center",
+            gap: "12px",
+            padding: "12px",
+            borderRadius: "12px",
+            background: PINTEREST.hoverBg,
+            marginBottom: "24px",
             cursor: "pointer",
-            padding: "4px",
-            zIndex: 1,
           }}
         >
-          <FaArrowLeft />
-        </button>
-
-        <div style={{ flex: 1, zIndex: 1 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-            <h1 style={{ 
-              fontSize: "18px", 
-              fontWeight: "bold", 
-              margin: 0, 
-              color: "#1a1a1a",
-              fontFamily: "'Playfair Display', serif" 
-            }}>
-              {getOtherUserName()}
-            </h1>
-            {isPolling && (
-              <div style={{
-                width: "8px",
-                height: "8px",
-                borderRadius: "50%",
-                background: "#4CAF50",
-                animation: "pulse 1.5s infinite",
-              }} />
-            )}
-          </div>
-          <p style={{ 
-            fontSize: "14px", 
-            color: "#666", 
-            margin: "2px 0 0",
-            fontFamily: "'Georgia', serif" 
-          }}>
-            {getOfferTitle()}
-          </p>
-        </div>
-      </header>
-
-      {/* Messages Container */}
-      <div style={{
-        flex: 1,
-        overflowY: "auto",
-        padding: "20px",
-        background: "#f5f0e6",
-        position: "relative",
-      }}>
-        {loading ? (
-          <div style={{ 
-            textAlign: "center", 
-            color: "#666", 
-            padding: "40px",
-            fontFamily: "'Georgia', serif" 
-          }}>
-            <div style={{
-              width: "40px",
-              height: "40px",
-              border: `3px solid #CD7F32`,
-              borderTopColor: "transparent",
-              borderRadius: "50%",
-              margin: "0 auto 16px",
-              animation: "spin 1s linear infinite",
-            }} />
-            Loading chat...
-          </div>
-        ) : messages.length === 0 ? (
-          <div style={{ 
-            textAlign: "center", 
-            color: "#666", 
-            padding: "40px",
-            fontFamily: "'Georgia', serif" 
-          }}>
-            <p style={{ marginBottom: "16px", fontSize: "16px" }}>No messages yet. Start the conversation!</p>
-            <p style={{ fontSize: "14px", color: "#888" }}>
-              Discuss: {getOfferTitle()}
-            </p>
-          </div>
-        ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-            {messages.map((msg) => {
-              const isMe = msg.senderEmail === currentUser.email;
-              const isOptimistic = msg.id > 10000000000; // Temporary optimistic IDs
-              
-              return (
-                <motion.div
-                  key={msg.id}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: isOptimistic ? 0.7 : 1, y: 0 }}
-                  style={{
-                    alignSelf: isMe ? "flex-end" : "flex-start",
-                    maxWidth: "70%",
-                    marginBottom: "8px",
-                  }}
-                >
-                  <div style={{
-                    background: isMe ? 
-                      (isOptimistic ? "rgba(205, 127, 50, 0.7)" : "#CD7F32") : 
-                      "white",
-                    color: isMe ? "#fff" : "#1a1a1a",
-                    padding: "12px 16px",
-                    borderRadius: "18px",
-                    borderBottomRightRadius: isMe ? "4px" : "18px",
-                    borderBottomLeftRadius: isMe ? "18px" : "4px",
-                    boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
-                    wordBreak: "break-word",
-                    border: `1px solid ${isMe ? "#B87333" : "#E6B17E"}`,
-                    position: "relative",
-                  }}>
-                    {isOptimistic && (
-                      <div style={{
-                        position: "absolute",
-                        top: "-6px",
-                        right: "-6px",
-                        width: "12px",
-                        height: "12px",
-                        borderRadius: "50%",
-                        background: "#FF9800",
-                        animation: "pulse 1s infinite",
-                      }} />
-                    )}
-                    <p style={{ 
-                      margin: 0, 
-                      fontSize: "15px", 
-                      lineHeight: 1.4,
-                      fontFamily: "'Georgia', serif" 
-                    }}>
-                      {msg.content}
-                    </p>
-                    <div style={{
-                      display: "flex",
-                      justifyContent: "flex-end",
-                      marginTop: "4px",
-                    }}>
-                      <span style={{
-                        fontSize: "11px",
-                        opacity: 0.8,
-                        color: isMe ? "rgba(255,255,255,0.9)" : "#666",
-                      }}>
-                        {isOptimistic ? "Sending..." : formatTime(msg.created_at)}
-                        {isMe && msg.is_read && !isOptimistic && (
-                          <span style={{ marginLeft: "4px" }}>✓✓</span>
-                        )}
-                      </span>
-                    </div>
-                  </div>
-                </motion.div>
-              );
-            })}
-            <div ref={messagesEndRef} />
-          </div>
-        )}
-      </div>
-
-      {/* Message Input */}
-      <div style={{
-        background: "white",
-        padding: "16px",
-        borderTop: "1px solid #e0e0e0",
-        display: "flex",
-        alignItems: "center",
-        gap: "12px",
-        flexShrink: 0,
-      }}>
-        <input
-          type="text"
-          value={newMessage}
-          onChange={(e) => setNewMessage(e.target.value)}
-          onKeyPress={(e) => e.key === "Enter" && handleSend()}
-          placeholder="Type a message..."
-          style={{
-            flex: 1,
-            padding: "12px 16px",
-            border: "1px solid #E6B17E",
-            borderRadius: "24px",
-            fontSize: "15px",
-            outline: "none",
-            background: "#F5E7D3",
-            color: "#333",
-            fontFamily: "'Georgia', serif",
-          }}
-        />
-
-        <button
-          onClick={handleSend}
-          disabled={!newMessage.trim()}
-          style={{
-            background: newMessage.trim() ? "#CD7F32" : "#E6B17E",
-            border: "none",
-            width: "44px",
-            height: "44px",
+          <div style={{
+            width: "40px",
+            height: "40px",
             borderRadius: "50%",
+            background: `linear-gradient(135deg, ${PINTEREST.primary}, ${PINTEREST.dark})`,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            cursor: newMessage.trim() ? "pointer" : "not-allowed",
-            color: "#fff",
-            fontSize: "18px",
-            transition: "background 0.2s ease",
+            color: "white",
+            fontWeight: "600",
+            fontSize: "16px",
+          }}>
+            {currentUser.name.charAt(0).toUpperCase()}
+          </div>
+          <div>
+            <div style={{ fontSize: "14px", fontWeight: "600", color: PINTEREST.textDark }}>
+              {currentUser.name.split(' ')[0]}
+            </div>
+            <div style={{ fontSize: "12px", color: PINTEREST.textLight }}>
+              View profile
+            </div>
+          </div>
+        </motion.div>
+
+        <nav style={{ flex: 1 }}>
+          {navItems.map((item) => (
+            <motion.button
+              key={item.label}
+              whileHover={{ x: 4 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={item.onClick}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "12px",
+                width: "100%",
+                padding: "12px",
+                background: item.active ? PINTEREST.redLight : "transparent",
+                border: "none",
+                color: item.active ? PINTEREST.primary : PINTEREST.textDark,
+                fontSize: "14px",
+                fontWeight: item.active ? "600" : "500",
+                cursor: "pointer",
+                borderRadius: "12px",
+                marginBottom: "4px",
+                textAlign: "left",
+              }}
+            >
+              <item.icon size={18} />
+              {item.label}
+            </motion.button>
+          ))}
+        </nav>
+
+        <motion.button
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          onClick={onAddPress}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "12px",
+            padding: "14px",
+            background: PINTEREST.primary,
+            color: "white",
+            border: "none",
+            borderRadius: "24px",
+            fontSize: "14px",
+            fontWeight: "600",
+            cursor: "pointer",
+            width: "100%",
+            justifyContent: "center",
+            marginTop: "20px",
           }}
         >
-          <FaPaperPlane />
-        </button>
+          <FaPlus /> Share a Book
+        </motion.button>
+
+        <motion.button
+          whileHover={{ x: 4 }}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "12px",
+            width: "100%",
+            padding: "12px",
+            background: "transparent",
+            border: "none",
+            color: PINTEREST.textLight,
+            fontSize: "14px",
+            fontWeight: "500",
+            cursor: "pointer",
+            borderRadius: "12px",
+            marginTop: "12px",
+            textAlign: "left",
+          }}
+        >
+          <FaCog size={18} />
+          Settings
+        </motion.button>
+      </motion.aside>
+
+      {/* Main Chat Area */}
+      <div style={{ 
+        flex: 1, 
+        marginLeft: sidebarOpen ? "240px" : "0",
+        transition: "margin-left 0.3s ease",
+        display: "flex",
+        flexDirection: "column",
+      }}>
+        {/* Header */}
+        <header style={{
+          padding: "12px 20px",
+          background: PINTEREST.bg,
+          position: "sticky",
+          top: 0,
+          zIndex: 50,
+          borderBottom: `1px solid ${PINTEREST.border}`,
+          display: "flex",
+          alignItems: "center",
+          gap: "16px",
+        }}>
+          <motion.button
+            whileTap={{ scale: 0.9 }}
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            style={{
+              width: "40px",
+              height: "40px",
+              borderRadius: "50%",
+              background: PINTEREST.hoverBg,
+              border: "none",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: PINTEREST.textDark,
+              cursor: "pointer",
+            }}
+          >
+            {sidebarOpen ? <FaTimes /> : <FaEllipsisH />}
+          </motion.button>
+
+          <motion.button
+            whileTap={{ scale: 0.9 }}
+            onClick={() => navigate("/chat")}
+            style={{
+              width: "40px",
+              height: "40px",
+              borderRadius: "50%",
+              background: PINTEREST.hoverBg,
+              border: "none",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: PINTEREST.textDark,
+              cursor: "pointer",
+            }}
+          >
+            <FaArrowLeft size={18} />
+          </motion.button>
+
+          <div style={{ flex: 1 }}>
+            <h1 style={{
+              fontSize: "18px",
+              fontWeight: "600",
+              color: PINTEREST.textDark,
+              margin: 0,
+            }}>
+              {getOtherUserName()}
+            </h1>
+            <p style={{
+              fontSize: "13px",
+              color: PINTEREST.textLight,
+              margin: "4px 0 0",
+            }}>
+              {getOfferTitle()}
+            </p>
+          </div>
+
+          {isPolling && (
+            <div style={{
+              width: "8px",
+              height: "8px",
+              borderRadius: "50%",
+              background: "#4CAF50",
+              animation: "pulse 1.5s infinite",
+            }} />
+          )}
+        </header>
+
+        {/* Messages Area */}
+        <main style={{
+          flex: 1,
+          overflowY: "auto",
+          padding: "20px",
+          background: PINTEREST.bg,
+          display: "flex",
+          flexDirection: "column",
+          gap: "16px",
+        }}>
+          {loading ? (
+            <div style={{ textAlign: "center", padding: "80px 20px" }}>
+              <div style={{
+                width: "48px",
+                height: "48px",
+                border: `4px solid ${PINTEREST.grayLight}`,
+                borderTopColor: PINTEREST.primary,
+                borderRadius: "50%",
+                margin: "0 auto 20px",
+                animation: "spin 1s linear infinite",
+              }} />
+              <p style={{ color: PINTEREST.textLight }}>Loading messages...</p>
+            </div>
+          ) : messages.length === 0 ? (
+            <div style={{ textAlign: "center", padding: "80px 20px" }}>
+              <div style={{
+                fontSize: "64px",
+                marginBottom: "20px",
+                opacity: 0.3,
+              }}>💬</div>
+              <p style={{ fontSize: "16px", color: PINTEREST.textLight, marginBottom: "8px" }}>
+                No messages yet
+              </p>
+              <p style={{ fontSize: "14px", color: PINTEREST.textMuted }}>
+                Start the conversation about "{getOfferTitle()}"
+              </p>
+            </div>
+          ) : (
+            <>
+              {messages.map((msg) => {
+                const isMe = msg.senderEmail === currentUser.email;
+                const isOptimistic = msg.id > 10000000000;
+
+                return (
+                  <motion.div
+                    key={msg.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: isOptimistic ? 0.7 : 1, y: 0 }}
+                    style={{
+                      alignSelf: isMe ? "flex-end" : "flex-start",
+                      maxWidth: "75%",
+                    }}
+                  >
+                    <div style={{
+                      background: isMe ? PINTEREST.primary : "white",
+                      color: isMe ? "white" : PINTEREST.textDark,
+                      padding: "12px 18px",
+                      borderRadius: "20px",
+                      borderBottomRightRadius: isMe ? "6px" : "20px",
+                      borderBottomLeftRadius: isMe ? "20px" : "6px",
+                      boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
+                      position: "relative",
+                    }}>
+                      {isOptimistic && (
+                        <div style={{
+                          position: "absolute",
+                          top: "-6px",
+                          right: "-6px",
+                          width: "12px",
+                          height: "12px",
+                          borderRadius: "50%",
+                          background: "#FF9800",
+                          animation: "pulse 1s infinite",
+                        }} />
+                      )}
+                      <p style={{ margin: 0, fontSize: "15px", lineHeight: 1.5 }}>
+                        {msg.content}
+                      </p>
+                      <div style={{
+                        marginTop: "6px",
+                        fontSize: "11px",
+                        opacity: 0.8,
+                        textAlign: "right",
+                      }}>
+                        {isOptimistic ? "Sending..." : formatTime(msg.created_at)}
+                        {isMe && msg.is_read && !isOptimistic && " ✓✓"}
+                      </div>
+                    </div>
+                  </motion.div>
+                );
+              })}
+              <div ref={messagesEndRef} />
+            </>
+          )}
+        </main>
+
+        {/* Input Area */}
+        <div style={{
+          padding: "16px 20px",
+          background: PINTEREST.bg,
+          borderTop: `1px solid ${PINTEREST.border}`,
+        }}>
+          <div style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "12px",
+            background: PINTEREST.grayLight,
+            borderRadius: "28px",
+            padding: "8px 16px",
+          }}>
+            <input
+              type="text"
+              value={newMessage}
+              onChange={(e) => setNewMessage(e.target.value)}
+              onKeyPress={(e) => e.key === "Enter" && !e.shiftKey && handleSend()}
+              placeholder="Write a message..."
+              style={{
+                flex: 1,
+                background: "transparent",
+                border: "none",
+                outline: "none",
+                fontSize: "15px",
+                color: PINTEREST.textDark,
+                padding: "8px 0",
+              }}
+            />
+            <motion.button
+              whileTap={{ scale: 0.9 }}
+              onClick={handleSend}
+              disabled={!newMessage.trim()}
+              style={{
+                width: "40px",
+                height: "40px",
+                borderRadius: "50%",
+                background: newMessage.trim() ? PINTEREST.primary : PINTEREST.hoverBg,
+                border: "none",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: "white",
+                cursor: newMessage.trim() ? "pointer" : "not-allowed",
+              }}
+            >
+              <FaPaperPlane size={16} />
+            </motion.button>
+          </div>
+        </div>
       </div>
 
+      {/* Global Styles */}
       <style>{`
         @keyframes spin {
           to { transform: rotate(360deg); }
@@ -545,29 +721,21 @@ export default function SingleChat({ currentUser }: SingleChatProps) {
           0%, 100% { opacity: 1; }
           50% { opacity: 0.5; }
         }
-        @keyframes shimmer {
-          0% { transform: translateX(-100%); }
-          100% { transform: translateX(100%); }
-        }
+        * { -webkit-tap-highlight-color: transparent; }
         ::-webkit-scrollbar {
-          width: 6px;
+          width: 8px;
         }
-        ::-webkit-scrollbar-track {
-          background: #F5E7D3;
-        }
+        ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb {
-          background: #E6B17E;
-          border-radius: 3px;
+          background: ${PINTEREST.border};
+          border-radius: 10px;
         }
         ::-webkit-scrollbar-thumb:hover {
-          background: #CD7F32;
+          background: ${PINTEREST.textLight};
         }
-        
-        /* Optimize for smooth scrolling */
-        .message-container {
-          transform: translateZ(0);
-          backface-visibility: hidden;
-          perspective: 1000;
+        @media (max-width: 768px) {
+          aside { display: none; }
+          div[style*="marginLeft"] { margin-left: 0 !important; }
         }
       `}</style>
     </div>

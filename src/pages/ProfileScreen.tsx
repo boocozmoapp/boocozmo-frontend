@@ -1,26 +1,51 @@
-// src/pages/ProfileScreen.tsx
+// src/pages/ProfileScreen.tsx - PINTEREST-STYLE REDESIGN
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
-  FaBookOpen, 
-  FaMapMarkedAlt, 
-  FaPlus, 
-  FaComments, 
-  FaEdit, 
-  FaTrash, 
-  FaHeart, 
-  FaChartLine,
-  FaCog,
-  FaSignOutAlt,
+  FaHome,
+  FaCompass,
   FaBook,
   FaBookmark,
+  FaUsers,
+  FaMapMarkedAlt,
+  FaComments,
+  FaBell,
   FaStar,
+  FaCog,
+  FaSignOutAlt,
+  FaPlus,
+  FaEdit,
+  FaTrash,
+  FaHeart,
+  FaChartLine,
   FaDollarSign,
-  FaUsers
+  FaExchangeAlt,
+  FaTag,
+  FaEllipsisH,
+  FaTimes,
+  FaBookOpen
 } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 
 const API_BASE = "https://boocozmo-api.onrender.com";
+
+// Pinterest Colors
+const PINTEREST = {
+  primary: "#E60023",
+  dark: "#A3081A",
+  light: "#FF4D6D",
+  bg: "#FFFFFF",
+  sidebarBg: "#FFFFFF",
+  textDark: "#000000",
+  textLight: "#5F5F5F",
+  textMuted: "#8E8E8E",
+  border: "#E1E1E1",
+  hoverBg: "#F5F5F5",
+  icon: "#767676",
+  redLight: "#FFE2E6",
+  grayLight: "#F7F7F7",
+  overlay: "rgba(0, 0, 0, 0.7)"
+};
 
 type Props = {
   onLogout?: () => void;
@@ -51,20 +76,8 @@ export default function ProfileScreen({ currentUser, onLogout }: Props) {
   const [editCondition, setEditCondition] = useState<"Excellent" | "Very Good" | "Good" | "Fair">("Excellent");
   const [openMenuId, setOpenMenuId] = useState<number | null>(null);
   const [showSettings, setShowSettings] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const navigate = useNavigate();
-
-  // Bronze color palette
-  const BRONZE = {
-    primary: "#CD7F32",
-    light: "#E6B17E",
-    dark: "#B87333",
-    pale: "#F5E7D3",
-    shimmer: "#FFD700",
-    bgLight: "#FDF8F3",
-    bgDark: "#F5F0E6",
-    textDark: "#2C1810",
-    textLight: "#5D4037",
-  };
 
   const username = currentUser.name || currentUser.email.split("@")[0];
   const userEmail = currentUser.email;
@@ -77,6 +90,8 @@ export default function ProfileScreen({ currentUser, onLogout }: Props) {
     posts: offers.length + savedOffers.length,
     rating: 4.8, // Mock data
     badges: 3, // Mock data
+    followers: 128, // Mock data
+    following: 56, // Mock data
   };
 
   useEffect(() => {
@@ -195,7 +210,7 @@ export default function ProfileScreen({ currentUser, onLogout }: Props) {
       case "sell": return "#D1FAE5";
       case "buy": return "#FEF3C7";
       case "exchange": return "#E0E7FF";
-      default: return BRONZE.pale;
+      default: return PINTEREST.grayLight;
     }
   };
 
@@ -204,7 +219,7 @@ export default function ProfileScreen({ currentUser, onLogout }: Props) {
       case "sell": return "#065F46";
       case "buy": return "#92400E";
       case "exchange": return "#3730A3";
-      default: return BRONZE.dark;
+      default: return PINTEREST.textDark;
     }
   };
 
@@ -217,6 +232,44 @@ export default function ProfileScreen({ currentUser, onLogout }: Props) {
     }
   };
 
+  const getOfferTypeIcon = (type?: string) => {
+    switch (type) {
+      case "sell": return <FaDollarSign size={10} />;
+      case "buy": return <FaTag size={10} />;
+      case "exchange": return <FaExchangeAlt size={10} />;
+      default: return null;
+    }
+  };
+
+  const formatPrice = (price: number | null): string => {
+    if (!price) return "Free";
+    return `$${price.toFixed(2)}`;
+  };
+
+  const getRandomBookCover = () => {
+    const bookCovers = [
+      "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=400&h=600&fit=crop",
+      "https://images.unsplash.com/photo-1541963463532-d68292c34b19?w=400&h=600&fit=crop",
+      "https://images.unsplash.com/photo-1512820790803-83ca734da794?w=400&h=600&fit=crop",
+      "https://images.unsplash.com/photo-1532012197267-da84d127e765?w=400&h=600&fit=crop",
+      "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=600&fit=crop",
+    ];
+    return bookCovers[Math.floor(Math.random() * bookCovers.length)];
+  };
+
+  // Sidebar Navigation Items (same as HomeScreen)
+  const navItems = [
+    { icon: FaHome, label: "Home", onClick: () => navigate("/") },
+    { icon: FaCompass, label: "Discover", onClick: () => {} },
+    { icon: FaBook, label: "My Books", active: true, onClick: () => {} },
+    { icon: FaBookmark, label: "Saved", onClick: () => setActiveTab("saved") },
+    { icon: FaUsers, label: "Following", onClick: () => {} },
+    { icon: FaMapMarkedAlt, label: "Map", onClick: () => navigate("/map") },
+    { icon: FaComments, label: "Messages", onClick: () => navigate("/chat") },
+    { icon: FaBell, label: "Notifications", onClick: () => {} },
+    { icon: FaStar, label: "Top Picks", onClick: () => {} },
+  ];
+
   if (loading) {
     return (
       <div style={{ 
@@ -224,15 +277,14 @@ export default function ProfileScreen({ currentUser, onLogout }: Props) {
         display: "flex", 
         alignItems: "center", 
         justifyContent: "center",
-        background: BRONZE.bgLight,
+        background: PINTEREST.bg,
         flexDirection: "column",
         gap: "20px",
       }}>
-        {/* Horizontal loading bar */}
         <div style={{
           width: "200px",
           height: "4px",
-          background: BRONZE.pale,
+          background: PINTEREST.border,
           borderRadius: "2px",
           overflow: "hidden",
           position: "relative",
@@ -244,7 +296,7 @@ export default function ProfileScreen({ currentUser, onLogout }: Props) {
               left: 0,
               height: "100%",
               width: "30%",
-              background: `linear-gradient(90deg, ${BRONZE.primary}, ${BRONZE.dark})`,
+              background: PINTEREST.primary,
               borderRadius: "2px",
             }}
             animate={{ x: ["0%", "200%", "0%"] }}
@@ -253,7 +305,7 @@ export default function ProfileScreen({ currentUser, onLogout }: Props) {
         </div>
         
         <p style={{ 
-          color: BRONZE.textLight, 
+          color: PINTEREST.textLight, 
           fontSize: "14px", 
           fontWeight: 500,
           textAlign: "center",
@@ -268,337 +320,540 @@ export default function ProfileScreen({ currentUser, onLogout }: Props) {
     <div style={{ 
       height: "100vh",
       width: "100vw",
-      background: BRONZE.bgLight,
+      background: PINTEREST.bg,
       display: "flex",
-      flexDirection: "column",
-      fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+      fontFamily: "'Inter', -apple-system, sans-serif",
       overflow: "hidden",
     }}>
-      {/* Fixed Header */}
-      <motion.header 
-        initial={{ y: -20, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        style={{ 
-          background: `linear-gradient(135deg, ${BRONZE.primary}, ${BRONZE.dark})`,
-          padding: "20px 20px 24px 20px",
-          color: "white",
-          position: "sticky",
+      {/* Pinterest Sidebar */}
+      <motion.aside
+        initial={{ x: -300 }}
+        animate={{ x: sidebarOpen ? 0 : -300 }}
+        transition={{ type: "spring", damping: 25 }}
+        style={{
+          width: "240px",
+          background: PINTEREST.sidebarBg,
+          borderRight: `1px solid ${PINTEREST.border}`,
+          position: "fixed",
           top: 0,
-          zIndex: 50,
-          flexShrink: 0,
-          boxShadow: "0 2px 20px rgba(205, 127, 50, 0.3)",
+          left: 0,
+          bottom: 0,
+          zIndex: 100,
+          padding: "20px 16px",
+          overflowY: "auto",
+          display: "flex",
+          flexDirection: "column",
         }}
       >
-        {/* Settings and Chat Buttons */}
-        <div style={{ 
-          display: "flex", 
-          justifyContent: "space-between", 
-          alignItems: "center",
-          marginBottom: "24px",
-        }}>
-          <h1 style={{ 
-            fontSize: "28px", 
-            fontWeight: 700, 
-            margin: 0,
-            fontFamily: "'Merriweather', serif",
+        {/* Sidebar Logo */}
+        <div style={{ marginBottom: "24px" }}>
+          <div style={{ 
+            display: "flex", 
+            alignItems: "center", 
+            gap: "8px",
+            cursor: "pointer"
           }}>
-            My Library
-          </h1>
-          
-          <div style={{ display: "flex", gap: "12px" }}>
-            <motion.button
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => navigate("/chat")}
-              style={{
-                background: "rgba(255,255,255,0.15)",
-                border: "1px solid rgba(255,255,255,0.3)",
-                borderRadius: "50%",
-                width: "40px",
-                height: "40px",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                color: "white",
-                cursor: "pointer",
-              }}
-            >
-              <FaComments size={18} />
-            </motion.button>
-            
-            <motion.button
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => setShowSettings(!showSettings)}
-              style={{
-                background: "rgba(255,255,255,0.15)",
-                border: "1px solid rgba(255,255,255,0.3)",
-                borderRadius: "50%",
-                width: "40px",
-                height: "40px",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                color: "white",
-                cursor: "pointer",
-              }}
-            >
-              <FaCog size={18} />
-            </motion.button>
+            <div style={{
+              width: "32px",
+              height: "32px",
+              borderRadius: "50%",
+              background: PINTEREST.primary,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: "white",
+              fontWeight: "700",
+              fontSize: "14px",
+            }}>
+              B
+            </div>
+            <span style={{
+              fontSize: "20px",
+              fontWeight: "700",
+              color: PINTEREST.primary,
+            }}>
+              BookSphere
+            </span>
           </div>
         </div>
 
-        {/* User Profile Section */}
-        <motion.div 
-          initial={{ scale: 0.9, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          transition={{ delay: 0.1 }}
-          style={{ 
-            display: "flex", 
-            alignItems: "center", 
-            gap: "16px",
+        {/* User Profile */}
+        <motion.div
+          whileHover={{ scale: 1.02 }}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "12px",
+            padding: "12px",
+            borderRadius: "12px",
+            background: PINTEREST.hoverBg,
             marginBottom: "24px",
           }}
         >
-          <div style={{ position: "relative" }}>
-            <motion.div
-              whileHover={{ scale: 1.05 }}
-              style={{
-                width: "80px",
-                height: "80px",
-                borderRadius: "50%",
-                background: `linear-gradient(135deg, ${BRONZE.light}, white)`,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontSize: "32px",
-                color: BRONZE.dark,
-                fontWeight: "bold",
-                border: `3px solid white`,
-                boxShadow: "0 6px 20px rgba(0, 0, 0, 0.15)",
-              }}
-            >
-              {username[0].toUpperCase()}
-            </motion.div>
+          <div style={{
+            width: "48px",
+            height: "48px",
+            borderRadius: "50%",
+            background: `linear-gradient(135deg, ${PINTEREST.primary}, ${PINTEREST.dark})`,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            color: "white",
+            fontWeight: "600",
+            fontSize: "18px",
+          }}>
+            {username[0].toUpperCase()}
           </div>
-
-          <div style={{ flex: 1 }}>
-            <motion.h2 
-              initial={{ x: -20, opacity: 0 }}
-              animate={{ x: 0, opacity: 1 }}
-              transition={{ delay: 0.2 }}
-              style={{ 
-                fontSize: "24px", 
-                fontWeight: 700, 
-                margin: "0 0 4px",
-                color: "white",
-              }}
-            >
-              {username}
-            </motion.h2>
-            <motion.p 
-              initial={{ x: -20, opacity: 0 }}
-              animate={{ x: 0, opacity: 1 }}
-              transition={{ delay: 0.3 }}
-              style={{ 
-                fontSize: "14px", 
-                opacity: 0.9, 
-                margin: "0 0 8px",
-                color: BRONZE.pale,
-              }}
-            >
+          <div>
+            <div style={{ fontSize: "14px", fontWeight: "600", color: PINTEREST.textDark }}>
+              {username.split(' ')[0]}
+            </div>
+            <div style={{ fontSize: "12px", color: PINTEREST.textLight }}>
               {userEmail}
-            </motion.p>
-            <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-              <FaStar color={BRONZE.shimmer} size={14} />
-              <span style={{ fontSize: "13px", fontWeight: 600 }}>
-                {stats.rating} • {stats.badges} Badges
-              </span>
             </div>
           </div>
         </motion.div>
 
-        {/* Stats Grid */}
-        <motion.div 
-          initial={{ y: 20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 0.4 }}
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(4, 1fr)",
-            gap: "10px",
-          }}
-        >
-          {[
-            { value: stats.books, label: "Books", icon: "📚", color: BRONZE.light },
-            { value: stats.saved, label: "Saved", icon: "🔖", color: "#E91E63" },
-            { value: stats.sold, label: "Sold", icon: "💰", color: "#4CAF50" },
-            { value: stats.posts, label: "Posts", icon: "📝", color: "#2196F3" },
-          ].map((stat) => (
-            <motion.div
-              key={stat.label}
-              whileHover={{ y: -3 }}
-              style={{
-                background: "rgba(255,255,255,0.1)",
-                borderRadius: "14px",
-                padding: "12px 8px",
-                textAlign: "center",
-                border: "1px solid rgba(255,255,255,0.1)",
-              }}
-            >
-              <div style={{ 
-                fontSize: "24px", 
-                fontWeight: "bold",
-                marginBottom: "4px",
-                color: stat.color,
-              }}>
-                {stat.icon}
-              </div>
-              <div style={{ 
-                fontSize: "18px", 
-                fontWeight: "bold",
-                marginBottom: "2px",
-              }}>
-                {stat.value}
-              </div>
-              <div style={{ 
-                fontSize: "11px", 
-                opacity: 0.9,
-                fontWeight: 500,
-              }}>
-                {stat.label}
-              </div>
-            </motion.div>
-          ))}
-        </motion.div>
-      </motion.header>
-
-      {/* Content Area */}
-      <div style={{ 
-        flex: 1, 
-        overflowY: "auto",
-        paddingBottom: "90px",
-        WebkitOverflowScrolling: "touch",
-      }}>
-        {/* Tabs */}
-        <motion.div 
-          initial={{ y: 20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 0.5 }}
-          style={{ 
-            background: "white", 
-            padding: "16px 20px", 
-            margin: "-20px 16px 20px",
-            borderRadius: "16px",
-            boxShadow: "0 4px 20px rgba(205, 127, 50, 0.1)",
-            display: "flex",
-            justifyContent: "space-around",
-            position: "relative",
-            zIndex: 10,
-          }}
-        >
-          {[
-            { key: "books" as const, label: "My Books", icon: <FaBook size={16} /> },
-            { key: "saved" as const, label: "Saved", icon: <FaBookmark size={16} /> },
-            { key: "stats" as const, label: "Stats", icon: <FaChartLine size={16} /> },
-          ].map(({ key, label, icon }) => (
+        {/* Navigation */}
+        <nav style={{ flex: 1 }}>
+          {navItems.map((item) => (
             <motion.button
-              key={key}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => setActiveTab(key)}
+              key={item.label}
+              whileHover={{ x: 4 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={item.onClick}
               style={{
                 display: "flex",
-                flexDirection: "column",
                 alignItems: "center",
-                gap: "6px",
-                background: "none",
+                gap: "12px",
+                width: "100%",
+                padding: "12px",
+                background: item.active ? PINTEREST.redLight : "transparent",
                 border: "none",
-                color: activeTab === key ? BRONZE.primary : BRONZE.textLight,
-                fontSize: "12px",
-                fontWeight: activeTab === key ? 700 : 500,
+                color: item.active ? PINTEREST.primary : PINTEREST.textDark,
+                fontSize: "14px",
+                fontWeight: item.active ? "600" : "500",
                 cursor: "pointer",
-                padding: "8px 12px",
                 borderRadius: "12px",
-                transition: "all 0.3s ease",
-                minWidth: "70px",
+                marginBottom: "4px",
+                textAlign: "left",
               }}
             >
-              <div style={{ 
-                fontSize: "18px",
-                color: activeTab === key ? BRONZE.primary : BRONZE.textLight,
-              }}>
-                {icon}
-              </div>
-              {label}
-              {activeTab === key && (
-                <motion.div
-                  layoutId="profileTabIndicator"
-                  style={{
-                    width: "20px",
-                    height: "3px",
-                    background: BRONZE.primary,
-                    borderRadius: "2px",
-                    marginTop: "2px",
-                  }}
-                />
-              )}
+              <item.icon size={18} />
+              {item.label}
             </motion.button>
           ))}
-        </motion.div>
+        </nav>
 
-        {/* Content */}
-        <div style={{ padding: "0 16px" }}>
+        {/* Create Pin/Book Button */}
+        <motion.button
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          onClick={() => navigate("/offer")}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "12px",
+            padding: "14px",
+            background: PINTEREST.primary,
+            color: "white",
+            border: "none",
+            borderRadius: "24px",
+            fontSize: "14px",
+            fontWeight: "600",
+            cursor: "pointer",
+            width: "100%",
+            justifyContent: "center",
+            marginTop: "20px",
+          }}
+        >
+          <FaPlus /> Share a Book
+        </motion.button>
+
+        {/* Settings */}
+        <motion.button
+          whileHover={{ x: 4 }}
+          onClick={() => setShowSettings(!showSettings)}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "12px",
+            width: "100%",
+            padding: "12px",
+            background: "transparent",
+            border: "none",
+            color: PINTEREST.textLight,
+            fontSize: "14px",
+            fontWeight: "500",
+            cursor: "pointer",
+            borderRadius: "12px",
+            marginTop: "12px",
+            textAlign: "left",
+          }}
+        >
+          <FaCog size={18} />
+          Settings
+        </motion.button>
+      </motion.aside>
+
+      {/* Main Content */}
+      <div style={{ 
+        flex: 1, 
+        marginLeft: sidebarOpen ? "240px" : "0",
+        transition: "margin-left 0.3s ease",
+        display: "flex",
+        flexDirection: "column",
+      }}>
+        {/* Top Bar */}
+        <header
+          style={{
+            padding: "16px 20px",
+            background: PINTEREST.bg,
+            position: "sticky",
+            top: 0,
+            zIndex: 50,
+            borderBottom: `1px solid ${PINTEREST.border}`,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+          }}
+        >
+          {/* Left: Menu Toggle */}
+          <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+            <motion.button
+              whileTap={{ scale: 0.9 }}
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              style={{
+                width: "40px",
+                height: "40px",
+                borderRadius: "50%",
+                background: PINTEREST.hoverBg,
+                border: "none",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: PINTEREST.textDark,
+                cursor: "pointer",
+                fontSize: "18px",
+              }}
+            >
+              {sidebarOpen ? <FaTimes /> : <FaEllipsisH />}
+            </motion.button>
+
+            {/* Page Title */}
+            <div>
+              <h1 style={{ 
+                fontSize: "24px", 
+                fontWeight: 700, 
+                margin: 0,
+                color: PINTEREST.textDark,
+              }}>
+                My Profile
+              </h1>
+              <p style={{ 
+                fontSize: "13px", 
+                color: PINTEREST.textLight,
+                margin: "4px 0 0",
+              }}>
+                Manage your books and activity
+              </p>
+            </div>
+          </div>
+
+          {/* Right: Actions */}
+          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+            <motion.button
+              whileTap={{ scale: 0.9 }}
+              onClick={() => navigate("/chat")}
+              style={{
+                width: "40px",
+                height: "40px",
+                borderRadius: "50%",
+                background: PINTEREST.hoverBg,
+                border: "none",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: PINTEREST.textDark,
+                cursor: "pointer",
+                fontSize: "18px",
+              }}
+            >
+              <FaComments />
+            </motion.button>
+
+            <motion.button
+              whileTap={{ scale: 0.9 }}
+              onClick={() => navigate("/offer")}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                padding: "10px 20px",
+                background: PINTEREST.primary,
+                color: "white",
+                border: "none",
+                borderRadius: "24px",
+                fontSize: "14px",
+                fontWeight: "600",
+                cursor: "pointer",
+              }}
+            >
+              <FaPlus size={14} />
+              Add Book
+            </motion.button>
+          </div>
+        </header>
+
+        {/* Profile Header */}
+        <div style={{
+          padding: "24px 20px",
+          background: "linear-gradient(135deg, #E60023, #A3081A)",
+          color: "white",
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "24px", marginBottom: "20px" }}>
+            <div style={{ position: "relative" }}>
+              <motion.div
+                whileHover={{ scale: 1.05 }}
+                style={{
+                  width: "100px",
+                  height: "100px",
+                  borderRadius: "50%",
+                  background: "rgba(255,255,255,0.1)",
+                  backdropFilter: "blur(10px)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: "36px",
+                  color: "white",
+                  fontWeight: "bold",
+                  border: "3px solid rgba(255,255,255,0.3)",
+                  boxShadow: "0 8px 32px rgba(0, 0, 0, 0.15)",
+                }}
+              >
+                {username[0].toUpperCase()}
+              </motion.div>
+            </div>
+
+            <div style={{ flex: 1 }}>
+              <motion.h2 
+                initial={{ x: -20, opacity: 0 }}
+                animate={{ x: 0, opacity: 1 }}
+                style={{ 
+                  fontSize: "28px", 
+                  fontWeight: 700, 
+                  margin: "0 0 8px",
+                }}
+              >
+                {username}
+              </motion.h2>
+              <motion.p 
+                initial={{ x: -20, opacity: 0 }}
+                animate={{ x: 0, opacity: 1 }}
+                transition={{ delay: 0.1 }}
+                style={{ 
+                  fontSize: "14px", 
+                  opacity: 0.9, 
+                  margin: "0 0 12px",
+                }}
+              >
+                {userEmail}
+              </motion.p>
+              <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                  <FaStar size={14} />
+                  <span style={{ fontSize: "14px", fontWeight: 600 }}>
+                    {stats.rating}/5 • {stats.badges} Badges
+                  </span>
+                </div>
+                <div style={{ display: "flex", gap: "16px" }}>
+                  <div>
+                    <div style={{ fontSize: "18px", fontWeight: "bold" }}>{stats.followers}</div>
+                    <div style={{ fontSize: "12px", opacity: 0.8 }}>Followers</div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: "18px", fontWeight: "bold" }}>{stats.following}</div>
+                    <div style={{ fontSize: "12px", opacity: 0.8 }}>Following</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Stats Grid */}
+          <motion.div 
+            initial={{ y: 20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 0.2 }}
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(4, 1fr)",
+              gap: "12px",
+            }}
+          >
+            {[
+              { value: stats.books, label: "Books", icon: "📚", color: "white" },
+              { value: stats.saved, label: "Saved", icon: "🔖", color: "#FFE2E6" },
+              { value: stats.sold, label: "Sold", icon: "💰", color: "#D1FAE5" },
+              { value: stats.posts, label: "Posts", icon: "📝", color: "#E0E7FF" },
+            ].map((stat) => (
+              <motion.div
+                key={stat.label}
+                whileHover={{ y: -3 }}
+                style={{
+                  background: "rgba(255,255,255,0.1)",
+                  borderRadius: "14px",
+                  padding: "16px 12px",
+                  textAlign: "center",
+                  border: "1px solid rgba(255,255,255,0.1)",
+                  backdropFilter: "blur(10px)",
+                }}
+              >
+                <div style={{ 
+                  fontSize: "24px", 
+                  fontWeight: "bold",
+                  marginBottom: "6px",
+                  color: stat.color,
+                }}>
+                  {stat.icon}
+                </div>
+                <div style={{ 
+                  fontSize: "22px", 
+                  fontWeight: "bold",
+                  marginBottom: "4px",
+                }}>
+                  {stat.value}
+                </div>
+                <div style={{ 
+                  fontSize: "12px", 
+                  opacity: 0.9,
+                  fontWeight: 500,
+                }}>
+                  {stat.label}
+                </div>
+              </motion.div>
+            ))}
+          </motion.div>
+        </div>
+
+        {/* Tabs */}
+        <div style={{ 
+          background: PINTEREST.bg, 
+          padding: "0 20px",
+          borderBottom: `1px solid ${PINTEREST.border}`,
+        }}>
+          <div style={{ 
+            display: "flex", 
+            gap: "24px",
+            overflowX: "auto",
+            scrollbarWidth: "none",
+          }}>
+            {[
+              { key: "books" as const, label: "My Books", icon: <FaBook size={16} /> },
+              { key: "saved" as const, label: "Saved", icon: <FaBookmark size={16} /> },
+              { key: "stats" as const, label: "Stats", icon: <FaChartLine size={16} /> },
+            ].map(({ key, label, icon }) => (
+              <motion.button
+                key={key}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setActiveTab(key)}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  background: "none",
+                  border: "none",
+                  color: activeTab === key ? PINTEREST.primary : PINTEREST.textLight,
+                  fontSize: "14px",
+                  fontWeight: activeTab === key ? "600" : "500",
+                  cursor: "pointer",
+                  padding: "16px 0",
+                  position: "relative",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {icon}
+                {label}
+                {activeTab === key && (
+                  <motion.div
+                    layoutId="profileTabIndicator"
+                    style={{
+                      position: "absolute",
+                      bottom: 0,
+                      left: 0,
+                      right: 0,
+                      height: "3px",
+                      background: PINTEREST.primary,
+                      borderRadius: "2px",
+                    }}
+                  />
+                )}
+              </motion.button>
+            ))}
+          </div>
+        </div>
+
+        {/* Content Area */}
+        <main style={{ 
+          flex: 1,
+          overflowY: "auto",
+          padding: "20px",
+          WebkitOverflowScrolling: "touch",
+        }}>
           {/* My Books Tab */}
           <AnimatePresence mode="wait">
             {activeTab === "books" && (
               <motion.div
                 key="books"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                style={{ display: "flex", flexDirection: "column", gap: "16px" }}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))",
+                  gap: "20px",
+                }}
               >
                 {offers.length === 0 ? (
                   <motion.div
                     initial={{ scale: 0.9, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
                     style={{
+                      gridColumn: "1 / -1",
                       textAlign: "center",
-                      padding: "48px 20px",
+                      padding: "60px 20px",
                       background: "white",
                       borderRadius: "16px",
-                      boxShadow: "0 4px 16px rgba(205, 127, 50, 0.08)",
-                      border: `1px solid ${BRONZE.pale}`,
+                      border: `1px solid ${PINTEREST.border}`,
                     }}
                   >
                     <div style={{ 
                       width: "80px", 
                       height: "80px", 
                       borderRadius: "50%",
-                      background: `${BRONZE.primary}10`,
+                      background: PINTEREST.redLight,
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
                       margin: "0 auto 20px",
                       fontSize: "36px",
-                      color: BRONZE.primary,
+                      color: PINTEREST.primary,
                     }}>
                       <FaBookOpen />
                     </div>
                     <h3 style={{ 
                       fontSize: "18px", 
-                      fontWeight: 700, 
-                      color: BRONZE.textDark,
+                      fontWeight: 600, 
+                      color: PINTEREST.textDark,
                       marginBottom: "8px",
                     }}>
                       No Books Listed Yet
                     </h3>
                     <p style={{ 
                       fontSize: "14px", 
-                      color: BRONZE.textLight, 
+                      color: PINTEREST.textLight, 
                       marginBottom: "24px",
-                      maxWidth: "280px",
+                      maxWidth: "300px",
                       margin: "0 auto",
                     }}>
                       Share your first book with the community
@@ -608,11 +863,11 @@ export default function ProfileScreen({ currentUser, onLogout }: Props) {
                       whileTap={{ scale: 0.95 }}
                       onClick={() => navigate("/offer")}
                       style={{
-                        background: `linear-gradient(135deg, ${BRONZE.primary}, ${BRONZE.dark})`,
+                        padding: "14px 28px",
+                        background: PINTEREST.primary,
                         color: "white",
                         border: "none",
-                        padding: "14px 28px",
-                        borderRadius: "12px",
+                        borderRadius: "24px",
                         fontSize: "15px",
                         fontWeight: 600,
                         cursor: "pointer",
@@ -620,215 +875,216 @@ export default function ProfileScreen({ currentUser, onLogout }: Props) {
                         alignItems: "center",
                         gap: "8px",
                         margin: "0 auto",
-                        boxShadow: `0 4px 16px ${BRONZE.primary}40`,
                       }}
                     >
-                      <FaPlus /> Add First Book
+                      <FaPlus />
+                      Add First Book
                     </motion.button>
                   </motion.div>
                 ) : (
                   offers.map((offer) => {
                     const imageUrl = offer.imageUrl 
                       ? `${API_BASE}${offer.imageUrl}`
-                      : "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=200&h=300&fit=crop";
+                      : getRandomBookCover();
                     
                     return (
                       <motion.div
                         key={offer.id}
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
+                        initial={{ opacity: 0, scale: 0.9 }}
+                        animate={{ opacity: 1, scale: 1 }}
                         whileHover={{ y: -4 }}
                         style={{
                           background: "white",
-                          borderRadius: "16px",
-                          padding: "16px",
-                          boxShadow: "0 4px 16px rgba(205, 127, 50, 0.08)",
-                          display: "flex",
-                          gap: "16px",
-                          alignItems: "center",
-                          position: "relative",
+                          borderRadius: "12px",
                           overflow: "hidden",
-                          border: `1px solid ${BRONZE.pale}`,
+                          boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+                          border: `1px solid ${PINTEREST.border}`,
+                          cursor: "pointer",
+                          position: "relative",
                         }}
+                        onClick={() => navigate(`/offer/${offer.id}`)}
                       >
                         {/* Book Image */}
-                        <div style={{ position: "relative" }}>
+                        <div style={{ position: "relative", paddingTop: "150%" }}>
                           <img
                             src={imageUrl}
                             alt={offer.bookTitle}
-                            style={{ 
-                              width: "70px", 
-                              height: "100px", 
-                              borderRadius: "10px", 
+                            style={{
+                              position: "absolute",
+                              top: 0,
+                              left: 0,
+                              width: "100%",
+                              height: "100%",
                               objectFit: "cover",
                             }}
-                            onError={(e) => {
-                              (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=200&h=300&fit=crop";
-                            }}
                           />
-                          {/* Status Badge */}
+                          
+                          {/* Type Badge */}
                           <div style={{
                             position: "absolute",
-                            top: "-4px",
-                            left: "-4px",
+                            top: "12px",
+                            right: "12px",
                             background: getOfferTypeColor(offer.type),
                             color: getOfferTypeTextColor(offer.type),
-                            padding: "3px 8px",
-                            borderRadius: "10px",
-                            fontSize: "9px",
-                            fontWeight: "700",
-                            border: `1.5px solid white`,
+                            padding: "4px 8px",
+                            borderRadius: "12px",
+                            fontSize: "10px",
+                            fontWeight: "600",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "4px",
                           }}>
+                            {getOfferTypeIcon(offer.type)}
                             {getOfferTypeLabel(offer.type)}
                           </div>
                         </div>
 
-                        {/* Book Details */}
-                        <div style={{ flex: 1 }}>
-                          <h3 style={{ 
-                            fontSize: "16px", 
-                            fontWeight: 600, 
-                            margin: "0 0 6px", 
-                            color: BRONZE.textDark,
+                        {/* Content */}
+                        <div style={{ padding: "12px" }}>
+                          <h3 style={{
+                            fontSize: "14px",
+                            fontWeight: "600",
+                            margin: "0 0 6px",
+                            color: PINTEREST.textDark,
                             lineHeight: 1.3,
+                            display: "-webkit-box",
+                            WebkitLineClamp: 2,
+                            WebkitBoxOrient: "vertical",
+                            overflow: "hidden",
                           }}>
-                            {offer.bookTitle.length > 25 ? offer.bookTitle.slice(0, 25) + "..." : offer.bookTitle}
+                            {offer.bookTitle}
                           </h3>
                           
                           {offer.price && (
-                            <p style={{ 
-                              fontSize: "20px", 
-                              fontWeight: "700", 
-                              color: BRONZE.primary, 
-                              margin: "0 0 6px",
-                              display: "flex",
-                              alignItems: "center",
+                            <div style={{ 
+                              display: "flex", 
+                              alignItems: "center", 
                               gap: "4px",
+                              marginBottom: "8px",
                             }}>
-                              <FaDollarSign size={14} /> {offer.price}
-                            </p>
+                              <FaDollarSign size={12} color={PINTEREST.primary} />
+                              <span style={{
+                                fontSize: "16px",
+                                fontWeight: "700",
+                                color: PINTEREST.primary,
+                              }}>
+                                {formatPrice(offer.price)}
+                              </span>
+                            </div>
                           )}
-                          
+
+                          {/* Condition & Actions */}
                           <div style={{ 
                             display: "flex", 
-                            alignItems: "center", 
-                            gap: "6px",
-                            flexWrap: "wrap",
+                            justifyContent: "space-between",
+                            alignItems: "center",
+                            marginTop: "8px",
                           }}>
                             {offer.condition && (
                               <span style={{
-                                background: BRONZE.pale,
-                                color: BRONZE.dark,
-                                padding: "4px 10px",
-                                borderRadius: "10px",
                                 fontSize: "11px",
-                                fontWeight: "600",
+                                color: PINTEREST.textLight,
+                                padding: "2px 6px",
+                                background: PINTEREST.grayLight,
+                                borderRadius: "8px",
+                                fontWeight: "500",
                               }}>
                                 {offer.condition}
                               </span>
                             )}
-                            {offer.genre && (
-                              <span style={{
-                                background: BRONZE.pale,
-                                color: BRONZE.dark,
-                                padding: "4px 10px",
-                                borderRadius: "10px",
-                                fontSize: "11px",
-                                fontWeight: "600",
-                              }}>
-                                {offer.genre}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Action Menu */}
-                        <div style={{ position: "relative" }}>
-                          <motion.button
-                            whileHover={{ scale: 1.1 }}
-                            whileTap={{ scale: 0.9 }}
-                            onClick={() => setOpenMenuId(openMenuId === offer.id ? null : offer.id)}
-                            style={{
-                              background: "none",
-                              border: "none",
-                              color: BRONZE.dark,
-                              fontSize: "20px",
-                              cursor: "pointer",
-                              padding: "6px",
-                              borderRadius: "6px",
-                            }}
-                          >
-                            ⋯
-                          </motion.button>
-                          
-                          <AnimatePresence>
-                            {openMenuId === offer.id && (
-                              <motion.div
-                                initial={{ opacity: 0, scale: 0.9, y: -10 }}
-                                animate={{ opacity: 1, scale: 1, y: 0 }}
-                                exit={{ opacity: 0, scale: 0.9, y: -10 }}
+                            
+                            {/* Action Menu */}
+                            <div style={{ position: "relative" }}>
+                              <motion.button
+                                whileHover={{ scale: 1.1 }}
+                                whileTap={{ scale: 0.9 }}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setOpenMenuId(openMenuId === offer.id ? null : offer.id);
+                                }}
                                 style={{
-                                  position: "absolute",
-                                  right: "0",
-                                  top: "32px",
-                                  background: "white",
-                                  borderRadius: "14px",
-                                  boxShadow: "0 8px 24px rgba(0, 0, 0, 0.15)",
-                                  padding: "10px",
-                                  minWidth: "120px",
-                                  zIndex: 100,
-                                  border: `1px solid ${BRONZE.pale}`,
+                                  background: "none",
+                                  border: "none",
+                                  color: PINTEREST.textLight,
+                                  fontSize: "16px",
+                                  cursor: "pointer",
+                                  padding: "4px",
+                                  borderRadius: "4px",
                                 }}
                               >
-                                <motion.button
-                                  whileHover={{ x: 4 }}
-                                  onClick={() => startEdit(offer)}
-                                  style={{
-                                    display: "flex",
-                                    alignItems: "center",
-                                    gap: "8px",
-                                    width: "100%",
-                                    padding: "8px 10px",
-                                    background: "none",
-                                    border: "none",
-                                    color: BRONZE.dark,
-                                    fontSize: "13px",
-                                    fontWeight: 600,
-                                    cursor: "pointer",
-                                    borderRadius: "6px",
-                                    transition: "all 0.3s ease",
-                                  }}
-                                  onMouseEnter={(e) => e.currentTarget.style.background = BRONZE.pale}
-                                  onMouseLeave={(e) => e.currentTarget.style.background = "none"}
-                                >
-                                  <FaEdit size={12} /> Edit
-                                </motion.button>
-                                <motion.button
-                                  whileHover={{ x: 4 }}
-                                  onClick={() => handleDelete(offer.id)}
-                                  style={{
-                                    display: "flex",
-                                    alignItems: "center",
-                                    gap: "8px",
-                                    width: "100%",
-                                    padding: "8px 10px",
-                                    background: "none",
-                                    border: "none",
-                                    color: "#D32F2F",
-                                    fontSize: "13px",
-                                    fontWeight: 600,
-                                    cursor: "pointer",
-                                    borderRadius: "6px",
-                                    transition: "all 0.3s ease",
-                                  }}
-                                  onMouseEnter={(e) => e.currentTarget.style.background = "#FFEBEE"}
-                                  onMouseLeave={(e) => e.currentTarget.style.background = "none"}
-                                >
-                                  <FaTrash size={12} /> Delete
-                                </motion.button>
-                              </motion.div>
-                            )}
-                          </AnimatePresence>
+                                <FaEllipsisH />
+                              </motion.button>
+                              
+                              <AnimatePresence>
+                                {openMenuId === offer.id && (
+                                  <motion.div
+                                    initial={{ opacity: 0, scale: 0.9, y: -10 }}
+                                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                                    exit={{ opacity: 0, scale: 0.9, y: -10 }}
+                                    style={{
+                                      position: "absolute",
+                                      right: 0,
+                                      top: "32px",
+                                      background: "white",
+                                      borderRadius: "12px",
+                                      boxShadow: "0 8px 24px rgba(0, 0, 0, 0.15)",
+                                      padding: "8px",
+                                      minWidth: "120px",
+                                      zIndex: 100,
+                                      border: `1px solid ${PINTEREST.border}`,
+                                    }}
+                                  >
+                                    <motion.button
+                                      whileHover={{ x: 4 }}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        startEdit(offer);
+                                      }}
+                                      style={{
+                                        display: "flex",
+                                        alignItems: "center",
+                                        gap: "8px",
+                                        width: "100%",
+                                        padding: "8px 10px",
+                                        background: "none",
+                                        border: "none",
+                                        color: PINTEREST.textDark,
+                                        fontSize: "13px",
+                                        fontWeight: 600,
+                                        cursor: "pointer",
+                                        borderRadius: "6px",
+                                      }}
+                                    >
+                                      <FaEdit size={12} /> Edit
+                                    </motion.button>
+                                    <motion.button
+                                      whileHover={{ x: 4 }}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleDelete(offer.id);
+                                      }}
+                                      style={{
+                                        display: "flex",
+                                        alignItems: "center",
+                                        gap: "8px",
+                                        width: "100%",
+                                        padding: "8px 10px",
+                                        background: "none",
+                                        border: "none",
+                                        color: "#D32F2F",
+                                        fontSize: "13px",
+                                        fontWeight: 600,
+                                        cursor: "pointer",
+                                        borderRadius: "6px",
+                                      }}
+                                    >
+                                      <FaTrash size={12} /> Delete
+                                    </motion.button>
+                                  </motion.div>
+                                )}
+                              </AnimatePresence>
+                            </div>
+                          </div>
                         </div>
                       </motion.div>
                     );
@@ -841,51 +1097,55 @@ export default function ProfileScreen({ currentUser, onLogout }: Props) {
             {activeTab === "saved" && (
               <motion.div
                 key="saved"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                style={{ display: "flex", flexDirection: "column", gap: "16px" }}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))",
+                  gap: "20px",
+                }}
               >
                 {savedOffers.length === 0 ? (
                   <motion.div
                     initial={{ scale: 0.9, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
                     style={{
+                      gridColumn: "1 / -1",
                       textAlign: "center",
-                      padding: "48px 20px",
+                      padding: "60px 20px",
                       background: "white",
                       borderRadius: "16px",
-                      boxShadow: "0 4px 16px rgba(205, 127, 50, 0.08)",
-                      border: `1px solid ${BRONZE.pale}`,
+                      border: `1px solid ${PINTEREST.border}`,
                     }}
                   >
                     <div style={{ 
                       width: "80px", 
                       height: "80px", 
                       borderRadius: "50%",
-                      background: `${BRONZE.primary}10`,
+                      background: PINTEREST.redLight,
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
                       margin: "0 auto 20px",
                       fontSize: "36px",
-                      color: BRONZE.primary,
+                      color: PINTEREST.primary,
                     }}>
                       <FaBookmark />
                     </div>
                     <h3 style={{ 
                       fontSize: "18px", 
-                      fontWeight: 700, 
-                      color: BRONZE.textDark,
+                      fontWeight: 600, 
+                      color: PINTEREST.textDark,
                       marginBottom: "8px",
                     }}>
                       No Saved Books
                     </h3>
                     <p style={{ 
                       fontSize: "14px", 
-                      color: BRONZE.textLight, 
+                      color: PINTEREST.textLight, 
                       marginBottom: "24px",
-                      maxWidth: "280px",
+                      maxWidth: "300px",
                       margin: "0 auto",
                     }}>
                       Save books you're interested in for later
@@ -895,11 +1155,11 @@ export default function ProfileScreen({ currentUser, onLogout }: Props) {
                       whileTap={{ scale: 0.95 }}
                       onClick={() => navigate("/")}
                       style={{
-                        background: `linear-gradient(135deg, ${BRONZE.primary}, ${BRONZE.dark})`,
+                        padding: "14px 28px",
+                        background: PINTEREST.primary,
                         color: "white",
                         border: "none",
-                        padding: "14px 28px",
-                        borderRadius: "12px",
+                        borderRadius: "24px",
                         fontSize: "15px",
                         fontWeight: 600,
                         cursor: "pointer",
@@ -907,105 +1167,116 @@ export default function ProfileScreen({ currentUser, onLogout }: Props) {
                         alignItems: "center",
                         gap: "8px",
                         margin: "0 auto",
-                        boxShadow: `0 4px 16px ${BRONZE.primary}40`,
                       }}
                     >
-                      <FaHeart /> Browse Books
+                      <FaHeart />
+                      Browse Books
                     </motion.button>
                   </motion.div>
                 ) : (
                   savedOffers.map((offer) => {
                     const imageUrl = offer.imageUrl 
                       ? `${API_BASE}${offer.imageUrl}`
-                      : "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=200&h=300&fit=crop";
+                      : getRandomBookCover();
                     
                     return (
                       <motion.div
                         key={offer.id}
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
+                        initial={{ opacity: 0, scale: 0.9 }}
+                        animate={{ opacity: 1, scale: 1 }}
                         whileHover={{ y: -4 }}
                         style={{
                           background: "white",
-                          borderRadius: "16px",
-                          padding: "16px",
-                          boxShadow: "0 4px 16px rgba(205, 127, 50, 0.08)",
-                          display: "flex",
-                          gap: "16px",
-                          alignItems: "center",
-                          position: "relative",
+                          borderRadius: "12px",
                           overflow: "hidden",
-                          border: `1px solid ${BRONZE.pale}`,
+                          boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+                          border: `1px solid ${PINTEREST.border}`,
+                          cursor: "pointer",
                         }}
+                        onClick={() => navigate(`/offer/${offer.id}`)}
                       >
-                        <img
-                          src={imageUrl}
-                          alt={offer.bookTitle}
-                          style={{ 
-                            width: "70px", 
-                            height: "100px", 
-                            borderRadius: "10px", 
-                            objectFit: "cover",
-                          }}
-                          onError={(e) => {
-                            (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=200&h=300&fit=crop";
-                          }}
-                        />
-                        
-                        <div style={{ flex: 1 }}>
-                          <h3 style={{ 
-                            fontSize: "16px", 
-                            fontWeight: 600, 
-                            margin: "0 0 6px", 
-                            color: BRONZE.textDark,
+                        <div style={{ position: "relative", paddingTop: "150%" }}>
+                          <img
+                            src={imageUrl}
+                            alt={offer.bookTitle}
+                            style={{
+                              position: "absolute",
+                              top: 0,
+                              left: 0,
+                              width: "100%",
+                              height: "100%",
+                              objectFit: "cover",
+                            }}
+                          />
+                          
+                          {/* Saved Badge */}
+                          <div style={{
+                            position: "absolute",
+                            top: "12px",
+                            right: "12px",
+                            background: PINTEREST.primary,
+                            color: "white",
+                            width: "36px",
+                            height: "36px",
+                            borderRadius: "50%",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            boxShadow: "0 2px 8px rgba(0,0,0,0.2)",
+                          }}>
+                            <FaBookmark size={14} />
+                          </div>
+                        </div>
+
+                        <div style={{ padding: "12px" }}>
+                          <h3 style={{
+                            fontSize: "14px",
+                            fontWeight: "600",
+                            margin: "0 0 6px",
+                            color: PINTEREST.textDark,
                             lineHeight: 1.3,
                           }}>
                             {offer.bookTitle.length > 25 ? offer.bookTitle.slice(0, 25) + "..." : offer.bookTitle}
                           </h3>
                           
                           {offer.price && (
-                            <p style={{ 
-                              fontSize: "20px", 
+                            <div style={{ 
+                              fontSize: "16px", 
                               fontWeight: "700", 
-                              color: BRONZE.primary, 
-                              margin: "0 0 6px",
+                              color: PINTEREST.primary, 
+                              margin: "0 0 12px",
                             }}>
-                              ${offer.price}
-                            </p>
+                              {formatPrice(offer.price)}
+                            </div>
                           )}
                           
-                          <span style={{
-                            background: "#FFEBEE",
-                            color: "#D32F2F",
-                            padding: "4px 12px",
-                            borderRadius: "10px",
-                            fontSize: "11px",
-                            fontWeight: "700",
-                          }}>
-                            Saved ❤️
-                          </span>
+                          <motion.button
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleUnsave(offer.id);
+                            }}
+                            style={{
+                              width: "100%",
+                              padding: "8px",
+                              background: PINTEREST.redLight,
+                              color: PINTEREST.primary,
+                              border: `1px solid ${PINTEREST.primary}`,
+                              borderRadius: "8px",
+                              fontSize: "13px",
+                              fontWeight: "600",
+                              cursor: "pointer",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              gap: "6px",
+                            }}
+                          >
+                            <FaBookmark size={12} />
+                            Unsave
+                          </motion.button>
                         </div>
-                        
-                        <motion.button
-                          whileHover={{ scale: 1.1 }}
-                          whileTap={{ scale: 0.9 }}
-                          onClick={() => handleUnsave(offer.id)}
-                          style={{
-                            background: BRONZE.pale,
-                            color: BRONZE.dark,
-                            border: `1px solid ${BRONZE.light}`,
-                            padding: "8px 14px",
-                            borderRadius: "10px",
-                            fontSize: "13px",
-                            fontWeight: 600,
-                            cursor: "pointer",
-                            display: "flex",
-                            alignItems: "center",
-                            gap: "6px",
-                          }}
-                        >
-                          <FaHeart size={12} /> Unsave
-                        </motion.button>
                       </motion.div>
                     );
                   })
@@ -1017,27 +1288,25 @@ export default function ProfileScreen({ currentUser, onLogout }: Props) {
             {activeTab === "stats" && (
               <motion.div
                 key="stats"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                style={{ display: "flex", flexDirection: "column", gap: "20px" }}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                style={{ display: "flex", flexDirection: "column", gap: "20px", maxWidth: "600px", margin: "0 auto" }}
               >
                 <div style={{
                   background: "white",
                   borderRadius: "16px",
-                  padding: "20px",
-                  boxShadow: "0 4px 16px rgba(205, 127, 50, 0.08)",
-                  border: `1px solid ${BRONZE.pale}`,
+                  padding: "24px",
+                  border: `1px solid ${PINTEREST.border}`,
+                  boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
                 }}>
                   <h3 style={{ 
                     fontSize: "20px", 
                     fontWeight: 700, 
-                    color: BRONZE.textDark,
-                    marginBottom: "16px",
-                    textAlign: "center",
+                    color: PINTEREST.textDark,
+                    marginBottom: "20px",
                     display: "flex",
                     alignItems: "center",
-                    justifyContent: "center",
                     gap: "8px",
                   }}>
                     <FaChartLine /> Your Reading Journey
@@ -1045,12 +1314,14 @@ export default function ProfileScreen({ currentUser, onLogout }: Props) {
                   
                   <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
                     {[
-                      { label: "Books Shared", value: stats.books, color: BRONZE.primary },
+                      { label: "Books Shared", value: stats.books, color: PINTEREST.primary },
                       { label: "Books Saved", value: stats.saved, color: "#E91E63" },
                       { label: "Books Sold", value: stats.sold, color: "#4CAF50" },
                       { label: "Total Posts", value: stats.posts, color: "#2196F3" },
-                      { label: "Community Rating", value: stats.rating, color: BRONZE.shimmer },
+                      { label: "Community Rating", value: stats.rating, color: "#FFC107" },
                       { label: "Badges Earned", value: stats.badges, color: "#9C27B0" },
+                      { label: "Followers", value: stats.followers, color: PINTEREST.dark },
+                      { label: "Following", value: stats.following, color: PINTEREST.light },
                     ].map((stat, index) => (
                       <motion.div
                         key={stat.label}
@@ -1062,11 +1333,11 @@ export default function ProfileScreen({ currentUser, onLogout }: Props) {
                           justifyContent: "space-between",
                           alignItems: "center",
                           padding: "14px",
-                          background: BRONZE.pale,
+                          background: PINTEREST.grayLight,
                           borderRadius: "12px",
                         }}
                       >
-                        <span style={{ fontSize: "14px", color: BRONZE.textDark, fontWeight: 600 }}>
+                        <span style={{ fontSize: "14px", color: PINTEREST.textDark, fontWeight: 600 }}>
                           {stat.label}
                         </span>
                         <span style={{ 
@@ -1083,19 +1354,19 @@ export default function ProfileScreen({ currentUser, onLogout }: Props) {
                   <motion.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
-                    transition={{ delay: 0.6 }}
+                    transition={{ delay: 0.8 }}
                     style={{
-                      marginTop: "20px",
+                      marginTop: "24px",
                       padding: "16px",
-                      background: `${BRONZE.primary}08`,
-                      borderRadius: "14px",
+                      background: PINTEREST.redLight,
+                      borderRadius: "12px",
                       textAlign: "center",
-                      border: `1px solid ${BRONZE.primary}20`,
+                      border: `1px solid ${PINTEREST.primary}20`,
                     }}
                   >
                     <p style={{ 
                       fontSize: "14px", 
-                      color: BRONZE.dark,
+                      color: PINTEREST.dark,
                       fontStyle: "italic",
                       margin: 0,
                     }}>
@@ -1106,101 +1377,8 @@ export default function ProfileScreen({ currentUser, onLogout }: Props) {
               </motion.div>
             )}
           </AnimatePresence>
-        </div>
+        </main>
       </div>
-
-      {/* Bottom Navigation - Matching HomeScreen style */}
-      <nav
-        style={{
-          display: "flex",
-          justifyContent: "space-around",
-          alignItems: "center",
-          padding: "12px 0",
-          borderTop: `1px solid ${BRONZE.pale}`,
-          background: "white",
-          position: "fixed",
-          bottom: 0,
-          width: "100%",
-          zIndex: 100,
-          boxShadow: "0 -4px 20px rgba(205, 127, 50, 0.08)",
-        }}
-      >
-        {[
-          { icon: FaBookOpen, label: "Home", onClick: () => navigate("/") },
-          { icon: FaMapMarkedAlt, label: "Map", onClick: () => navigate("/map") },
-          { icon: FaComments, label: "Chats", onClick: () => navigate("/chat") },
-          { icon: FaUsers, label: "Community", onClick: () => {} },
-        ].map((item) => (
-          <motion.button
-            key={item.label}
-            whileTap={{ scale: 0.95 }}
-            onClick={item.onClick}
-            style={{
-              background: "transparent",
-              border: "none",
-              color: BRONZE.textLight,
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              fontSize: "20px",
-              cursor: "pointer",
-              padding: "8px 12px",
-              minWidth: "60px",
-              borderRadius: "10px",
-              transition: "all 0.2s ease",
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = `${BRONZE.primary}08`;
-              e.currentTarget.style.color = BRONZE.primary;
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = "transparent";
-              e.currentTarget.style.color = BRONZE.textLight;
-            }}
-          >
-            <item.icon />
-            <span style={{ 
-              fontSize: "11px", 
-              marginTop: "4px", 
-              fontWeight: 500,
-            }}>
-              {item.label}
-            </span>
-          </motion.button>
-        ))}
-
-        {/* Floating Add Button */}
-        <motion.div
-          style={{
-            position: "absolute",
-            top: "-25px",
-            left: "50%",
-            transform: "translateX(-50%)",
-          }}
-          whileHover={{ scale: 1.1 }}
-          whileTap={{ scale: 0.9 }}
-        >
-          <button
-            onClick={() => navigate("/offer")}
-            style={{
-              width: "56px",
-              height: "56px",
-              borderRadius: "50%",
-              background: `linear-gradient(135deg, ${BRONZE.primary}, ${BRONZE.dark})`,
-              border: `3px solid white`,
-              color: "white",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontSize: "24px",
-              cursor: "pointer",
-              boxShadow: "0 6px 20px rgba(205, 127, 50, 0.4)",
-            }}
-          >
-            <FaPlus />
-          </button>
-        </motion.div>
-      </nav>
 
       {/* Settings Dropdown */}
       <AnimatePresence>
@@ -1214,19 +1392,19 @@ export default function ProfileScreen({ currentUser, onLogout }: Props) {
               top: "80px",
               right: "20px",
               background: "white",
-              borderRadius: "14px",
+              borderRadius: "12px",
               boxShadow: "0 8px 24px rgba(0, 0, 0, 0.15)",
-              padding: "14px",
+              padding: "12px",
               minWidth: "160px",
               zIndex: 1000,
-              border: `1px solid ${BRONZE.pale}`,
+              border: `1px solid ${PINTEREST.border}`,
             }}
           >
             <motion.button
               whileHover={{ x: 4 }}
               onClick={() => {
                 setShowSettings(false);
-                // Navigate to settings page or show settings modal
+                // Navigate to settings page
               }}
               style={{
                 display: "flex",
@@ -1236,21 +1414,19 @@ export default function ProfileScreen({ currentUser, onLogout }: Props) {
                 padding: "10px",
                 background: "none",
                 border: "none",
-                color: BRONZE.dark,
+                color: PINTEREST.textDark,
                 fontSize: "14px",
                 fontWeight: 600,
                 cursor: "pointer",
                 borderRadius: "8px",
               }}
-              onMouseEnter={(e) => e.currentTarget.style.background = BRONZE.pale}
-              onMouseLeave={(e) => e.currentTarget.style.background = "none"}
             >
               <FaCog size={14} /> Settings
             </motion.button>
             
             <div style={{ 
               height: "1px", 
-              background: BRONZE.pale, 
+              background: PINTEREST.border, 
               margin: "6px 0" 
             }} />
             
@@ -1274,8 +1450,6 @@ export default function ProfileScreen({ currentUser, onLogout }: Props) {
                 cursor: "pointer",
                 borderRadius: "8px",
               }}
-              onMouseEnter={(e) => e.currentTarget.style.background = "#FFEBEE"}
-              onMouseLeave={(e) => e.currentTarget.style.background = "none"}
             >
               <FaSignOutAlt size={14} /> Logout
             </motion.button>
@@ -1310,7 +1484,7 @@ export default function ProfileScreen({ currentUser, onLogout }: Props) {
               transition={{ type: "spring", damping: 25 }}
               style={{
                 background: "white",
-                borderRadius: "20px",
+                borderRadius: "16px",
                 padding: "24px",
                 width: "100%",
                 maxWidth: "400px",
@@ -1321,7 +1495,7 @@ export default function ProfileScreen({ currentUser, onLogout }: Props) {
               <h3 style={{ 
                 fontSize: "20px", 
                 fontWeight: 700, 
-                color: BRONZE.dark,
+                color: PINTEREST.textDark,
                 margin: "0 0 20px",
                 textAlign: "center",
               }}>
@@ -1334,7 +1508,7 @@ export default function ProfileScreen({ currentUser, onLogout }: Props) {
                     display: "block", 
                     fontSize: "13px", 
                     fontWeight: 600, 
-                    color: BRONZE.dark,
+                    color: PINTEREST.textDark,
                     marginBottom: "6px",
                   }}>
                     Book Title
@@ -1347,15 +1521,12 @@ export default function ProfileScreen({ currentUser, onLogout }: Props) {
                     style={{
                       width: "100%",
                       padding: "12px",
-                      borderRadius: "10px",
-                      border: `1px solid ${BRONZE.light}`,
-                      fontSize: "15px",
-                      color: BRONZE.textDark,
-                      transition: "all 0.3s ease",
+                      borderRadius: "8px",
+                      border: `1px solid ${PINTEREST.border}`,
+                      fontSize: "14px",
+                      color: PINTEREST.textDark,
                       outline: "none",
                     }}
-                    onFocus={(e) => e.target.style.borderColor = BRONZE.primary}
-                    onBlur={(e) => e.target.style.borderColor = BRONZE.light}
                   />
                 </div>
                 
@@ -1364,7 +1535,7 @@ export default function ProfileScreen({ currentUser, onLogout }: Props) {
                     display: "block", 
                     fontSize: "13px", 
                     fontWeight: 600, 
-                    color: BRONZE.dark,
+                    color: PINTEREST.textDark,
                     marginBottom: "6px",
                   }}>
                     Price ($)
@@ -1377,15 +1548,12 @@ export default function ProfileScreen({ currentUser, onLogout }: Props) {
                     style={{
                       width: "100%",
                       padding: "12px",
-                      borderRadius: "10px",
-                      border: `1px solid ${BRONZE.light}`,
-                      fontSize: "15px",
-                      color: BRONZE.textDark,
-                      transition: "all 0.3s ease",
+                      borderRadius: "8px",
+                      border: `1px solid ${PINTEREST.border}`,
+                      fontSize: "14px",
+                      color: PINTEREST.textDark,
                       outline: "none",
                     }}
-                    onFocus={(e) => e.target.style.borderColor = BRONZE.primary}
-                    onBlur={(e) => e.target.style.borderColor = BRONZE.light}
                   />
                 </div>
                 
@@ -1394,7 +1562,7 @@ export default function ProfileScreen({ currentUser, onLogout }: Props) {
                     display: "block", 
                     fontSize: "13px", 
                     fontWeight: 600, 
-                    color: BRONZE.dark,
+                    color: PINTEREST.textDark,
                     marginBottom: "6px",
                   }}>
                     Condition
@@ -1405,13 +1573,12 @@ export default function ProfileScreen({ currentUser, onLogout }: Props) {
                     style={{
                       width: "100%",
                       padding: "12px",
-                      borderRadius: "10px",
-                      border: `1px solid ${BRONZE.light}`,
-                      fontSize: "15px",
-                      color: BRONZE.textDark,
+                      borderRadius: "8px",
+                      border: `1px solid ${PINTEREST.border}`,
+                      fontSize: "14px",
+                      color: PINTEREST.textDark,
                       background: "white",
                       cursor: "pointer",
-                      transition: "all 0.3s ease",
                       outline: "none",
                     }}
                   >
@@ -1431,15 +1598,14 @@ export default function ProfileScreen({ currentUser, onLogout }: Props) {
                   onClick={saveEdit}
                   style={{
                     flex: 2,
-                    background: `linear-gradient(135deg, ${BRONZE.primary}, ${BRONZE.dark})`,
+                    background: PINTEREST.primary,
                     color: "white",
                     border: "none",
                     padding: "14px",
-                    borderRadius: "12px",
-                    fontSize: "15px",
+                    borderRadius: "8px",
+                    fontSize: "14px",
                     fontWeight: 700,
                     cursor: "pointer",
-                    boxShadow: `0 4px 12px ${BRONZE.primary}40`,
                   }}
                 >
                   Save Changes
@@ -1450,12 +1616,12 @@ export default function ProfileScreen({ currentUser, onLogout }: Props) {
                   onClick={() => setEditingOffer(null)}
                   style={{
                     flex: 1,
-                    background: BRONZE.pale,
-                    color: BRONZE.dark,
-                    border: `1px solid ${BRONZE.light}`,
+                    background: PINTEREST.grayLight,
+                    color: PINTEREST.textDark,
+                    border: `1px solid ${PINTEREST.border}`,
                     padding: "14px",
-                    borderRadius: "12px",
-                    fontSize: "15px",
+                    borderRadius: "8px",
+                    fontSize: "14px",
                     fontWeight: 600,
                     cursor: "pointer",
                   }}
@@ -1470,25 +1636,23 @@ export default function ProfileScreen({ currentUser, onLogout }: Props) {
 
       {/* Global Styles */}
       <style>{`
-        @keyframes spin {
-          to { transform: rotate(360deg); }
-        }
-        
         * {
           -webkit-tap-highlight-color: transparent;
         }
         
         input:focus {
           outline: none;
+          border-color: ${PINTEREST.primary} !important;
         }
         
-        button:disabled {
-          cursor: not-allowed;
+        select:focus {
+          outline: none;
+          border-color: ${PINTEREST.primary} !important;
         }
         
         ::-webkit-scrollbar {
-          width: 4px;
-          height: 4px;
+          width: 8px;
+          height: 8px;
         }
         
         ::-webkit-scrollbar-track {
@@ -1496,17 +1660,32 @@ export default function ProfileScreen({ currentUser, onLogout }: Props) {
         }
         
         ::-webkit-scrollbar-thumb {
-          background: ${BRONZE.light};
+          background: ${PINTEREST.border};
           border-radius: 10px;
         }
         
         ::-webkit-scrollbar-thumb:hover {
-          background: ${BRONZE.primary};
+          background: ${PINTEREST.textLight};
         }
         
-        @media (max-width: 480px) {
-          input, button {
-            font-size: 16px !important;
+        @media (max-width: 768px) {
+          aside {
+            display: none;
+          }
+          
+          .main-content {
+            margin-left: 0 !important;
+          }
+          
+          main {
+            grid-template-columns: repeat(2, 1fr) !important;
+            padding: 12px !important;
+          }
+        }
+        
+        @media (min-width: 1200px) {
+          main {
+            grid-template-columns: repeat(5, 1fr) !important;
           }
         }
       `}</style>
