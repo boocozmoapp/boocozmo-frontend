@@ -1,4 +1,4 @@
-// src/pages/OfferScreen.tsx - PINTEREST-STYLE REDESIGN (Fully Fixed & Working)
+// src/pages/OfferScreen.tsx - ENHANCED WITH ADVANCED MAP & EXPAND FEATURE
 import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -26,6 +26,9 @@ import {
   FaStar,
   FaCog,
   FaUsers,
+  FaExpand,
+  FaCompress,
+  FaCrosshairs,
 } from "react-icons/fa";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -34,7 +37,7 @@ const API_BASE = "https://boocozmo-api.onrender.com";
 
 type Props = {
   onBack?: () => void;
-  currentUser: { email: string; name: string; id: string; token: string }; // token required
+  currentUser: { email: string; name: string; id: string; token: string };
   onProfilePress?: () => void;
   onMapPress?: () => void;
   onAddPress?: () => void;
@@ -55,6 +58,38 @@ const PINTEREST = {
   redLight: "#FFE2E6",
   grayLight: "#F7F7F7",
   overlay: "rgba(0, 0, 0, 0.7)",
+  success: "#00A86B",
+  info: "#1D9BF0",  // This is needed for PINTEREST.info
+  warning: "#FF9500"
+};
+
+// Custom marker icon
+const createCustomIcon = () => {
+  return L.divIcon({
+    className: "custom-offer-marker",
+    html: `
+      <div style="
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        background: ${PINTEREST.primary};
+        border: 4px solid white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: bold;
+        font-size: 20px;
+        box-shadow: 0 4px 20px rgba(230, 0, 35, 0.5);
+        cursor: move;
+      ">
+        📚
+      </div>
+    `,
+    iconSize: [50, 50],
+    iconAnchor: [25, 50],
+    popupAnchor: [0, -50],
+  });
 };
 
 export default function OfferScreen({
@@ -76,121 +111,229 @@ export default function OfferScreen({
   const [success, setSuccess] = useState(false);
   const [showLocationPicker, setShowLocationPicker] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [mapExpanded, setMapExpanded] = useState(false); // NEW: Map expand state
 
   const [latitude, setLatitude] = useState<number | null>(null);
   const [longitude, setLongitude] = useState<number | null>(null);
   const [locationSet, setLocationSet] = useState(false);
   const [isLocating, setIsLocating] = useState(false);
+  const [currentAddress, setCurrentAddress] = useState<string>("");
 
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstance = useRef<L.Map | null>(null);
   const markerInstance = useRef<L.Marker | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const detectLocation = useCallback(() => {
+  // Initialize map with advanced features
+  const initializeMap = useCallback(() => {
+    if (!mapRef.current) return;
+
+    const defaultLat = latitude ?? 40.7128;
+    const defaultLng = longitude ?? -74.006;
+
+    // Remove existing map if any
+    if (mapInstance.current) {
+      mapInstance.current.remove();
+    }
+
+    // Create enhanced map instance
+    const map = L.map(mapRef.current, {
+      center: [defaultLat, defaultLng],
+      zoom: 15,
+      zoomControl: true,
+      attributionControl: true,
+      minZoom: 3,
+      maxZoom: 19,
+      scrollWheelZoom: 'center',
+      wheelDebounceTime: 40,
+      doubleClickZoom: 'center',
+      touchZoom: 'center',
+      bounceAtZoomLimits: true,
+      inertia: true,
+      inertiaDeceleration: 3000,
+    });
+
+    mapInstance.current = map;
+
+    // Add tile layer with multiple options
+    L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
+      attribution: '© OpenStreetMap contributors, © CARTO',
+      subdomains: 'abcd',
+      maxZoom: 20,
+    }).addTo(map);
+
+    // Add scale control
+    L.control.scale({
+      imperial: true,
+      metric: true,
+      position: 'bottomleft'
+    }).addTo(map);
+
+    // Create custom marker
+    const customIcon = createCustomIcon();
+    
+    // Add draggable marker
+    const marker = L.marker([defaultLat, defaultLng], {
+      icon: customIcon,
+      draggable: true,
+      autoPan: true,
+      riseOnHover: true,
+    }).addTo(map);
+
+    markerInstance.current = marker;
+
+    // Marker drag events
+    marker.on("dragstart", () => {
+      marker.setOpacity(0.7);
+    });
+
+    marker.on("dragend", async () => {
+      const pos = marker.getLatLng();
+      setLatitude(pos.lat);
+      setLongitude(pos.lng);
+      setLocationSet(true);
+      marker.setOpacity(1);
+      
+      // Reverse geocode to get address
+      await reverseGeocode(pos.lat, pos.lng);
+    });
+
+    // Map click to set location
+    map.on("click", async (e: L.LeafletMouseEvent) => {
+      const { lat, lng } = e.latlng;
+      setLatitude(lat);
+      setLongitude(lng);
+      setLocationSet(true);
+      marker.setLatLng([lat, lng]);
+      
+      // Reverse geocode to get address
+      await reverseGeocode(lat, lng);
+    });
+
+    // Add click listener for expand feature
+    map.on("click", (e) => {
+      // Don't trigger expand on marker clicks (handled by marker events)
+      if (e.originalEvent.target !== mapRef.current) return;
+      
+      // Optional: You could add expand on map double-click
+      // For now, we'll use the expand button
+    });
+
+  }, [latitude, longitude]);
+
+  // Reverse geocode function to get address from coordinates
+  const reverseGeocode = async (lat: number, lng: number) => {
+    try {
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&zoom=18&addressdetails=1`
+      );
+      const data = await response.json();
+      
+      if (data.display_name) {
+        const address = data.display_name.split(',').slice(0, 3).join(',');
+        setCurrentAddress(address);
+      }
+    } catch (error) {
+      console.error("Geocoding error:", error);
+      setCurrentAddress(`${lat.toFixed(6)}, ${lng.toFixed(6)}`);
+    }
+  };
+
+  // Detect user location with high accuracy
+  const detectLocation = useCallback(async () => {
     setIsLocating(true);
+    setError(null);
+    
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
-        (pos) => {
+        async (pos) => {
           const { latitude, longitude } = pos.coords;
           setLatitude(latitude);
           setLongitude(longitude);
           setLocationSet(true);
           setIsLocating(false);
 
+          // Update map
           if (mapInstance.current) {
-            mapInstance.current.setView([latitude, longitude], 15);
+            mapInstance.current.setView([latitude, longitude], 17, {
+              animate: true,
+              duration: 0.5
+            });
+            
             if (markerInstance.current) {
               markerInstance.current.setLatLng([latitude, longitude]);
             }
           }
+
+          // Get address
+          await reverseGeocode(latitude, longitude);
         },
+         
         () => {
           setError("Location access denied. Tap map to set manually.");
           setIsLocating(false);
         },
-        { enableHighAccuracy: true, timeout: 10000 }
+        { 
+          enableHighAccuracy: true, 
+          timeout: 15000,
+          maximumAge: 0
+        }
       );
     } else {
-      setError("Geolocation not supported");
+      setError("Geolocation not supported by your browser");
       setIsLocating(false);
     }
   }, []);
 
+  // Initialize map on mount and when expand state changes
   useEffect(() => {
-    detectLocation();
-  }, [detectLocation]);
+    if (showLocationPicker) {
+      // Small delay to ensure DOM is ready
+      setTimeout(() => {
+        initializeMap();
+      }, 100);
+    }
+  }, [showLocationPicker, initializeMap]);
 
-  useEffect(() => {
-    if (!mapRef.current) return;
-
-    const defaultLat = latitude ?? 40.7128;
-    const defaultLng = longitude ?? -74.006;
-
-    const map = L.map(mapRef.current, {
-      center: [defaultLat, defaultLng],
-      zoom: 13,
-      zoomControl: false,
-      attributionControl: false,
-      dragging: true,
-      scrollWheelZoom: true,
-    });
-    mapInstance.current = map;
-
-    L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
-      attribution: '© OpenStreetMap contributors, © CARTO',
-      subdomains: 'abcd',
-      maxZoom: 19,
-    }).addTo(map);
-
-    const customIcon = L.divIcon({
-      className: "custom-marker",
-      html: `
-        <div style="width:40px;height:40px;border-radius:50%;background:${PINTEREST.primary};border:3px solid white;display:flex;align-items:center;justify-content:center;color:white;font-weight:bold;box-shadow:0 4px 12px rgba(230,0,35,0.4);">
-          📚
-        </div>
-      `,
-      iconSize: [40, 40],
-      iconAnchor: [20, 40],
-    });
-
-    const marker = L.marker([defaultLat, defaultLng], { icon: customIcon, draggable: true }).addTo(map);
-    markerInstance.current = marker;
-
-    marker.on("dragend", () => {
-      const pos = marker.getLatLng();
-      setLatitude(pos.lat);
-      setLongitude(pos.lng);
-      setLocationSet(true);
-    });
-
-    map.on("click", (e: L.LeafletMouseEvent) => {
-      const { lat, lng } = e.latlng;
-      setLatitude(lat);
-      setLongitude(lng);
-      setLocationSet(true);
-      marker.setLatLng([lat, lng]);
-    });
-
-    return () => {
-      map.remove();
-    };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
+  // Re-center map when location changes
   useEffect(() => {
     if (mapInstance.current && latitude && longitude) {
-      mapInstance.current.setView([latitude, longitude], 15);
+      mapInstance.current.setView([latitude, longitude], 15, {
+        animate: true,
+        duration: 0.5
+      });
+      
+      if (markerInstance.current) {
+        markerInstance.current.setLatLng([latitude, longitude]);
+      }
     }
   }, [latitude, longitude]);
 
+  // Cleanup map on unmount
+  useEffect(() => {
+    return () => {
+      if (mapInstance.current) {
+        mapInstance.current.remove();
+        mapInstance.current = null;
+      }
+    };
+  }, []);
+
+  // Handle image selection
   const handleImagePick = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    
     if (file.size > 5 * 1024 * 1024) {
       setError("Image too large (max 5MB)");
       return;
     }
+    
+    if (!file.type.startsWith('image/')) {
+      setError("Please select an image file");
+      return;
+    }
+    
     setImage(file);
     const reader = new FileReader();
     reader.onload = () => setImagePreview(reader.result as string);
@@ -210,11 +353,28 @@ export default function OfferScreen({
     { value: "Fair", color: "#64748B", icon: "📖" },
   ] as const;
 
+  // Submit offer
   const handleSubmit = async () => {
-    if (!description.trim()) return setError("Please describe the book");
-    if (action === "sell" && (!price || isNaN(Number(price)) || Number(price) <= 0)) return setError("Enter a valid price");
-    if (action === "trade" && !exchangeBook.trim()) return setError("Enter the book you want to trade for");
-    if (!locationSet) return setError("Please set your location");
+    // Validation
+    if (!description.trim()) {
+      setError("Please describe the book");
+      return;
+    }
+    
+    if (action === "sell" && (!price || isNaN(Number(price)) || Number(price) <= 0)) {
+      setError("Enter a valid price");
+      return;
+    }
+    
+    if (action === "trade" && !exchangeBook.trim()) {
+      setError("Enter the book you want to trade for");
+      return;
+    }
+    
+    if (!locationSet) {
+      setError("Please set your location");
+      return;
+    }
 
     setLoading(true);
     setError(null);
@@ -239,13 +399,14 @@ export default function OfferScreen({
         image: imageBase64,
         condition,
         ownerEmail: currentUser.email,
+        address: currentAddress,
       };
 
       const resp = await fetch(`${API_BASE}/submit-offer`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${currentUser.token}`, // ← JWT token sent
+          "Authorization": `Bearer ${currentUser.token}`,
         },
         body: JSON.stringify(payload),
       });
@@ -270,6 +431,36 @@ export default function OfferScreen({
       setError(err.message || "Failed to post offer");
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Toggle map expansion
+  const toggleMapExpansion = () => {
+    setMapExpanded(!mapExpanded);
+    
+    // Re-initialize map after expansion state change
+    setTimeout(() => {
+      if (mapRef.current && mapInstance.current) {
+        mapInstance.current.invalidateSize();
+        
+        // Re-center on marker if location is set
+        if (latitude && longitude) {
+          mapInstance.current.setView([latitude, longitude], 15, {
+            animate: true,
+            duration: 0.3
+          });
+        }
+      }
+    }, 50);
+  };
+
+  // Center map on current location
+  const centerOnLocation = () => {
+    if (mapInstance.current && latitude && longitude) {
+      mapInstance.current.setView([latitude, longitude], 17, {
+        animate: true,
+        duration: 0.5
+      });
     }
   };
 
@@ -527,8 +718,15 @@ export default function OfferScreen({
           flex: 1,
           overflowY: "auto",
           padding: "20px",
+          position: "relative",
         }}>
-          <div style={{ maxWidth: "600px", margin: "0 auto" }}>
+          <div style={{ 
+            maxWidth: "600px", 
+            margin: "0 auto",
+            transition: "filter 0.3s ease",
+            filter: mapExpanded ? "blur(4px)" : "none",
+            pointerEvents: mapExpanded ? "none" : "auto",
+          }}>
             {/* Book Description */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -555,6 +753,7 @@ export default function OfferScreen({
                 placeholder="Tell others about this book, include title, author, and any details..."
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
+                maxLength={500}
                 style={{
                   width: "100%",
                   minHeight: "120px",
@@ -744,6 +943,8 @@ export default function OfferScreen({
                     placeholder="0.00"
                     value={price}
                     onChange={(e) => setPrice(e.target.value)}
+                    step="0.01"
+                    min="0"
                     style={{
                       width: "100%",
                       padding: "12px 12px 12px 36px",
@@ -914,7 +1115,7 @@ export default function OfferScreen({
               </div>
             </motion.div>
 
-            {/* Location */}
+            {/* Enhanced Location Section with Expand Feature */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -926,6 +1127,7 @@ export default function OfferScreen({
                 marginBottom: "16px",
                 boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
                 border: `1px solid ${PINTEREST.border}`,
+                position: "relative",
               }}
             >
               <div style={{
@@ -946,27 +1148,32 @@ export default function OfferScreen({
                   Location *
                 </label>
                 
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => setShowLocationPicker(!showLocationPicker)}
-                  style={{
-                    background: "none",
-                    border: "none",
-                    color: PINTEREST.primary,
-                    fontSize: "14px",
-                    fontWeight: "600",
-                    cursor: "pointer",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "4px",
-                  }}
-                >
-                  {showLocationPicker ? <FaChevronUp /> : <FaChevronDown />}
-                  {showLocationPicker ? "Hide Map" : "Set Location"}
-                </motion.button>
+                <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => setShowLocationPicker(!showLocationPicker)}
+                    style={{
+                      border: "none",
+                      color: PINTEREST.primary,
+                      fontSize: "14px",
+                      fontWeight: "600",
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "4px",
+                      padding: "6px 12px",
+                      borderRadius: "8px",
+                      background: showLocationPicker ? PINTEREST.redLight : "transparent",
+                    }}
+                  >
+                    {showLocationPicker ? <FaChevronUp /> : <FaChevronDown />}
+                    {showLocationPicker ? "Hide Map" : "Set Location"}
+                  </motion.button>
+                </div>
               </div>
 
+              {/* Location Address Display */}
               <div style={{
                 display: "flex",
                 alignItems: "center",
@@ -981,73 +1188,190 @@ export default function OfferScreen({
                   fontSize: "13px",
                   color: locationSet ? PINTEREST.textDark : PINTEREST.textMuted,
                   fontWeight: locationSet ? "500" : "400",
+                  minHeight: "40px",
+                  display: "flex",
+                  alignItems: "center",
                 }}>
-                  {locationSet 
+                  {currentAddress || (locationSet 
                     ? `${latitude?.toFixed(6)}, ${longitude?.toFixed(6)}`
-                    : "Location not set"
-                  }
+                    : "Location not set - tap map or use detect"
+                  )}
                 </div>
                 
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={detectLocation}
-                  disabled={isLocating}
-                  style={{
-                    padding: "12px",
-                    borderRadius: "8px",
-                    border: "none",
-                    background: PINTEREST.primary,
-                    color: "white",
-                    fontSize: "14px",
-                    fontWeight: "600",
-                    cursor: isLocating ? "not-allowed" : "pointer",
-                    opacity: isLocating ? 0.7 : 1,
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "6px",
-                  }}
-                >
-                  {isLocating ? (
-                    <>
-                      <div style={{
-                        width: "12px",
-                        height: "12px",
-                        border: "2px solid white",
-                        borderTopColor: "transparent",
-                        borderRadius: "50%",
-                        animation: "spin 1s linear infinite",
-                      }} />
-                      Detecting...
-                    </>
-                  ) : (
-                    <>
-                      <FaLocationArrow />
-                      Detect
-                    </>
-                  )}
-                </motion.button>
+                <div style={{ display: "flex", gap: "4px" }}>
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={detectLocation}
+                    disabled={isLocating}
+                    style={{
+                      padding: "12px",
+                      borderRadius: "8px",
+                      border: "none",
+                      background: PINTEREST.primary,
+                      color: "white",
+                      fontSize: "14px",
+                      fontWeight: "600",
+                      cursor: isLocating ? "not-allowed" : "pointer",
+                      opacity: isLocating ? 0.7 : 1,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "6px",
+                      minWidth: "120px",
+                      justifyContent: "center",
+                    }}
+                  >
+                    {isLocating ? (
+                      <>
+                        <div style={{
+                          width: "12px",
+                          height: "12px",
+                          border: "2px solid white",
+                          borderTopColor: "transparent",
+                          borderRadius: "50%",
+                          animation: "spin 1s linear infinite",
+                        }} />
+                        Detecting...
+                      </>
+                    ) : (
+                      <>
+                        <FaLocationArrow />
+                        Detect
+                      </>
+                    )}
+                  </motion.button>
+                </div>
               </div>
 
+              {/* Expandable Map Container */}
               <AnimatePresence>
                 {showLocationPicker && (
                   <motion.div
                     initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: "300px", opacity: 1 }}
+                    animate={{ height: mapExpanded ? "80vh" : "300px", opacity: 1 }}
                     exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.3 }}
                     style={{
                       overflow: "hidden",
                       marginTop: "12px",
+                      position: "relative",
+                      borderRadius: "12px",
+                      border: mapExpanded ? `3px solid ${PINTEREST.primary}` : `2px solid ${PINTEREST.border}`,
+                      zIndex: mapExpanded ? 1000 : "auto",
                     }}
                   >
+                    {/* Map Controls Overlay */}
+                    <div style={{
+                      position: "absolute",
+                      top: "12px",
+                      right: "12px",
+                      zIndex: 1001,
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: "8px",
+                    }}>
+                      {/* Expand/Collapse Button */}
+                      <motion.button
+                        whileHover={{ scale: 1.1 }}
+                        whileTap={{ scale: 0.9 }}
+                        onClick={toggleMapExpansion}
+                        style={{
+                          width: "40px",
+                          height: "40px",
+                          borderRadius: "50%",
+                          background: PINTEREST.primary,
+                          border: "none",
+                          color: "white",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          cursor: "pointer",
+                          fontSize: "16px",
+                          boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
+                        }}
+                      >
+                        {mapExpanded ? <FaCompress /> : <FaExpand />}
+                      </motion.button>
+
+                      {/* Center on Location Button */}
+                      {locationSet && (
+                        <motion.button
+                          whileHover={{ scale: 1.1 }}
+                          whileTap={{ scale: 0.9 }}
+                          onClick={centerOnLocation}
+                          style={{
+                            width: "40px",
+                            height: "40px",
+                            borderRadius: "50%",
+                            background: PINTEREST.info,
+                            border: "none",
+                            color: "white",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            cursor: "pointer",
+                            fontSize: "16px",
+                            boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
+                          }}
+                        >
+                          <FaCrosshairs />
+                        </motion.button>
+                      )}
+                    </div>
+
+                    {/* Map Instructions */}
+                    <div style={{
+                      position: "absolute",
+                      bottom: "12px",
+                      left: "12px",
+                      right: "12px",
+                      zIndex: 1001,
+                      background: "rgba(255,255,255,0.9)",
+                      backdropFilter: "blur(10px)",
+                      padding: "8px 12px",
+                      borderRadius: "8px",
+                      fontSize: "12px",
+                      color: PINTEREST.textDark,
+                      fontWeight: "500",
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+                    }}>
+                      <span>
+                        {mapExpanded 
+                          ? "Drag the marker or tap the map to set location" 
+                          : "Drag marker or tap map to set location"
+                        }
+                      </span>
+                      {mapExpanded && (
+                        <motion.button
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                          onClick={toggleMapExpansion}
+                          style={{
+                            padding: "6px 12px",
+                            background: PINTEREST.primary,
+                            color: "white",
+                            border: "none",
+                            borderRadius: "6px",
+                            fontSize: "12px",
+                            fontWeight: "600",
+                            cursor: "pointer",
+                          }}
+                        >
+                          Done
+                        </motion.button>
+                      )}
+                    </div>
+
+                    {/* Map Container */}
                     <div
                       ref={mapRef}
                       style={{
                         width: "100%",
                         height: "100%",
-                        borderRadius: "12px",
-                        overflow: "hidden",
-                        border: `2px solid ${PINTEREST.primary}`,
+                        borderRadius: mapExpanded ? "10px" : "10px",
                       }}
                     />
                   </motion.div>
@@ -1055,7 +1379,7 @@ export default function OfferScreen({
               </AnimatePresence>
             </motion.div>
 
-            {/* Error & Success */}
+            {/* Error & Success Messages */}
             <AnimatePresence>
               {error && (
                 <motion.div
@@ -1109,6 +1433,8 @@ export default function OfferScreen({
           padding: "16px 20px",
           background: PINTEREST.bg,
           borderTop: `1px solid ${PINTEREST.border}`,
+          position: "relative",
+          zIndex: 50,
         }}>
           <motion.button
             whileHover={{ scale: 1.02 }}
@@ -1153,9 +1479,67 @@ export default function OfferScreen({
         </div>
       </div>
 
+      {/* Expanded Map Overlay */}
+      <AnimatePresence>
+        {mapExpanded && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            style={{
+              position: "fixed",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              background: PINTEREST.overlay,
+              backdropFilter: "blur(8px)",
+              zIndex: 999,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: "20px",
+            }}
+            onClick={toggleMapExpansion}
+          >
+            {/* This overlay just provides the background blur */}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <style>{`
         @keyframes spin {
           to { transform: rotate(360deg); }
+        }
+        
+        .custom-offer-marker {
+          transition: transform 0.3s ease;
+        }
+        
+        .custom-offer-marker:hover {
+          transform: scale(1.1);
+        }
+        
+        .leaflet-control-zoom {
+          border-radius: 8px !important;
+          overflow: hidden !important;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.1) !important;
+        }
+        
+        .leaflet-control-scale {
+          background: rgba(255, 255, 255, 0.9) !important;
+          border-radius: 4px !important;
+          padding: 4px 8px !important;
+          font-size: 11px !important;
+        }
+        
+        .leaflet-container {
+          font-family: 'Inter', -apple-system, sans-serif !important;
+        }
+        
+        /* Smooth transitions for map expansion */
+        .leaflet-map-container {
+          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
       `}</style>
     </div>
