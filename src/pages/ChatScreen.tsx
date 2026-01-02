@@ -1,4 +1,4 @@
-// src/pages/ChatScreen.tsx - PINTEREST-STYLE (Fixed: Sends JWT Token)
+// src/pages/ChatScreen.tsx - PINTEREST-STYLE (Fixed: Sends JWT Token, Larger Header Icons)
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { 
@@ -188,7 +188,7 @@ export default function ChatScreen({
   const navItems = [
     { icon: FaHome, label: "Home", onClick: () => navigate("/") },
     { icon: FaCompass, label: "Discover", onClick: () => {} },
-    { icon: FaBookOpen, label: "My Books", onClick: () => navigate("/profile") },
+    { icon: FaBookOpen, label: "My Library", onClick: () => navigate("/my-library") },
     { icon: FaBookmark, label: "Saved", onClick: () => {} },
     { icon: FaUsers, label: "Following", onClick: () => {} },
     { icon: FaMapMarkedAlt, label: "Map", onClick: onMapPress },
@@ -392,8 +392,8 @@ export default function ChatScreen({
               whileTap={{ scale: 0.9 }}
               onClick={() => setSidebarOpen(!sidebarOpen)}
               style={{
-                width: "40px",
-                height: "40px",
+                width: "56px",  // bigger button
+                height: "56px", // bigger button
                 borderRadius: "50%",
                 background: PINTEREST.hoverBg,
                 border: "none",
@@ -404,7 +404,7 @@ export default function ChatScreen({
                 cursor: "pointer",
               }}
             >
-              {sidebarOpen ? <FaTimes /> : <FaEllipsisH />}
+              {sidebarOpen ? <FaTimes size={28} /> : <FaEllipsisH size={28} />}
             </motion.button>
 
             <h1 style={{
@@ -421,8 +421,8 @@ export default function ChatScreen({
             <motion.button
               whileTap={{ scale: 0.9 }}
               style={{
-                width: "40px",
-                height: "40px",
+                width: "56px", // bigger button
+                height: "56px", // bigger button
                 borderRadius: "50%",
                 background: PINTEREST.hoverBg,
                 border: "none",
@@ -434,13 +434,13 @@ export default function ChatScreen({
                 position: "relative",
               }}
             >
-              <FaBell />
+              <FaBell size={28} />  {/* bigger icon */}
               <div style={{
                 position: "absolute",
-                top: "4px",
-                right: "4px",
-                width: "8px",
-                height: "8px",
+                top: "6px",
+                right: "6px",
+                width: "10px",
+                height: "10px",
                 borderRadius: "50%",
                 background: PINTEREST.primary,
               }} />

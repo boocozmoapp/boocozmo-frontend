@@ -261,7 +261,7 @@ export default function ProfileScreen({ currentUser, onLogout }: Props) {
   const navItems = [
     { icon: FaHome, label: "Home", onClick: () => navigate("/") },
     { icon: FaCompass, label: "Discover", onClick: () => {} },
-    { icon: FaBook, label: "My Books", active: true, onClick: () => {} },
+    { icon: FaBookOpen, label: "My Library",active:true,onClick: () => navigate("/my-library") },
     { icon: FaBookmark, label: "Saved", onClick: () => setActiveTab("saved") },
     { icon: FaUsers, label: "Following", onClick: () => {} },
     { icon: FaMapMarkedAlt, label: "Map", onClick: () => navigate("/map") },

@@ -920,7 +920,7 @@ export default function HomeScreen({
                   flexShrink: 0,
                 }}
               >
-                {sidebarOpen ? <FaTimes size={16} /> : <FaEllipsisH size={16} />}
+                {sidebarOpen ? <FaTimes size={16} /> : <FaEllipsisH size={16} color={PINTEREST.textDark} />}
               </motion.button>
 
               {/* Search */}
@@ -974,7 +974,7 @@ export default function HomeScreen({
                   position: "relative",
                 }}
               >
-                <FaBell size={16} />
+                <FaBell size={16}  color={PINTEREST.textDark} />
                 <div style={{
                   position: "absolute",
                   top: "6px",

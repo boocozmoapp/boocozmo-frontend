@@ -1,4 +1,4 @@
-// src/pages/MapScreen.tsx - COMPLETE WITH CHAT FUNCTIONALITY
+// src/pages/MapScreen.tsx - COMPLETELY FIXED VERSION
 import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -58,17 +58,20 @@ type Offer = {
   genre?: string;
   author?: string;
   lastUpdated?: string;
+  saved?: boolean;
+  liked?: boolean;
 };
 
 type Props = {
   currentUser: { 
     email: string; 
-    name: string;
+    name: string; 
+    id: string;  // FIXED: Added missing id field
     token: string;
   };
 };
 
-// Retry wrapper with timeout
+// Retry wrapper with timeout - EXACT SAME AS HOMESCREEN
 const fetchWithTimeout = async (url: string, options: RequestInit = {}, timeout = 10000) => {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeout);
@@ -163,12 +166,11 @@ export default function MapScreen({ currentUser }: Props) {
   const [userLocation, setUserLocation] = useState<{lat: number, lng: number} | null>(null);
   const [isLiked, setIsLiked] = useState<Record<number, boolean>>({});
   const [isSaved, setIsSaved] = useState<Record<number, boolean>>({});
-   
   const [, setImageErrors] = useState<Record<number, boolean>>({});
 
   const abortControllerRef = useRef<AbortController | null>(null);
 
-  // Fetch offers - Same as HomeScreen
+  // Fetch offers - FIXED to match HomeScreen exactly
   const fetchOffers = useCallback(async (silent = false) => {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
@@ -181,6 +183,8 @@ export default function MapScreen({ currentUser }: Props) {
     } else {
       setRefreshing(true);
     }
+    
+    setImageErrors({}); // FIXED: Reset image errors
 
     try {
       const response = await fetchWithTimeout(`${API_BASE}/offers`, {
@@ -210,7 +214,7 @@ export default function MapScreen({ currentUser }: Props) {
         rawOffers = data.data;
       }
 
-      // Process offers
+      // Process offers - EXACT SAME AS HOMESCREEN
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const processed: Offer[] = rawOffers.map((o: any, index: number) => {
         let imageUrl = null;
@@ -270,7 +274,7 @@ export default function MapScreen({ currentUser }: Props) {
       });
       setIsLiked(likes);
       setIsSaved(saves);
-      setError(null);
+      setError(null); // FIXED: Reset error on success like HomeScreen
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       if (err.name !== "AbortError") {
@@ -412,7 +416,7 @@ export default function MapScreen({ currentUser }: Props) {
 
   }, [filteredOffers, loading, userLocation, selectedOffer, handleMarkerClick]);
 
-  // Helper functions
+  // Helper functions - EXACT SAME AS HOMESCREEN
   const getTypeLabel = (type: string) => {
     switch (type) {
       case "sell": return "For Sale";
@@ -495,7 +499,7 @@ export default function MapScreen({ currentUser }: Props) {
     return `${Math.floor(hours / 24)}d ago`;
   };
 
-  // ==================== CHAT FUNCTIONALITY ====================
+  // ==================== EXACT CHAT FUNCTIONALITY FROM HOMESCREEN ====================
   const handleChat = useCallback(async (offer: Offer) => {
     if (offer.ownerEmail === currentUser.email) {
       alert("This is your own listing!");
@@ -778,7 +782,7 @@ export default function MapScreen({ currentUser }: Props) {
         </div>
       )}
 
-      {/* Selected Offer Detail Modal - SAME AS HOMESCREEN */}
+      {/* Selected Offer Detail Modal */}
       <AnimatePresence>
         {selectedOffer && (
           <>

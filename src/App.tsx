@@ -226,22 +226,18 @@ function AppContent() {
       />
 
       <Route
-        path="/map"
-        element={
-          user ? (
-            <MapScreen currentUser={{
-              email: "",
-              name: "",
-              token: ""
-            }}/>
-          ) : (
-            <LoginScreen
-              onLoginSuccess={handleAuthSuccess}
-              onGoToSignup={goTo("/signup")}
-            />
-          )
-        }
+  path="/map"
+  element={
+    user ? (
+      <MapScreen currentUser={user}/>
+    ) : (
+      <LoginScreen
+        onLoginSuccess={handleAuthSuccess}
+        onGoToSignup={goTo("/signup")}
       />
+    )
+  }
+/>
 
       <Route
         path="/chat"
