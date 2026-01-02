@@ -1,4 +1,4 @@
-// src/pages/HomeScreen.tsx - PINTEREST STYLE WITH 2 CARDS PER ROW
+// src/pages/HomeScreen.tsx - SIMPLIFIED PINTEREST STYLE
 import { useEffect, useState, useCallback, useMemo, useRef, memo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -21,8 +21,6 @@ import {
   FaTag,
   FaEllipsisH,
   FaHeart,
-  FaBook,
-  FaEye,
 } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 
@@ -72,7 +70,7 @@ type Props = {
 
 // Function to generate random heights for Pinterest effect
 const getRandomHeight = (index: number) => {
-  const heights = [280, 320, 360, 300, 340, 380, 310, 350, 290, 330];
+  const heights = [260, 280, 240, 300, 220, 260, 280, 240];
   return heights[index % heights.length];
 };
 
@@ -91,7 +89,6 @@ export default function HomeScreen({
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [hoveredOffer, setHoveredOffer] = useState<number | null>(null);
   const [isLiked, setIsLiked] = useState<Record<number, boolean>>({});
-  const [cardHeights] = useState<Record<number, number>>(() => ({}));
 
   const abortControllerRef = useRef<AbortController | null>(null);
 
@@ -105,13 +102,26 @@ export default function HomeScreen({
     setError(null);
 
     try {
-      const response = await fetch(`${API_BASE}/offers`, {
-        signal: abortControllerRef.current.signal,
-        headers: {
-          "Authorization": `Bearer ${currentUser.token}`,
-          "Cache-Control": "no-cache",
-        },
-      });
+      // Try with authorization first
+      let response;
+      try {
+        response = await fetch(`${API_BASE}/offers`, {
+          signal: abortControllerRef.current.signal,
+          headers: {
+            "Authorization": `Bearer ${currentUser.token}`,
+            "Cache-Control": "no-cache",
+          },
+        });
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      } catch (authError) {
+        // If fails with auth, try without it
+        response = await fetch(`${API_BASE}/offers`, {
+          signal: abortControllerRef.current.signal,
+          headers: {
+            "Cache-Control": "no-cache",
+          },
+        });
+      }
 
       if (!response.ok) {
         const errData = await response.json().catch(() => ({}));
@@ -119,37 +129,56 @@ export default function HomeScreen({
       }
 
       const data = await response.json();
-      const rawOffers = Array.isArray(data) ? data : data.offers || [];
+      console.log("API Response:", data);
+      
+      // Handle different response formats
+      let rawOffers = [];
+      if (Array.isArray(data)) {
+        rawOffers = data;
+      } else if (data.offers && Array.isArray(data.offers)) {
+        rawOffers = data.offers;
+      } else if (data.data && Array.isArray(data.data)) {
+        rawOffers = data.data;
+      }
+      
+      console.log("Raw offers count:", rawOffers.length);
 
-      // Process with random heights for Pinterest layout
+      // Process offers
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const processed: Offer[] = rawOffers.map((o: any, index: number) => {
         let imageUrl = o.imageUrl || o.imageBase64 || null;
 
         if (!imageUrl) {
-          // Random book covers with different aspect ratios
+          // Simple book covers
           const fallbacks = [
-            "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=400&h=600&fit=crop",
-            "https://images.unsplash.com/photo-1541963463532-d68292c34b19?w=400&h=450&fit=crop",
-            "https://images.unsplash.com/photo-1512820790803-83ca734da794?w=400&h=500&fit=crop",
-            "https://images.unsplash.com/photo-1532012197267-da84d127e765?w=400&h-550&fit=crop",
-            "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=650&fit=crop",
-            "https://images.unsplash.com/photo-1551029506-0807df4e2031?w=400&h=400&fit=crop",
-            "https://images.unsplash.com/photo-1516979187457-637abb4f9353?w=400&h=700&fit=crop",
-            "https://images.unsplash.com/photo-1543002588-bfa74002ed7e?w=400&h=480&fit=crop",
+            "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=300&h=400&fit=crop",
+            "https://images.unsplash.com/photo-1541963463532-d68292c34b19?w=300&h=380&fit=crop",
+            "https://images.unsplash.com/photo-1512820790803-83ca734da794?w=300&h-420&fit=crop",
           ];
           imageUrl = fallbacks[Math.floor(Math.random() * fallbacks.length)];
         }
 
-        // Set random height for this card
-        cardHeights[o.id] = getRandomHeight(index);
-
         return {
-          ...o,
+          id: o.id || index,
+          type: o.type || "sell",
+          bookTitle: o.bookTitle || o.title || "Unknown Book",
+          exchangeBook: o.exchangeBook || null,
+          price: o.price ? parseFloat(o.price) : null,
+          condition: o.condition || null,
+          ownerEmail: o.ownerEmail || "unknown@example.com",
           imageUrl,
+          imageBase64: o.imageBase64 || null,
+          latitude: o.latitude ? parseFloat(o.latitude) : null,
+          longitude: o.longitude ? parseFloat(o.longitude) : null,
+          ownerName: o.ownerName || o.ownerEmail?.split("@")[0] || "User",
+          distance: o.distance || "Nearby",
+          description: o.description || "",
+          genre: o.genre || "Fiction",
+          author: o.author || "Unknown Author",
         };
       });
 
+      console.log("Processed offers:", processed.length);
       setOffers(processed);
       
       // Initialize random likes
@@ -161,12 +190,13 @@ export default function HomeScreen({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       if (err.name !== "AbortError") {
+        console.error("Error:", err);
         setError(err.message || "Failed to load books");
       }
     } finally {
       setLoading(false);
     }
-  }, [currentUser.token, cardHeights]);
+  }, [currentUser.token]);
 
   useEffect(() => {
     fetchOffers();
@@ -198,8 +228,6 @@ export default function HomeScreen({
   }, [offers, selectedFilter, searchQuery]);
 
   const getImageSource = useCallback((offer: Offer) => offer.imageUrl || "", []);
-
-  const handleOfferPress = useCallback((id: number) => navigate(`/offer/${id}`), [navigate]);
 
   const handleLike = useCallback((e: React.MouseEvent, id: number) => {
     e.stopPropagation();
@@ -251,7 +279,7 @@ export default function HomeScreen({
         const img = getImageSource(offer);
         const hovered = hoveredOffer === offer.id;
         const liked = isLiked[offer.id] || false;
-        const cardHeight = cardHeights[offer.id] || getRandomHeight(index);
+        const cardHeight = getRandomHeight(index);
 
         return (
           <motion.div
@@ -259,34 +287,33 @@ export default function HomeScreen({
             animate={{ opacity: 1, y: 0 }}
             transition={{ 
               duration: 0.3,
-              delay: index * 0.05 // Stagger animation
+              delay: index * 0.03
             }}
             whileHover={{ 
-              y: -8,
+              y: -4,
               transition: { duration: 0.2 }
             }}
             onMouseEnter={() => setHoveredOffer(offer.id)}
             onMouseLeave={() => setHoveredOffer(null)}
-            onClick={() => handleOfferPress(offer.id)}
             style={{
               position: "relative",
               cursor: "pointer",
-              borderRadius: "20px",
+              borderRadius: "12px",
               overflow: "hidden",
               background: "white",
               boxShadow: hovered 
-                ? "0 24px 48px rgba(0,0,0,0.12), 0 8px 24px rgba(0,0,0,0.08)"
-                : "0 4px 16px rgba(0,0,0,0.08)",
-              transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+                ? "0 8px 16px rgba(0,0,0,0.1)"
+                : "0 2px 8px rgba(0,0,0,0.06)",
+              transition: "all 0.2s ease",
               height: `${cardHeight}px`,
               display: "flex",
               flexDirection: "column",
             }}
           >
-            {/* Image Container - Varies in height */}
+            {/* Image Container */}
             <div style={{ 
               position: "relative", 
-              flex: "1 0 auto",
+              height: "60%",
               overflow: "hidden",
               background: PINTEREST.grayLight 
             }}>
@@ -297,30 +324,26 @@ export default function HomeScreen({
                   width: "100%",
                   height: "100%",
                   objectFit: "cover",
-                  transition: "transform 0.6s cubic-bezier(0.4, 0, 0.2, 1)",
-                  transform: hovered ? "scale(1.08)" : "scale(1)",
                 }}
                 loading="lazy"
               />
 
-              {/* Top Badge */}
+              {/* Simple Type Badge */}
               <div style={{
                 position: "absolute",
-                top: "14px",
-                left: "14px",
+                top: "8px",
+                left: "8px",
                 background: getTypeColor(offer.type),
                 color: "white",
-                padding: "6px 12px",
-                borderRadius: "14px",
-                fontSize: "11px",
-                fontWeight: "700",
+                padding: "4px 8px",
+                borderRadius: "8px",
+                fontSize: "10px",
+                fontWeight: "600",
                 display: "flex",
                 alignItems: "center",
-                gap: "5px",
-                letterSpacing: "0.3px",
+                gap: "4px",
                 textTransform: "uppercase",
                 zIndex: 2,
-                boxShadow: "0 2px 8px rgba(0,0,0,0.2)",
               }}>
                 {getTypeIcon(offer.type)}
                 {getTypeLabel(offer.type)}
@@ -329,180 +352,111 @@ export default function HomeScreen({
               {/* Like Button */}
               <motion.button
                 onClick={(e) => handleLike(e, offer.id)}
-                whileTap={{ scale: 0.8 }}
+                whileTap={{ scale: 0.9 }}
                 style={{
                   position: "absolute",
-                  top: "14px",
-                  right: "14px",
-                  width: "36px",
-                  height: "36px",
+                  top: "8px",
+                  right: "8px",
+                  width: "28px",
+                  height: "28px",
                   borderRadius: "50%",
-                  background: "rgba(255, 255, 255, 0.95)",
-                  backdropFilter: "blur(8px)",
+                  background: "rgba(255, 255, 255, 0.9)",
                   border: "none",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
                   cursor: "pointer",
                   zIndex: 2,
-                  boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+                  fontSize: "12px",
                 }}
               >
-                <motion.div
-                  animate={{ scale: liked ? [1, 1.3, 1] : 1 }}
-                  transition={{ duration: 0.3 }}
-                >
-                  <FaHeart 
-                    size={16} 
-                    color={liked ? PINTEREST.primary : PINTEREST.textLight}
-                    fill={liked ? PINTEREST.primary : "none"}
-                  />
-                </motion.div>
+                <FaHeart 
+                  color={liked ? PINTEREST.primary : PINTEREST.textLight}
+                  fill={liked ? PINTEREST.primary : "none"}
+                />
               </motion.button>
 
-              {/* Price Overlay */}
-              {offer.price && !hovered && (
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  style={{
-                    position: "absolute",
-                    bottom: "14px",
-                    right: "14px",
-                    background: "rgba(255, 255, 255, 0.95)",
-                    backdropFilter: "blur(8px)",
-                    padding: "8px 14px",
-                    borderRadius: "14px",
-                    fontSize: "15px",
-                    fontWeight: "800",
-                    color: PINTEREST.primary,
-                    boxShadow: "0 4px 16px rgba(0,0,0,0.15)",
-                    zIndex: 2,
-                  }}
-                >
+              {/* Price */}
+              {offer.price && (
+                <div style={{
+                  position: "absolute",
+                  bottom: "8px",
+                  right: "8px",
+                  background: "rgba(255, 255, 255, 0.9)",
+                  padding: "4px 8px",
+                  borderRadius: "8px",
+                  fontSize: "12px",
+                  fontWeight: "700",
+                  color: PINTEREST.primary,
+                  zIndex: 2,
+                }}>
                   {formatPrice(offer.price)}
-                </motion.div>
+                </div>
               )}
-
-              {/* Hover Overlay */}
-              <AnimatePresence>
-                {hovered && (
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    style={{
-                      position: "absolute",
-                      inset: 0,
-                      background: "linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.85) 100%)",
-                      display: "flex",
-                      flexDirection: "column",
-                      justifyContent: "flex-end",
-                      padding: "20px",
-                      zIndex: 1,
-                    }}
-                  >
-                    <div style={{ color: "white" }}>
-                      <h3 style={{ 
-                        fontSize: "18px", 
-                        fontWeight: "800", 
-                        margin: "0 0 10px",
-                        lineHeight: 1.3,
-                        letterSpacing: "-0.3px",
-                      }}>
-                        {offer.bookTitle}
-                      </h3>
-                      
-                      <div style={{ 
-                        display: "flex", 
-                        alignItems: "center", 
-                        gap: "14px",
-                        marginBottom: "14px",
-                      }}>
-                        <span style={{ 
-                          fontSize: "16px", 
-                          fontWeight: "800",
-                          background: PINTEREST.primary,
-                          padding: "6px 14px",
-                          borderRadius: "16px",
-                          boxShadow: "0 4px 12px rgba(230, 0, 35, 0.3)",
-                        }}>
-                          {formatPrice(offer.price)}
-                        </span>
-                        {offer.author && (
-                          <span style={{ fontSize: "14px", opacity: 0.9 }}>
-                            by {offer.author}
-                          </span>
-                        )}
-                      </div>
-
-                      <div style={{ 
-                        display: "flex", 
-                        alignItems: "center", 
-                        gap: "10px",
-                        fontSize: "13px",
-                        opacity: 0.8 
-                      }}>
-                        <FaBook size={12} />
-                        <span>{offer.genre || "Fiction"}</span>
-                        <span style={{ opacity: 0.5 }}>•</span>
-                        <span>{offer.distance || "Nearby"}</span>
-                      </div>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
             </div>
 
-            {/* Bottom Content (Always visible) */}
+            {/* Bottom Content */}
             <div style={{ 
-              padding: "18px", 
+              padding: "12px", 
               background: "white",
-              borderTop: `1px solid ${PINTEREST.border}20`,
+              flex: 1,
+              display: "flex",
+              flexDirection: "column",
             }}>
               <h3 style={{ 
-                fontSize: "16px", 
-                fontWeight: "700", 
-                margin: "0 0 8px",
+                fontSize: "14px", 
+                fontWeight: "600", 
+                margin: "0 0 6px",
                 color: PINTEREST.textDark,
                 lineHeight: 1.3,
                 display: "-webkit-box",
                 WebkitLineClamp: 2,
                 WebkitBoxOrient: "vertical",
                 overflow: "hidden",
-                minHeight: "44px",
+                flex: 1,
               }}>
                 {offer.bookTitle}
               </h3>
               
+              {offer.author && (
+                <p style={{ 
+                  fontSize: "12px", 
+                  color: PINTEREST.textLight,
+                  margin: "0 0 6px",
+                  fontStyle: "italic",
+                }}>
+                  {offer.author}
+                </p>
+              )}
+
               <div style={{ 
                 display: "flex", 
                 justifyContent: "space-between", 
                 alignItems: "center",
-                marginTop: "10px" 
+                marginTop: "auto",
               }}>
-                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                   <div style={{
-                    width: "32px",
-                    height: "32px",
+                    width: "24px",
+                    height: "24px",
                     borderRadius: "50%",
-                    background: `linear-gradient(135deg, ${PINTEREST.primary}20, ${PINTEREST.light}20)`,
+                    background: PINTEREST.grayLight,
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    color: PINTEREST.primary,
-                    fontSize: "14px",
+                    color: PINTEREST.textLight,
+                    fontSize: "10px",
                     fontWeight: "600",
-                    border: `2px solid ${PINTEREST.primary}30`,
+                    border: `1px solid ${PINTEREST.border}`,
                   }}>
                     {offer.ownerName?.charAt(0) || "U"}
                   </div>
                   <div>
-                    <div style={{ fontSize: "13px", fontWeight: "600", color: PINTEREST.textDark }}>
+                    <div style={{ fontSize: "11px", fontWeight: "500", color: PINTEREST.textDark }}>
                       {offer.ownerName?.split(" ")[0] || "User"}
                     </div>
-                    <div style={{ fontSize: "11px", color: PINTEREST.textLight, marginTop: "2px" }}>
-                      {offer.distance || "Local"}
+                    <div style={{ fontSize: "10px", color: PINTEREST.textLight }}>
+                      {offer.distance}
                     </div>
                   </div>
                 </div>
@@ -510,31 +464,17 @@ export default function HomeScreen({
                 <div style={{ 
                   display: "flex", 
                   alignItems: "center", 
-                  gap: "10px",
-                  fontSize: "12px",
+                  gap: "6px",
+                  fontSize: "11px",
                   color: PINTEREST.textLight
                 }}>
                   <div style={{ 
                     display: "flex", 
                     alignItems: "center", 
-                    gap: "5px",
-                    padding: "4px 8px",
-                    background: liked ? `${PINTEREST.primary}10` : PINTEREST.grayLight,
-                    borderRadius: "12px",
+                    gap: "3px",
                   }}>
-                    <FaHeart size={12} color={liked ? PINTEREST.primary : PINTEREST.textLight} />
-                    <span style={{ fontWeight: "600" }}>{Math.floor(Math.random() * 50) + 10}</span>
-                  </div>
-                  <div style={{ 
-                    display: "flex", 
-                    alignItems: "center", 
-                    gap: "5px",
-                    padding: "4px 8px",
-                    background: PINTEREST.grayLight,
-                    borderRadius: "12px",
-                  }}>
-                    <FaEye size={12} />
-                    <span style={{ fontWeight: "600" }}>{Math.floor(Math.random() * 200) + 50}</span>
+                    <FaHeart size={10} color={liked ? PINTEREST.primary : PINTEREST.textLight} />
+                    <span style={{ fontWeight: "500" }}>{Math.floor(Math.random() * 30) + 5}</span>
                   </div>
                 </div>
               </div>
@@ -542,7 +482,7 @@ export default function HomeScreen({
           </motion.div>
         );
       }),
-    [getImageSource, hoveredOffer, isLiked, cardHeights, handleOfferPress, handleLike]
+    [getImageSource, hoveredOffer, isLiked, handleLike]
   );
 
   const navItems = [
@@ -736,32 +676,32 @@ export default function HomeScreen({
         flex: 1, 
         marginLeft: sidebarOpen ? "240px" : "0", 
         transition: "margin-left 0.3s ease",
+        display: "flex",
+        flexDirection: "column",
         overflow: "hidden",
       }}>
         {/* Header */}
         <header style={{
-          padding: "16px 24px",
-          background: "rgba(255, 255, 255, 0.98)",
-          backdropFilter: "blur(20px)",
-          position: "sticky",
-          top: 0,
-          zIndex: 900,
+          padding: "12px 20px",
+          background: "white",
           borderBottom: `1px solid ${PINTEREST.border}`,
+          flexShrink: 0,
+          zIndex: 100,
         }}>
           <div style={{ 
             display: "flex", 
             alignItems: "center", 
             justifyContent: "space-between",
-            marginBottom: "16px",
+            marginBottom: "12px",
           }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "16px", flex: 1 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "12px", flex: 1 }}>
               <motion.button
                 whileTap={{ scale: 0.9 }}
                 onClick={() => setSidebarOpen(!sidebarOpen)}
                 style={{
-                  width: "44px",
-                  height: "44px",
-                  borderRadius: "12px",
+                  width: "36px",
+                  height: "36px",
+                  borderRadius: "8px",
                   background: PINTEREST.hoverBg,
                   border: `1px solid ${PINTEREST.border}`,
                   display: "flex",
@@ -772,16 +712,16 @@ export default function HomeScreen({
                   flexShrink: 0,
                 }}
               >
-                {sidebarOpen ? <FaTimes size={18} /> : <FaEllipsisH size={18} />}
+                {sidebarOpen ? <FaTimes size={16} /> : <FaEllipsisH size={16} />}
               </motion.button>
 
               {/* Search */}
-              <div style={{ position: "relative", flex: 1, maxWidth: "500px" }}>
+              <div style={{ position: "relative", flex: 1 }}>
                 <FaSearch
-                  size={14}
+                  size={12}
                   style={{
                     position: "absolute",
-                    left: "16px",
+                    left: "12px",
                     top: "50%",
                     transform: "translateY(-50%)",
                     color: PINTEREST.icon,
@@ -795,10 +735,10 @@ export default function HomeScreen({
                   onChange={(e) => setSearchQuery(e.target.value)}
                   style={{
                     width: "100%",
-                    padding: "14px 14px 14px 44px",
-                    borderRadius: "24px",
+                    padding: "10px 10px 10px 36px",
+                    borderRadius: "20px",
                     border: `1px solid ${PINTEREST.border}`,
-                    fontSize: "15px",
+                    fontSize: "14px",
                     background: PINTEREST.grayLight,
                     color: PINTEREST.textDark,
                     outline: "none",
@@ -809,13 +749,13 @@ export default function HomeScreen({
             </div>
 
             {/* Notifications */}
-            <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
               <motion.button
                 whileTap={{ scale: 0.9 }}
                 style={{
-                  width: "44px",
-                  height: "44px",
-                  borderRadius: "12px",
+                  width: "36px",
+                  height: "36px",
+                  borderRadius: "8px",
                   background: PINTEREST.hoverBg,
                   border: `1px solid ${PINTEREST.border}`,
                   display: "flex",
@@ -826,13 +766,13 @@ export default function HomeScreen({
                   position: "relative",
                 }}
               >
-                <FaBell size={18} />
+                <FaBell size={16} />
                 <div style={{
                   position: "absolute",
-                  top: "8px",
-                  right: "8px",
-                  width: "8px",
-                  height: "8px",
+                  top: "6px",
+                  right: "6px",
+                  width: "6px",
+                  height: "6px",
                   borderRadius: "50%",
                   background: PINTEREST.primary,
                   border: `2px solid ${PINTEREST.hoverBg}`,
@@ -844,28 +784,28 @@ export default function HomeScreen({
           {/* Filter Tabs */}
           <div style={{ 
             display: "flex", 
-            gap: "8px",
+            gap: "6px",
             overflowX: "auto",
-            paddingBottom: "4px",
+            paddingBottom: "2px",
             scrollbarWidth: "none",
           }}>
             {filterButtons.map((filter) => (
               <motion.button
                 key={filter.id}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
+                whileHover={{ scale: 1.03 }}
+                whileTap={{ scale: 0.97 }}
                 onClick={() => setSelectedFilter(filter.id)}
                 style={{
-                  padding: "10px 18px",
-                  borderRadius: "20px",
+                  padding: "6px 12px",
+                  borderRadius: "16px",
                   background: selectedFilter === filter.id ? PINTEREST.primary : PINTEREST.hoverBg,
                   color: selectedFilter === filter.id ? "white" : PINTEREST.textDark,
-                  fontSize: "13px",
-                  fontWeight: selectedFilter === filter.id ? "700" : "600",
+                  fontSize: "12px",
+                  fontWeight: selectedFilter === filter.id ? "600" : "500",
                   whiteSpace: "nowrap",
                   display: "flex",
                   alignItems: "center",
-                  gap: "6px",
+                  gap: "4px",
                   cursor: "pointer",
                   border: "none",
                   flexShrink: 0,
@@ -878,23 +818,24 @@ export default function HomeScreen({
           </div>
         </header>
 
-        {/* Main Feed - Pinterest Masonry Layout with 2 cards per row */}
+        {/* Main Feed - Scrollable Pinterest Layout */}
         <main style={{
           flex: 1,
           overflowY: "auto",
-          padding: "24px",
+          padding: "16px",
           display: "grid",
           gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-          gap: "20px",
+          gap: "12px",
           alignContent: "start",
+          minHeight: 0, // Important for scrollable container
         }}>
           {loading ? (
-            Array.from({ length: 12 }).map((_, i) => (
+            Array.from({ length: 6 }).map((_, i) => (
               <div
                 key={i}
                 style={{
                   background: PINTEREST.grayLight,
-                  borderRadius: "20px",
+                  borderRadius: "12px",
                   height: `${getRandomHeight(i)}px`,
                   animation: "pulse 1.5s ease-in-out infinite",
                 }}
@@ -904,44 +845,43 @@ export default function HomeScreen({
             <div style={{ 
               gridColumn: "1 / -1", 
               textAlign: "center", 
-              padding: "60px",
+              padding: "40px 20px",
               background: "white",
-              borderRadius: "20px",
-              margin: "40px",
+              borderRadius: "12px",
+              margin: "20px",
             }}>
               <div style={{
-                width: "100px",
-                height: "100px",
+                width: "60px",
+                height: "60px",
                 borderRadius: "50%",
                 background: PINTEREST.redLight,
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                margin: "0 auto 20px",
-                fontSize: "40px",
+                margin: "0 auto 16px",
+                fontSize: "24px",
                 color: PINTEREST.primary,
               }}>
                 <FaBookOpen />
               </div>
-              <h3 style={{ fontSize: "20px", fontWeight: "700", color: PINTEREST.textDark, marginBottom: "8px" }}>
+              <h3 style={{ fontSize: "16px", fontWeight: "600", color: PINTEREST.textDark, marginBottom: "8px" }}>
                 Unable to load books
               </h3>
-              <p style={{ color: PINTEREST.textLight, marginBottom: "24px", maxWidth: "400px", margin: "0 auto" }}>
+              <p style={{ color: PINTEREST.textLight, marginBottom: "16px", fontSize: "14px" }}>
                 {error}
               </p>
               <motion.button
-                whileHover={{ scale: 1.05 }}
+                whileHover={{ scale: 1.03 }}
                 onClick={fetchOffers}
                 style={{
-                  padding: "14px 28px",
+                  padding: "10px 20px",
                   background: PINTEREST.primary,
                   color: "white",
                   border: "none",
-                  borderRadius: "24px",
-                  fontSize: "15px",
+                  borderRadius: "20px",
+                  fontSize: "14px",
                   fontWeight: "600",
                   cursor: "pointer",
-                  boxShadow: "0 4px 20px rgba(230, 0, 35, 0.3)",
                 }}
               >
                 Try Again
@@ -951,63 +891,57 @@ export default function HomeScreen({
             <div style={{ 
               gridColumn: "1 / -1", 
               textAlign: "center", 
-              padding: "80px 40px",
+              padding: "40px 20px",
               background: "white",
-              borderRadius: "20px",
-              margin: "40px",
+              borderRadius: "12px",
+              margin: "20px",
             }}>
               <div style={{
-                width: "120px",
-                height: "120px",
+                width: "60px",
+                height: "60px",
                 borderRadius: "50%",
                 background: PINTEREST.redLight,
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                margin: "0 auto 24px",
-                fontSize: "48px",
+                margin: "0 auto 16px",
+                fontSize: "24px",
                 color: PINTEREST.primary,
               }}>
                 <FaBookOpen />
               </div>
-              <h3 style={{ fontSize: "24px", fontWeight: "700", color: PINTEREST.textDark, marginBottom: "12px" }}>
+              <h3 style={{ fontSize: "16px", fontWeight: "600", color: PINTEREST.textDark, marginBottom: "8px" }}>
                 No books found
               </h3>
               <p style={{ 
                 color: PINTEREST.textLight, 
-                fontSize: "16px",
-                marginBottom: "32px",
-                maxWidth: "400px",
-                margin: "0 auto",
-                lineHeight: 1.5,
+                fontSize: "14px",
+                marginBottom: "20px",
               }}>
                 {searchQuery 
                   ? `No results for "${searchQuery}"`
-                  : "Be the first to share a book in your community!"
+                  : "Be the first to share a book!"
                 }
               </p>
               {onAddPress && (
                 <motion.button
-                  whileHover={{ scale: 1.05 }}
+                  whileHover={{ scale: 1.03 }}
                   onClick={onAddPress}
                   style={{
-                    padding: "16px 32px",
+                    padding: "10px 20px",
                     background: PINTEREST.primary,
                     color: "white",
                     border: "none",
-                    borderRadius: "24px",
-                    fontSize: "16px",
+                    borderRadius: "20px",
+                    fontSize: "14px",
                     fontWeight: "600",
                     cursor: "pointer",
-                    display: "flex",
+                    display: "inline-flex",
                     alignItems: "center",
-                    justifyContent: "center",
-                    gap: "10px",
-                    margin: "0 auto",
-                    boxShadow: "0 4px 20px rgba(230, 0, 35, 0.3)",
+                    gap: "6px",
                   }}
                 >
-                  <FaPlus /> Share a Book
+                  <FaPlus size={12} /> Share a Book
                 </motion.button>
               )}
             </div>
@@ -1028,18 +962,18 @@ export default function HomeScreen({
         }
         
         ::-webkit-scrollbar {
-          width: 8px;
-          height: 8px;
+          width: 6px;
+          height: 6px;
         }
         
         ::-webkit-scrollbar-track {
           background: ${PINTEREST.grayLight};
-          border-radius: 4px;
+          border-radius: 3px;
         }
         
         ::-webkit-scrollbar-thumb {
           background: ${PINTEREST.border};
-          border-radius: 4px;
+          border-radius: 3px;
         }
         
         ::-webkit-scrollbar-thumb:hover {
@@ -1049,7 +983,6 @@ export default function HomeScreen({
         input:focus {
           outline: none;
           border-color: ${PINTEREST.primary} !important;
-          box-shadow: 0 0 0 2px ${PINTEREST.primary}20 !important;
         }
         
         /* Hide scrollbar for filter tabs */
@@ -1057,10 +990,8 @@ export default function HomeScreen({
           display: none;
         }
         
-        /* Pinterest-like staggered loading */
-        @keyframes cardAppear {
-          from { opacity: 0; transform: translateY(20px); }
-          to { opacity: 1; transform: translateY(0); }
+        * {
+          -webkit-tap-highlight-color: transparent;
         }
       `}</style>
     </div>

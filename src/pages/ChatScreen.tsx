@@ -1,4 +1,4 @@
-// src/pages/ChatScreen.tsx - PINTEREST-STYLE REDESIGN (Matching HomeScreen Theme)
+// src/pages/ChatScreen.tsx - PINTEREST-STYLE (Fixed: Sends JWT Token)
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { 
@@ -9,7 +9,7 @@ import {
   FaBell,
   FaBookmark,
   FaCompass,
-  FaBook,
+  FaBookOpen,
   FaStar,
   FaCog,
   FaEllipsisH,
@@ -20,7 +20,6 @@ import { useNavigate } from "react-router-dom";
 
 const API_BASE = "https://boocozmo-api.onrender.com";
 
-// Exact Pinterest colors from HomeScreen
 const PINTEREST = {
   primary: "#E60023",
   dark: "#A3081A",
@@ -35,7 +34,6 @@ const PINTEREST = {
   icon: "#767676",
   redLight: "#FFE2E6",
   grayLight: "#F7F7F7",
-  overlay: "rgba(0, 0, 0, 0.7)"
 };
 
 type Conversation = {
@@ -53,7 +51,7 @@ type Conversation = {
 };
 
 type ChatScreenProps = {
-  currentUser: { email: string; name: string; id: string };
+  currentUser: { email: string; name: string; id: string; token: string }; // ← token added
   onProfilePress?: () => void;
   onMapPress?: () => void;
   onAddPress?: () => void;
@@ -68,47 +66,33 @@ export default function ChatScreen({
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [backendOnline, setBackendOnline] = useState<boolean | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const navigate = useNavigate();
 
-  // Check backend status
-  useEffect(() => {
-    const checkBackend = async () => {
-      try {
-        const response = await fetch(API_BASE, {
-          method: 'GET',
-          signal: AbortSignal.timeout(5000)
-        });
-        setBackendOnline(response.ok);
-      } catch {
-        setBackendOnline(false);
-      }
-    };
-    checkBackend();
-  }, []);
-
   useEffect(() => {
     const fetchChats = async () => {
-      try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 10000);
+      setLoading(true);
+      setError(null);
 
+      try {
         const resp = await fetch(`${API_BASE}/chats?user=${encodeURIComponent(currentUser.email)}`, {
-          signal: controller.signal,
-          headers: { 'Content-Type': 'application/json' }
+          headers: {
+            "Authorization": `Bearer ${currentUser.token}`, // ← Token sent here
+            "Content-Type": "application/json",
+          },
         });
 
-        clearTimeout(timeoutId);
-
-        if (!resp.ok) throw new Error(`Failed: ${resp.status}`);
+        if (!resp.ok) {
+          const errData = await resp.json().catch(() => ({}));
+          throw new Error(errData.error || "Failed to load messages");
+        }
 
         const data: Conversation[] = await resp.json();
         setConversations(data);
-        setError(null);
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      } catch (err) {
-        setError("Using demo data");
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      } catch (err: any) {
+        console.error("Chat fetch error:", err);
+        setError("Failed to load messages. Using demo data.");
         setConversations(getMockConversations());
       } finally {
         setLoading(false);
@@ -117,12 +101,11 @@ export default function ChatScreen({
 
     fetchChats();
 
-    if (backendOnline !== false) {
-      const interval = setInterval(fetchChats, 30000);
-      return () => clearInterval(interval);
-    }
+    // Poll every 30 seconds
+    const interval = setInterval(fetchChats, 30000);
+    return () => clearInterval(interval);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentUser.email, backendOnline]);
+  }, [currentUser.email, currentUser.token]);
 
   const getMockConversations = (): Conversation[] => [
     {
@@ -202,17 +185,10 @@ export default function ChatScreen({
     });
   };
 
-  const handleRetry = () => {
-    setLoading(true);
-    setError(null);
-    window.location.reload();
-  };
-
-  // Sidebar items (same as HomeScreen)
   const navItems = [
     { icon: FaHome, label: "Home", onClick: () => navigate("/") },
     { icon: FaCompass, label: "Discover", onClick: () => {} },
-    { icon: FaBook, label: "My Books", onClick: () => navigate("/profile") },
+    { icon: FaBookOpen, label: "My Books", onClick: () => navigate("/profile") },
     { icon: FaBookmark, label: "Saved", onClick: () => {} },
     { icon: FaUsers, label: "Following", onClick: () => {} },
     { icon: FaMapMarkedAlt, label: "Map", onClick: onMapPress },
@@ -230,7 +206,7 @@ export default function ChatScreen({
       fontFamily: "'Inter', -apple-system, sans-serif",
       overflow: "hidden",
     }}>
-      {/* Sidebar - Identical to HomeScreen */}
+      {/* Sidebar */}
       <motion.aside
         initial={{ x: -300 }}
         animate={{ x: sidebarOpen ? 0 : -300 }}
@@ -400,7 +376,6 @@ export default function ChatScreen({
         display: "flex",
         flexDirection: "column",
       }}>
-        {/* Top Bar */}
         <header style={{
           padding: "12px 20px",
           background: PINTEREST.bg,
@@ -473,7 +448,6 @@ export default function ChatScreen({
           </div>
         </header>
 
-        {/* Chat List */}
         <main style={{
           flex: 1,
           overflowY: "auto",
@@ -504,7 +478,7 @@ export default function ChatScreen({
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                onClick={handleRetry}
+                onClick={() => window.location.reload()}
                 style={{
                   padding: "12px 28px",
                   background: PINTEREST.primary,
@@ -646,26 +620,15 @@ export default function ChatScreen({
         </main>
       </div>
 
-      {/* Global Styles */}
       <style>{`
         @keyframes spin {
           to { transform: rotate(360deg); }
         }
-        
         * { -webkit-tap-highlight-color: transparent; }
-        
-        ::-webkit-scrollbar {
-          width: 8px;
-        }
+        ::-webkit-scrollbar { width: 8px; }
         ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb {
-          background: ${PINTEREST.border};
-          border-radius: 10px;
-        }
-        ::-webkit-scrollbar-thumb:hover {
-          background: ${PINTEREST.textLight};
-        }
-        
+        ::-webkit-scrollbar-thumb { background: ${PINTEREST.border}; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: ${PINTEREST.textLight}; }
         @media (max-width: 768px) {
           aside { display: none; }
           div[style*="marginLeft"] { margin-left: 0 !important; }
