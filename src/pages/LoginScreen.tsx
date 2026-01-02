@@ -1,4 +1,4 @@
-// src/pages/LoginScreen.tsx - PINTEREST-STYLE WITH SINGLE CENTERED SEMICIRCLE "HILL" TOP
+// src/pages/LoginScreen.tsx - PINTEREST-STYLE (Fixed: Token + No Dark Overlay Bug)
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { FaEnvelope, FaLock, FaEye, FaEyeSlash } from "react-icons/fa";
@@ -6,7 +6,7 @@ import { FaEnvelope, FaLock, FaEye, FaEyeSlash } from "react-icons/fa";
 const API_BASE = "https://boocozmo-api.onrender.com";
 
 type Props = {
-  onLoginSuccess: (user: { email: string; name: string; id: string }) => void;
+  onLoginSuccess: (user: { email: string; name: string; id: string; token: string }) => void;
   onGoToSignup: () => void;
 };
 
@@ -32,7 +32,11 @@ export default function LoginScreen({ onLoginSuccess, onGoToSignup }: Props) {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !password) return setError("Please fill in all fields");
+
+    if (!email.trim() || !password) {
+      setError("Please enter both email and password");
+      return;
+    }
 
     setLoading(true);
     setError(null);
@@ -41,35 +45,48 @@ export default function LoginScreen({ onLoginSuccess, onGoToSignup }: Props) {
       const res = await fetch(`${API_BASE}/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email: email.trim(), password }),
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.message || "Login failed");
 
-      const user = { email: data.email, name: data.name, id: data.id.toString() };
+      if (!res.ok) {
+        throw new Error(data.error || "Invalid email or password");
+      }
+
+      // Full user with token
+      const user = {
+        id: data.id.toString(),
+        name: data.name,
+        email: data.email,
+        token: data.token, // ← Token included
+      };
+
       localStorage.setItem("user", JSON.stringify(user));
       onLoginSuccess(user);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Network error");
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (err: any) {
+      setError(err.message || "Network error. Please try again.");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div style={{
-      minHeight: "100vh",
-      background: PINTEREST.bg,
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      padding: "24px",
-      position: "relative",
-      overflow: "hidden",
-      fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-    }}>
-      {/* Subtle background glow */}
+    <div
+      style={{
+        minHeight: "100vh",
+        background: PINTEREST.bg,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: "24px",
+        position: "relative",
+        overflow: "hidden",
+        fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+      }}
+    >
+      {/* Subtle animated background glow */}
       <motion.div
         style={{
           position: "absolute",
@@ -79,6 +96,7 @@ export default function LoginScreen({ onLoginSuccess, onGoToSignup }: Props) {
           background: PINTEREST.redLight,
           filter: "blur(100px)",
           opacity: 0.5,
+          pointerEvents: "none", // Prevents interference
         }}
         animate={{
           scale: [1, 1.15, 1],
@@ -90,138 +108,117 @@ export default function LoginScreen({ onLoginSuccess, onGoToSignup }: Props) {
         }}
       />
 
-      {/* Login Card with Single Centered Semicircle "Hill" Top */}
+      {/* Login Card */}
       <motion.div
         initial={{ opacity: 0, y: 40 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.8 }}
+        transition={{ duration: 0.8, ease: "easeOut" }}
         style={{
           width: "100%",
           maxWidth: "460px",
-          position: "relative",
           background: "white",
           borderRadius: "32px",
           boxShadow: "0 32px 80px rgba(0, 0, 0, 0.08)",
           border: `1px solid ${PINTEREST.border}`,
           overflow: "hidden",
+          position: "relative",
+          zIndex: 10,
         }}
       >
-        {/* Single Centered Semicircle "Hill" with Logo Inside */}
-        <div style={{
-          position: "relative",
-          height: "140px",
-          background: PINTEREST.bg, // Same as page background for seamless blend
-          display: "flex",
-          alignItems: "flex-end",
-          justifyContent: "center",
-          paddingBottom: "20px",
-        }}>
-          {/* The "hill" - white semicircle with red logo centered */}
-          <div style={{
-            width: "180px",
-            height: "180px",
-            borderRadius: "50%",
-            background: "white",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            boxShadow: "0 12px 40px rgba(0, 0, 0, 0.12)",
+        {/* Hill with Logo */}
+        <div
+          style={{
             position: "relative",
-            zIndex: 2,
-          }}>
-            {/* Logo inside the hill */}
-            <div style={{
-              width: "100px",
-              height: "100px",
+            height: "140px",
+            background: PINTEREST.bg,
+            display: "flex",
+            alignItems: "flex-end",
+            justifyContent: "center",
+            paddingBottom: "20px",
+          }}
+        >
+          <div
+            style={{
+              width: "180px",
+              height: "180px",
               borderRadius: "50%",
-              background: PINTEREST.primary,
+              background: "white",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              color: "white",
-              fontSize: "48px",
-              fontWeight: "700",
-              boxShadow: "0 8px 32px rgba(230, 0, 35, 0.3)",
-            }}>
+              boxShadow: "0 12px 40px rgba(0, 0, 0, 0.12)",
+              zIndex: 2,
+            }}
+          >
+            <div
+              style={{
+                width: "100px",
+                height: "100px",
+                borderRadius: "50%",
+                background: PINTEREST.primary,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: "white",
+                fontSize: "48px",
+                fontWeight: "700",
+                boxShadow: "0 8px 32px rgba(230, 0, 35, 0.3)",
+              }}
+            >
               B
             </div>
           </div>
 
-          {/* Smooth curve connecting hill to card (optional subtle shadow) */}
-          <div style={{
-            position: "absolute",
-            bottom: 0,
-            left: 0,
-            width: "100%",
-            height: "40px",
-            background: "white",
-            borderRadius: "100% 100% 0 0",
-            boxShadow: "inset 0 8px 16px rgba(0, 0, 0, 0.05)",
-          }} />
+          {/* Smooth curve at bottom */}
+          <div
+            style={{
+              position: "absolute",
+              bottom: 0,
+              left: 0,
+              width: "100%",
+              height: "40px",
+              background: "white",
+              borderRadius: "100% 100% 0 0",
+              boxShadow: "inset 0 8px 16px rgba(0, 0, 0, 0.05)",
+            }}
+          />
         </div>
 
-        {/* Form Content */}
-        <div style={{
-          padding: "40px",
-          paddingTop: "20px",
-        }}>
-          <h2 style={{
-            fontSize: "2rem",
-            fontWeight: 700,
-            color: PINTEREST.textDark,
-            textAlign: "center",
-            margin: "0 0 32px 0",
-          }}>
+        {/* Form */}
+        <div style={{ padding: "40px", paddingTop: "20px" }}>
+          <h2
+            style={{
+              fontSize: "2rem",
+              fontWeight: 700,
+              color: PINTEREST.textDark,
+              textAlign: "center",
+              margin: "0 0 32px 0",
+            }}
+          >
             Welcome back
           </h2>
 
           <form onSubmit={handleLogin} style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
             {/* Email */}
-            <div>
-              <div style={{ position: "relative" }}>
-                <FaEnvelope style={{
+            <div style={{ position: "relative" }}>
+              <FaEnvelope
+                style={{
                   position: "absolute",
                   left: "16px",
                   top: "50%",
                   transform: "translateY(-50%)",
                   color: PINTEREST.textMuted,
                   fontSize: "18px",
-                }} />
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="Email address"
-                  style={{
-                    width: "100%",
-                    padding: "16px 16px 16px 48px",
-                    borderRadius: "16px",
-                    border: `1px solid ${PINTEREST.border}`,
-                    background: PINTEREST.grayLight,
-                    fontSize: "16px",
-                    color: PINTEREST.textDark,
-                    outline: "none",
-                  }}
-                  required
-                />
-              </div>
-            </div>
-
-            {/* Password */}
-            <div style={{ position: "relative" }}>
-              <FaLock style={{
-                position: "absolute",
-                left: "16px",
-                top: "50%",
-                transform: "translateY(-50%)",
-                color: PINTEREST.textMuted,
-                fontSize: "18px",
-              }} />
+                  pointerEvents: "none",
+                }}
+              />
               <input
-                type={showPassword ? "text" : "password"}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Password"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Email address"
+                required
+                disabled={loading}
                 style={{
                   width: "100%",
                   padding: "16px 16px 16px 48px",
@@ -231,12 +228,47 @@ export default function LoginScreen({ onLoginSuccess, onGoToSignup }: Props) {
                   fontSize: "16px",
                   color: PINTEREST.textDark,
                   outline: "none",
+                  opacity: loading ? 0.7 : 1,
                 }}
+              />
+            </div>
+
+            {/* Password */}
+            <div style={{ position: "relative" }}>
+              <FaLock
+                style={{
+                  position: "absolute",
+                  left: "16px",
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  color: PINTEREST.textMuted,
+                  fontSize: "18px",
+                  pointerEvents: "none",
+                }}
+              />
+              <input
+                type={showPassword ? "text" : "password"}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Password"
                 required
+                disabled={loading}
+                style={{
+                  width: "100%",
+                  padding: "16px 16px 16px 48px",
+                  borderRadius: "16px",
+                  border: `1px solid ${PINTEREST.border}`,
+                  background: PINTEREST.grayLight,
+                  fontSize: "16px",
+                  color: PINTEREST.textDark,
+                  outline: "none",
+                  opacity: loading ? 0.7 : 1,
+                }}
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
+                disabled={loading}
                 style={{
                   position: "absolute",
                   right: "16px",
@@ -245,14 +277,14 @@ export default function LoginScreen({ onLoginSuccess, onGoToSignup }: Props) {
                   background: "none",
                   border: "none",
                   color: PINTEREST.textLight,
-                  cursor: "pointer",
+                  cursor: loading ? "not-allowed" : "pointer",
                 }}
               >
                 {showPassword ? <FaEyeSlash size={18} /> : <FaEye size={18} />}
               </button>
             </div>
 
-            {/* Error */}
+            {/* Error Message */}
             {error && (
               <motion.div
                 initial={{ opacity: 0, y: -10 }}
@@ -288,12 +320,13 @@ export default function LoginScreen({ onLoginSuccess, onGoToSignup }: Props) {
                 fontWeight: 700,
                 cursor: loading ? "not-allowed" : "pointer",
                 marginTop: "8px",
+                opacity: loading ? 0.8 : 1,
               }}
             >
               {loading ? "Signing in..." : "Sign In"}
             </motion.button>
 
-            {/* Sign up link */}
+            {/* Sign Up Link */}
             <div style={{ textAlign: "center", marginTop: "24px" }}>
               <span style={{ color: PINTEREST.textLight, fontSize: "15px" }}>
                 Don't have an account?{" "}
@@ -301,14 +334,15 @@ export default function LoginScreen({ onLoginSuccess, onGoToSignup }: Props) {
               <motion.button
                 type="button"
                 onClick={onGoToSignup}
-                whileHover={{ scale: 1.05 }}
+                disabled={loading}
+                whileHover={{ scale: loading ? 1 : 1.05 }}
                 style={{
                   background: "none",
                   border: "none",
                   color: PINTEREST.primary,
                   fontWeight: 600,
                   fontSize: "15px",
-                  cursor: "pointer",
+                  cursor: loading ? "not-allowed" : "pointer",
                 }}
               >
                 Create one

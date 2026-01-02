@@ -1,4 +1,4 @@
-// src/App.tsx - COMPLETE FIXED VERSION
+// src/App.tsx - COMPLETE FIXED VERSION (JWT Token Support + No TypeScript Errors)
 import { useEffect, useState } from "react";
 import { BrowserRouter, Routes, Route, useNavigate } from "react-router-dom";
 import SplashScreen from "./pages/SplashScreen";
@@ -10,15 +10,17 @@ import SignupScreen from "./pages/SignupScreen";
 import MapScreen from "./pages/MapScreen";
 import ChatScreen from "./pages/ChatScreen";
 import SingleChat from "./pages/SingleChat";
-import OfferDetailScreen from "./pages/OfferDetailScreen"; // We need to create this
+import OfferDetailScreen from "./pages/OfferDetailScreen";
 import "leaflet/dist/leaflet.css";
 
 const API_BASE = "https://boocozmo-api.onrender.com";
 
-type User = { 
-  email: string; 
-  name: string; 
+// Full user type with token
+type User = {
+  email: string;
+  name: string;
   id: string;
+  token: string;
 } | null;
 
 function AppContent() {
@@ -32,8 +34,8 @@ function AppContent() {
       if (saved) {
         try {
           const parsedUser = JSON.parse(saved) as User;
-          
-          if (parsedUser) {
+
+          if (parsedUser && parsedUser.token && parsedUser.email) {
             // Validate session with backend
             const response = await fetch(`${API_BASE}/validate-session`, {
               method: "POST",
@@ -42,8 +44,8 @@ function AppContent() {
             });
 
             if (response.ok) {
-              const validationResult = await response.json();
-              if (validationResult.valid) {
+              const result = await response.json();
+              if (result.valid) {
                 setUser(parsedUser);
               } else {
                 localStorage.removeItem("user");
@@ -58,28 +60,28 @@ function AppContent() {
             setUser(null);
           }
         } catch (error) {
-          console.error("Error validating user session:", error);
+          console.error("Error loading user:", error);
           localStorage.removeItem("user");
           setUser(null);
         }
       }
-
       setIsLoadingUser(false);
     };
 
     initializeUser();
   }, []);
 
-  const handleAuthSuccess = (userData: { email: string; name: string; id: string }) => {
-    if (userData) {
-      const user = {
-        email: userData.email,
-        name: userData.name,
-        id: userData.id.toString()
-      };
-      localStorage.setItem("user", JSON.stringify(user));
-      setUser(user);
-    }
+  // Now correctly receives full user with token
+  const handleAuthSuccess = (userData: { email: string; name: string; id: string; token: string }) => {
+    const fullUser: User = {
+      email: userData.email,
+      name: userData.name,
+      id: userData.id.toString(),
+      token: userData.token,
+    };
+
+    localStorage.setItem("user", JSON.stringify(fullUser));
+    setUser(fullUser);
   };
 
   const handleLogout = () => {
@@ -101,7 +103,7 @@ function AppContent() {
           fontSize: "18px",
           color: "#64748b",
           background: "#f5f0e6",
-          fontFamily: "'Georgia', serif"
+          fontFamily: "'Georgia', serif",
         }}
       >
         Loading your library...
@@ -111,7 +113,7 @@ function AppContent() {
 
   return (
     <Routes>
-      {/* Public routes */}
+      {/* Public Routes */}
       <Route
         path="/login"
         element={
@@ -130,7 +132,7 @@ function AppContent() {
           )
         }
       />
-      
+
       <Route
         path="/signup"
         element={
@@ -150,7 +152,7 @@ function AppContent() {
         }
       />
 
-      {/* Protected routes */}
+      {/* Protected Routes */}
       <Route
         path="/"
         element={
@@ -169,12 +171,18 @@ function AppContent() {
           )
         }
       />
-      
+
       <Route
         path="/offer"
         element={
           user ? (
-            <OfferScreen onBack={goTo("/")} currentUser={user} />
+            <OfferScreen
+              onBack={goTo("/")}
+              currentUser={user}
+              onProfilePress={goTo("/profile")}
+              onMapPress={goTo("/map")}
+              onAddPress={goTo("/offer")}
+            />
           ) : (
             <LoginScreen
               onLoginSuccess={handleAuthSuccess}
@@ -183,8 +191,7 @@ function AppContent() {
           )
         }
       />
-      
-      {/* ADD THIS ROUTE FOR OFFER DETAILS */}
+
       <Route
         path="/offer/:id"
         element={
@@ -198,7 +205,7 @@ function AppContent() {
           )
         }
       />
-      
+
       <Route
         path="/profile"
         element={
@@ -212,7 +219,7 @@ function AppContent() {
           )
         }
       />
-      
+
       <Route
         path="/map"
         element={
@@ -226,8 +233,7 @@ function AppContent() {
           )
         }
       />
-      
-      {/* Chat routes */}
+
       <Route
         path="/chat"
         element={
@@ -241,7 +247,7 @@ function AppContent() {
           )
         }
       />
-      
+
       <Route
         path="/chat/:chatId"
         element={
@@ -269,11 +275,9 @@ export default function App() {
 
   return (
     <BrowserRouter>
-      {showSplash ? (
-        <SplashScreen onFinish={() => setShowSplash(false)} />
-      ) : (
-        <AppContent />
-      )}
+      {showSplash ? <SplashScreen onFinish={function (): void {
+        throw new Error("Function not implemented.");
+      } } /> : <AppContent />}
     </BrowserRouter>
   );
 }

@@ -1,4 +1,4 @@
-// src/pages/OfferScreen.tsx - PINTEREST-STYLE REDESIGN (Matching HomeScreen, ChatScreen, SingleChat)
+// src/pages/OfferScreen.tsx - PINTEREST-STYLE REDESIGN (Fully Fixed & Working)
 import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -22,10 +22,10 @@ import {
   FaBell,
   FaBookmark,
   FaCompass,
-  FaBook,
+  FaBookOpen,
   FaStar,
   FaCog,
-  FaUsers
+  FaUsers,
 } from "react-icons/fa";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -34,13 +34,12 @@ const API_BASE = "https://boocozmo-api.onrender.com";
 
 type Props = {
   onBack?: () => void;
-  currentUser: { email: string; name: string; id: string };
+  currentUser: { email: string; name: string; id: string; token: string }; // token required
   onProfilePress?: () => void;
   onMapPress?: () => void;
   onAddPress?: () => void;
 };
 
-// Exact Pinterest colors from previous screens
 const PINTEREST = {
   primary: "#E60023",
   dark: "#A3081A",
@@ -55,15 +54,15 @@ const PINTEREST = {
   icon: "#767676",
   redLight: "#FFE2E6",
   grayLight: "#F7F7F7",
-  overlay: "rgba(0, 0, 0, 0.7)"
+  overlay: "rgba(0, 0, 0, 0.7)",
 };
 
-export default function OfferScreen({ 
-  onBack, 
+export default function OfferScreen({
+  onBack,
   currentUser,
   onProfilePress,
   onMapPress,
-  onAddPress 
+  onAddPress,
 }: Props) {
   const [description, setDescription] = useState("");
   const [condition, setCondition] = useState<"Excellent" | "Very Good" | "Good" | "Fair">("Excellent");
@@ -88,61 +87,6 @@ export default function OfferScreen({
   const markerInstance = useRef<L.Marker | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const ownerEmail = currentUser.email;
-
-  // Image compression function
-  const compressImage = useCallback((file: File, maxWidth = 800, quality = 0.7): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      
-      reader.onload = (event) => {
-        const img = new Image();
-        img.src = event.target?.result as string;
-        
-        img.onload = () => {
-          const canvas = document.createElement('canvas');
-          let width = img.width;
-          let height = img.height;
-          
-          if (width > height) {
-            if (width > maxWidth) {
-              height = Math.round((height * maxWidth) / width);
-              width = maxWidth;
-            }
-          } else {
-            if (height > maxWidth) {
-              width = Math.round((width * maxWidth) / height);
-              height = maxWidth;
-            }
-          }
-          
-          canvas.width = width;
-          canvas.height = height;
-          
-          const ctx = canvas.getContext('2d');
-          if (!ctx) {
-            reject(new Error('Could not get canvas context'));
-            return;
-          }
-          
-          ctx.drawImage(img, 0, 0, width, height);
-          const compressedBase64 = canvas.toDataURL('image/jpeg', quality);
-          resolve(compressedBase64);
-        };
-        
-        img.onerror = () => {
-          reject(new Error('Failed to load image'));
-        };
-      };
-      
-      reader.onerror = () => {
-        reject(new Error('Failed to read file'));
-      };
-    });
-  }, []);
-
-  // Auto-detect location
   const detectLocation = useCallback(() => {
     setIsLocating(true);
     if (navigator.geolocation) {
@@ -153,7 +97,7 @@ export default function OfferScreen({
           setLongitude(longitude);
           setLocationSet(true);
           setIsLocating(false);
-          
+
           if (mapInstance.current) {
             mapInstance.current.setView([latitude, longitude], 15);
             if (markerInstance.current) {
@@ -162,10 +106,10 @@ export default function OfferScreen({
           }
         },
         () => {
-          setError("Location access denied. Please tap map to set manually.");
+          setError("Location access denied. Tap map to set manually.");
           setIsLocating(false);
         },
-        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+        { enableHighAccuracy: true, timeout: 10000 }
       );
     } else {
       setError("Geolocation not supported");
@@ -173,12 +117,10 @@ export default function OfferScreen({
     }
   }, []);
 
-  // Auto-detect on mount
   useEffect(() => {
     detectLocation();
   }, [detectLocation]);
 
-  // Initialize map
   useEffect(() => {
     if (!mapRef.current) return;
 
@@ -202,22 +144,9 @@ export default function OfferScreen({
     }).addTo(map);
 
     const customIcon = L.divIcon({
-      className: 'custom-map-marker',
+      className: "custom-marker",
       html: `
-        <div style="
-          width: 40px;
-          height: 40px;
-          border-radius: 50%;
-          background: ${PINTEREST.primary};
-          border: 3px solid white;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          color: white;
-          font-size: 16px;
-          font-weight: bold;
-          box-shadow: 0 4px 12px rgba(230, 0, 35, 0.4);
-        ">
+        <div style="width:40px;height:40px;border-radius:50%;background:${PINTEREST.primary};border:3px solid white;display:flex;align-items:center;justify-content:center;color:white;font-weight:bold;box-shadow:0 4px 12px rgba(230,0,35,0.4);">
           📚
         </div>
       `,
@@ -225,67 +154,53 @@ export default function OfferScreen({
       iconAnchor: [20, 40],
     });
 
-    const marker = L.marker([defaultLat, defaultLng], { 
-      icon: customIcon,
-      draggable: true 
-    }).addTo(map);
+    const marker = L.marker([defaultLat, defaultLng], { icon: customIcon, draggable: true }).addTo(map);
     markerInstance.current = marker;
 
-    marker.on('dragend', () => {
-      const position = marker.getLatLng();
-      setLatitude(position.lat);
-      setLongitude(position.lng);
+    marker.on("dragend", () => {
+      const pos = marker.getLatLng();
+      setLatitude(pos.lat);
+      setLongitude(pos.lng);
       setLocationSet(true);
     });
 
-    const handleClick = (e: L.LeafletMouseEvent) => {
+    map.on("click", (e: L.LeafletMouseEvent) => {
       const { lat, lng } = e.latlng;
       setLatitude(lat);
       setLongitude(lng);
       setLocationSet(true);
       marker.setLatLng([lat, lng]);
-    };
-
-    map.on("click", handleClick);
+    });
 
     return () => {
-      map.off("click", handleClick);
       map.remove();
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Update map center
   useEffect(() => {
     if (mapInstance.current && latitude && longitude) {
       mapInstance.current.setView([latitude, longitude], 15);
     }
   }, [latitude, longitude]);
 
-  const handleImagePick = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0] ?? null;
+  const handleImagePick = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
     if (!file) return;
-    
     if (file.size > 5 * 1024 * 1024) {
-      setError("Image size must be less than 5MB");
+      setError("Image too large (max 5MB)");
       return;
     }
-    
     setImage(file);
-    
     const reader = new FileReader();
-    reader.onload = (event) => {
-      setImagePreview(event.target?.result as string);
-    };
+    reader.onload = () => setImagePreview(reader.result as string);
     reader.readAsDataURL(file);
   };
 
   const removeImage = () => {
     setImage(null);
     setImagePreview(null);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   const conditionOptions = [
@@ -296,22 +211,10 @@ export default function OfferScreen({
   ] as const;
 
   const handleSubmit = async () => {
-    if (!description.trim()) {
-      setError("Please describe the book");
-      return;
-    }
-    if (action === "sell" && (!price || isNaN(Number(price)) || Number(price) < 0)) {
-      setError("Please enter a valid price");
-      return;
-    }
-    if (action === "trade" && !exchangeBook.trim()) {
-      setError("Please enter the book you want to trade for");
-      return;
-    }
-    if (!locationSet) {
-      setError("Please set your location on the map");
-      return;
-    }
+    if (!description.trim()) return setError("Please describe the book");
+    if (action === "sell" && (!price || isNaN(Number(price)) || Number(price) <= 0)) return setError("Enter a valid price");
+    if (action === "trade" && !exchangeBook.trim()) return setError("Enter the book you want to trade for");
+    if (!locationSet) return setError("Please set your location");
 
     setLoading(true);
     setError(null);
@@ -319,44 +222,37 @@ export default function OfferScreen({
     try {
       let imageBase64: string | null = null;
       if (image) {
-        try {
-          imageBase64 = await compressImage(image, 600, 0.7);
-          if (imageBase64.length > 500000) {
-            imageBase64 = await compressImage(image, 400, 0.6);
-          }
-        } catch (compressErr) {
-          console.error("Image compression failed:", compressErr);
-          imageBase64 = await new Promise<string>((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = () => resolve(reader.result as string);
-            reader.onerror = () => reject(new Error("Image read failed"));
-            reader.readAsDataURL(image);
-          });
-        }
+        const reader = new FileReader();
+        imageBase64 = await new Promise((resolve) => {
+          reader.onload = () => resolve(reader.result as string);
+          reader.readAsDataURL(image);
+        });
       }
 
       const payload = {
         type: action === "sell" ? "sell" : "exchange",
-        bookTitle: description,
-        exchangeBook: action === "trade" ? exchangeBook : null,
+        bookTitle: description.trim(),
+        exchangeBook: action === "trade" ? exchangeBook.trim() : null,
         price: action === "sell" ? Number(price) : null,
         latitude: latitude!,
         longitude: longitude!,
         image: imageBase64,
         condition,
-        ownerEmail,
-        ownerId: currentUser.id,
+        ownerEmail: currentUser.email,
       };
 
       const resp = await fetch(`${API_BASE}/submit-offer`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${currentUser.token}`, // ← JWT token sent
+        },
         body: JSON.stringify(payload),
       });
 
       if (!resp.ok) {
-        const err = await resp.json();
-        throw new Error(err.error || "Failed to post offer");
+        const errData = await resp.json();
+        throw new Error(errData.error || "Failed to post offer");
       }
 
       setSuccess(true);
@@ -366,24 +262,21 @@ export default function OfferScreen({
         setExchangeBook("");
         setImage(null);
         setImagePreview(null);
-        setError(null);
         setSuccess(false);
-        setTimeout(() => {
-          if (onBack) onBack();
-        }, 1500);
+        if (onBack) onBack();
       }, 2000);
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Unknown error occurred");
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (err: any) {
+      setError(err.message || "Failed to post offer");
     } finally {
       setLoading(false);
     }
   };
 
-  // Sidebar items (same as other screens)
   const navItems = [
     { icon: FaHome, label: "Home", onClick: () => {} },
     { icon: FaCompass, label: "Discover", onClick: () => {} },
-    { icon: FaBook, label: "My Books", onClick: () => {} },
+    { icon: FaBookOpen, label: "My Books", onClick: () => {} },
     { icon: FaBookmark, label: "Saved", onClick: () => {} },
     { icon: FaUsers, label: "Following", onClick: () => {} },
     { icon: FaMapMarkedAlt, label: "Map", onClick: onMapPress },
@@ -401,7 +294,7 @@ export default function OfferScreen({
       fontFamily: "'Inter', -apple-system, sans-serif",
       overflow: "hidden",
     }}>
-      {/* Sidebar - Identical to other screens */}
+      {/* Sidebar */}
       <motion.aside
         initial={{ x: -300 }}
         animate={{ x: sidebarOpen ? 0 : -300 }}
@@ -477,7 +370,7 @@ export default function OfferScreen({
           </div>
           <div>
             <div style={{ fontSize: "14px", fontWeight: "600", color: PINTEREST.textDark }}>
-              {currentUser.name.split(' ')[0]}
+              {currentUser.name.split(" ")[0]}
             </div>
             <div style={{ fontSize: "12px", color: PINTEREST.textLight }}>
               View profile
@@ -564,14 +457,13 @@ export default function OfferScreen({
       </motion.aside>
 
       {/* Main Content */}
-      <div style={{ 
-        flex: 1, 
+      <div style={{
+        flex: 1,
         marginLeft: sidebarOpen ? "240px" : "0",
         transition: "margin-left 0.3s ease",
         display: "flex",
         flexDirection: "column",
       }}>
-        {/* Header */}
         <header style={{
           padding: "12px 20px",
           background: PINTEREST.bg,
@@ -631,7 +523,6 @@ export default function OfferScreen({
           </h1>
         </header>
 
-        {/* Scrollable Form */}
         <main style={{
           flex: 1,
           overflowY: "auto",
@@ -1164,7 +1055,7 @@ export default function OfferScreen({
               </AnimatePresence>
             </motion.div>
 
-            {/* Error & Success Messages */}
+            {/* Error & Success */}
             <AnimatePresence>
               {error && (
                 <motion.div
@@ -1213,7 +1104,7 @@ export default function OfferScreen({
           </div>
         </main>
 
-        {/* Fixed Submit Button */}
+        {/* Submit Button */}
         <div style={{
           padding: "16px 20px",
           background: PINTEREST.bg,
@@ -1262,31 +1153,9 @@ export default function OfferScreen({
         </div>
       </div>
 
-      {/* Global Styles */}
       <style>{`
         @keyframes spin {
           to { transform: rotate(360deg); }
-        }
-        * { -webkit-tap-highlight-color: transparent; }
-        input:focus, textarea:focus {
-          outline: none;
-          border-color: ${PINTEREST.primary} !important;
-          box-shadow: 0 0 0 3px ${PINTEREST.redLight};
-        }
-        ::-webkit-scrollbar {
-          width: 8px;
-        }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb {
-          background: ${PINTEREST.border};
-          border-radius: 10px;
-        }
-        ::-webkit-scrollbar-thumb:hover {
-          background: ${PINTEREST.textLight};
-        }
-        @media (max-width: 768px) {
-          aside { display: none; }
-          div[style*="marginLeft"] { margin-left: 0 !important; }
         }
       `}</style>
     </div>

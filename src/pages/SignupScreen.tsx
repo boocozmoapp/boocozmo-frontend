@@ -1,12 +1,12 @@
-// src/pages/SignupScreen.tsx - PINTEREST-STYLE REDESIGN (Matching LoginScreen with Centered Hill)
+// src/pages/SignupScreen.tsx - PINTEREST-STYLE (Fixed: Saves Token After Signup)
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { FaUser, FaEnvelope, FaLock, FaEye, FaEyeSlash } from "react-icons/fa";
+import { FaEnvelope, FaLock, FaUser, FaEye, FaEyeSlash } from "react-icons/fa";
 
 const API_BASE = "https://boocozmo-api.onrender.com";
 
 type Props = {
-  onSignupSuccess: (user: { email: string; name: string; id: string }) => void;
+  onSignupSuccess: (user: { email: string; name: string; id: string; token: string }) => void;
   onGoToLogin: () => void;
 };
 
@@ -33,8 +33,16 @@ export default function SignupScreen({ onSignupSuccess, onGoToLogin }: Props) {
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name || !email || !password) return setError("Please fill in all fields");
-    if (password.length < 6) return setError("Password must be at least 6 characters");
+
+    if (!name.trim() || !email.trim() || !password) {
+      setError("Please fill in all fields");
+      return;
+    }
+
+    if (password.length < 6) {
+      setError("Password must be at least 6 characters");
+      return;
+    }
 
     setLoading(true);
     setError(null);
@@ -43,17 +51,28 @@ export default function SignupScreen({ onSignupSuccess, onGoToLogin }: Props) {
       const res = await fetch(`${API_BASE}/signup`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email, password }),
+        body: JSON.stringify({ name: name.trim(), email: email.trim(), password }),
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.message || "Signup failed");
 
-      const user = { email: data.email, name: data.name, id: data.id.toString() };
+      if (!res.ok) {
+        throw new Error(data.error || "Signup failed");
+      }
+
+      // Backend returns: { id, name, email, token }
+      const user = {
+        id: data.id.toString(),
+        name: data.name,
+        email: data.email,
+        token: data.token, // ← Token saved!
+      };
+
       localStorage.setItem("user", JSON.stringify(user));
-      onSignupSuccess(user);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Network error");
+      onSignupSuccess(user); // ← Full user with token passed
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (err: any) {
+      setError(err.message || "Network error. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -71,7 +90,7 @@ export default function SignupScreen({ onSignupSuccess, onGoToLogin }: Props) {
       overflow: "hidden",
       fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
     }}>
-      {/* Subtle background glow */}
+      {/* Background glow */}
       <motion.div
         style={{
           position: "absolute",
@@ -81,18 +100,13 @@ export default function SignupScreen({ onSignupSuccess, onGoToLogin }: Props) {
           background: PINTEREST.redLight,
           filter: "blur(100px)",
           opacity: 0.5,
+          pointerEvents: "none",
         }}
-        animate={{
-          scale: [1, 1.15, 1],
-        }}
-        transition={{
-          duration: 8,
-          repeat: Infinity,
-          ease: "easeInOut",
-        }}
+        animate={{ scale: [1, 1.15, 1] }}
+        transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
       />
 
-      {/* Signup Card with Single Centered Semicircle "Hill" Top */}
+      {/* Card */}
       <motion.div
         initial={{ opacity: 0, y: 40 }}
         animate={{ opacity: 1, y: 0 }}
@@ -100,15 +114,16 @@ export default function SignupScreen({ onSignupSuccess, onGoToLogin }: Props) {
         style={{
           width: "100%",
           maxWidth: "460px",
-          position: "relative",
           background: "white",
           borderRadius: "32px",
-          boxShadow: "0 32px 80px rgba(0, 0, 0, 0.08)",
+          boxShadow: "0 32px 80px rgba(0,0,0,0.08)",
           border: `1px solid ${PINTEREST.border}`,
           overflow: "hidden",
+          position: "relative",
+          zIndex: 10,
         }}
       >
-        {/* Single Centered Semicircle "Hill" with Logo Inside */}
+        {/* Hill with Logo */}
         <div style={{
           position: "relative",
           height: "140px",
@@ -118,7 +133,6 @@ export default function SignupScreen({ onSignupSuccess, onGoToLogin }: Props) {
           justifyContent: "center",
           paddingBottom: "20px",
         }}>
-          {/* The "hill" - white semicircle with red logo centered */}
           <div style={{
             width: "180px",
             height: "180px",
@@ -127,11 +141,8 @@ export default function SignupScreen({ onSignupSuccess, onGoToLogin }: Props) {
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            boxShadow: "0 12px 40px rgba(0, 0, 0, 0.12)",
-            position: "relative",
-            zIndex: 2,
+            boxShadow: "0 12px 40px rgba(0,0,0,0.12)",
           }}>
-            {/* Logo inside the hill */}
             <div style={{
               width: "100px",
               height: "100px",
@@ -143,13 +154,12 @@ export default function SignupScreen({ onSignupSuccess, onGoToLogin }: Props) {
               color: "white",
               fontSize: "48px",
               fontWeight: "700",
-              boxShadow: "0 8px 32px rgba(230, 0, 35, 0.3)",
+              boxShadow: "0 8px 32px rgba(230,0,35,0.3)",
             }}>
               B
             </div>
           </div>
 
-          {/* Smooth curve connecting hill to card */}
           <div style={{
             position: "absolute",
             bottom: 0,
@@ -158,15 +168,12 @@ export default function SignupScreen({ onSignupSuccess, onGoToLogin }: Props) {
             height: "40px",
             background: "white",
             borderRadius: "100% 100% 0 0",
-            boxShadow: "inset 0 8px 16px rgba(0, 0, 0, 0.05)",
+            boxShadow: "inset 0 8px 16px rgba(0,0,0,0.05)",
           }} />
         </div>
 
-        {/* Form Content */}
-        <div style={{
-          padding: "40px",
-          paddingTop: "20px",
-        }}>
+        {/* Form */}
+        <div style={{ padding: "40px", paddingTop: "20px" }}>
           <h2 style={{
             fontSize: "2rem",
             fontWeight: 700,
@@ -174,70 +181,72 @@ export default function SignupScreen({ onSignupSuccess, onGoToLogin }: Props) {
             textAlign: "center",
             margin: "0 0 32px 0",
           }}>
-            Create your account
+            Join Boocozmo
           </h2>
 
           <form onSubmit={handleSignup} style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
             {/* Name */}
-            <div>
-              <div style={{ position: "relative" }}>
-                <FaUser style={{
-                  position: "absolute",
-                  left: "16px",
-                  top: "50%",
-                  transform: "translateY(-50%)",
-                  color: PINTEREST.textMuted,
-                  fontSize: "18px",
-                }} />
-                <input
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="Full name"
-                  style={{
-                    width: "100%",
-                    padding: "16px 16px 16px 48px",
-                    borderRadius: "16px",
-                    border: `1px solid ${PINTEREST.border}`,
-                    background: PINTEREST.grayLight,
-                    fontSize: "16px",
-                    color: PINTEREST.textDark,
-                    outline: "none",
-                  }}
-                  required
-                />
-              </div>
+            <div style={{ position: "relative" }}>
+              <FaUser style={{
+                position: "absolute",
+                left: "16px",
+                top: "50%",
+                transform: "translateY(-50%)",
+                color: PINTEREST.textMuted,
+                fontSize: "18px",
+                pointerEvents: "none",
+              }} />
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Full name"
+                required
+                disabled={loading}
+                style={{
+                  width: "100%",
+                  padding: "16px 16px 16px 48px",
+                  borderRadius: "16px",
+                  border: `1px solid ${PINTEREST.border}`,
+                  background: PINTEREST.grayLight,
+                  fontSize: "16px",
+                  color: PINTEREST.textDark,
+                  outline: "none",
+                  opacity: loading ? 0.7 : 1,
+                }}
+              />
             </div>
 
             {/* Email */}
-            <div>
-              <div style={{ position: "relative" }}>
-                <FaEnvelope style={{
-                  position: "absolute",
-                  left: "16px",
-                  top: "50%",
-                  transform: "translateY(-50%)",
-                  color: PINTEREST.textMuted,
-                  fontSize: "18px",
-                }} />
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="Email address"
-                  style={{
-                    width: "100%",
-                    padding: "16px 16px 16px 48px",
-                    borderRadius: "16px",
-                    border: `1px solid ${PINTEREST.border}`,
-                    background: PINTEREST.grayLight,
-                    fontSize: "16px",
-                    color: PINTEREST.textDark,
-                    outline: "none",
-                  }}
-                  required
-                />
-              </div>
+            <div style={{ position: "relative" }}>
+              <FaEnvelope style={{
+                position: "absolute",
+                left: "16px",
+                top: "50%",
+                transform: "translateY(-50%)",
+                color: PINTEREST.textMuted,
+                fontSize: "18px",
+                pointerEvents: "none",
+              }} />
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Email address"
+                required
+                disabled={loading}
+                style={{
+                  width: "100%",
+                  padding: "16px 16px 16px 48px",
+                  borderRadius: "16px",
+                  border: `1px solid ${PINTEREST.border}`,
+                  background: PINTEREST.grayLight,
+                  fontSize: "16px",
+                  color: PINTEREST.textDark,
+                  outline: "none",
+                  opacity: loading ? 0.7 : 1,
+                }}
+              />
             </div>
 
             {/* Password */}
@@ -249,12 +258,15 @@ export default function SignupScreen({ onSignupSuccess, onGoToLogin }: Props) {
                 transform: "translateY(-50%)",
                 color: PINTEREST.textMuted,
                 fontSize: "18px",
+                pointerEvents: "none",
               }} />
               <input
                 type={showPassword ? "text" : "password"}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="Password (6+ characters)"
+                placeholder="Password (min 6 characters)"
+                required
+                disabled={loading}
                 style={{
                   width: "100%",
                   padding: "16px 16px 16px 48px",
@@ -264,12 +276,13 @@ export default function SignupScreen({ onSignupSuccess, onGoToLogin }: Props) {
                   fontSize: "16px",
                   color: PINTEREST.textDark,
                   outline: "none",
+                  opacity: loading ? 0.7 : 1,
                 }}
-                required
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
+                disabled={loading}
                 style={{
                   position: "absolute",
                   right: "16px",
@@ -278,7 +291,7 @@ export default function SignupScreen({ onSignupSuccess, onGoToLogin }: Props) {
                   background: "none",
                   border: "none",
                   color: PINTEREST.textLight,
-                  cursor: "pointer",
+                  cursor: loading ? "not-allowed" : "pointer",
                 }}
               >
                 {showPassword ? <FaEyeSlash size={18} /> : <FaEye size={18} />}
@@ -326,7 +339,7 @@ export default function SignupScreen({ onSignupSuccess, onGoToLogin }: Props) {
               {loading ? "Creating account..." : "Create Account"}
             </motion.button>
 
-            {/* Login link */}
+            {/* Login Link */}
             <div style={{ textAlign: "center", marginTop: "24px" }}>
               <span style={{ color: PINTEREST.textLight, fontSize: "15px" }}>
                 Already have an account?{" "}
@@ -334,14 +347,15 @@ export default function SignupScreen({ onSignupSuccess, onGoToLogin }: Props) {
               <motion.button
                 type="button"
                 onClick={onGoToLogin}
-                whileHover={{ scale: 1.05 }}
+                disabled={loading}
+                whileHover={{ scale: loading ? 1 : 1.05 }}
                 style={{
                   background: "none",
                   border: "none",
                   color: PINTEREST.primary,
                   fontWeight: 600,
                   fontSize: "15px",
-                  cursor: "pointer",
+                  cursor: loading ? "not-allowed" : "pointer",
                 }}
               >
                 Sign in
