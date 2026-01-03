@@ -1,7 +1,7 @@
-// src/pages/LoginScreen.tsx - PINTEREST-STYLE (Fixed: Token + No Dark Overlay Bug)
-import { useState } from "react";
+// src/pages/LoginScreen.tsx - UPDATED FOR NEW BACKEND
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { FaEnvelope, FaLock, FaEye, FaEyeSlash } from "react-icons/fa";
+import { FaEnvelope, FaLock, FaEye, FaEyeSlash, FaSpinner } from "react-icons/fa";
 
 const API_BASE = "https://boocozmo-api.onrender.com";
 
@@ -29,6 +29,41 @@ export default function LoginScreen({ onLoginSuccess, onGoToSignup }: Props) {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [checkingSession, setCheckingSession] = useState(true);
+
+  // Check for existing session on mount
+  useEffect(() => {
+    const checkExistingSession = async () => {
+      try {
+        const storedUser = localStorage.getItem("user");
+        if (storedUser) {
+          const user = JSON.parse(storedUser);
+          
+          // Validate the token with backend
+          const response = await fetch(`${API_BASE}/validate-session`, {
+            method: "POST",
+            headers: {
+              "Authorization": `Bearer ${user.token}`,
+              "Content-Type": "application/json",
+            },
+          });
+
+          if (response.ok) {
+            // Token is valid, auto-login
+            onLoginSuccess(user);
+            return;
+          }
+        }
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      } catch (error) {
+        console.log("No valid session found");
+      } finally {
+        setCheckingSession(false);
+      }
+    };
+
+    checkExistingSession();
+  }, [onLoginSuccess]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,20 +73,52 @@ export default function LoginScreen({ onLoginSuccess, onGoToSignup }: Props) {
       return;
     }
 
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email.trim())) {
+      setError("Please enter a valid email address");
+      return;
+    }
+
+    if (password.length < 6) {
+      setError("Password must be at least 6 characters");
+      return;
+    }
+
     setLoading(true);
     setError(null);
 
     try {
       const res = await fetch(`${API_BASE}/login`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email.trim(), password }),
+        headers: { 
+          "Content-Type": "application/json",
+          "Cache-Control": "no-cache"
+        },
+        body: JSON.stringify({ 
+          email: email.trim().toLowerCase(), 
+          password 
+        }),
       });
 
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data.error || "Invalid email or password");
+        // Handle specific error cases from new backend
+        if (res.status === 401) {
+          throw new Error("Invalid email or password");
+        } else if (res.status === 400) {
+          throw new Error(data.error || "Email and password required");
+        } else if (res.status === 429) {
+          throw new Error("Too many login attempts. Please try again later.");
+        } else {
+          throw new Error(data.error || "Login failed. Please try again.");
+        }
+      }
+
+      // Validate response structure from new backend
+      if (!data.id || !data.email || !data.name || !data.token) {
+        throw new Error("Invalid response from server");
       }
 
       // Full user with token
@@ -59,18 +126,67 @@ export default function LoginScreen({ onLoginSuccess, onGoToSignup }: Props) {
         id: data.id.toString(),
         name: data.name,
         email: data.email,
-        token: data.token, // ← Token included
+        token: data.token,
       };
 
+      // Store in localStorage
       localStorage.setItem("user", JSON.stringify(user));
+      
+      // Notify parent component
       onLoginSuccess(user);
+      
+      // Clear form
+      setEmail("");
+      setPassword("");
+      
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
-      setError(err.message || "Network error. Please try again.");
+      const errorMessage = err.message || "Network error. Please check your connection and try again.";
+      setError(errorMessage);
+      
+      // Clear password on error
+      setPassword("");
+      
     } finally {
       setLoading(false);
     }
   };
+
+  const handleForgotPassword = () => {
+    // Forgot password functionality (to be implemented)
+    alert("Forgot password feature coming soon!");
+  };
+
+  // Show loading while checking session
+  if (checkingSession) {
+    return (
+      <div style={{
+        minHeight: "100vh",
+        background: PINTEREST.bg,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+      }}>
+        <motion.div
+          animate={{ rotate: 360 }}
+          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+          style={{
+            width: "60px",
+            height: "60px",
+            borderRadius: "50%",
+            border: `4px solid ${PINTEREST.border}`,
+            borderTopColor: PINTEREST.primary,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <FaSpinner size={24} color={PINTEREST.primary} />
+        </motion.div>
+      </div>
+    );
+  }
 
   return (
     <div
@@ -96,7 +212,7 @@ export default function LoginScreen({ onLoginSuccess, onGoToSignup }: Props) {
           background: PINTEREST.redLight,
           filter: "blur(100px)",
           opacity: 0.5,
-          pointerEvents: "none", // Prevents interference
+          pointerEvents: "none",
         }}
         animate={{
           scale: [1, 1.15, 1],
@@ -137,7 +253,15 @@ export default function LoginScreen({ onLoginSuccess, onGoToSignup }: Props) {
             paddingBottom: "20px",
           }}
         >
-          <div
+          <motion.div
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ 
+              delay: 0.2, 
+              type: "spring", 
+              stiffness: 200, 
+              damping: 15 
+            }}
             style={{
               width: "180px",
               height: "180px",
@@ -155,7 +279,7 @@ export default function LoginScreen({ onLoginSuccess, onGoToSignup }: Props) {
                 width: "100px",
                 height: "100px",
                 borderRadius: "50%",
-                background: PINTEREST.primary,
+                background: `linear-gradient(135deg, ${PINTEREST.primary}, ${PINTEREST.light})`,
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -167,7 +291,7 @@ export default function LoginScreen({ onLoginSuccess, onGoToSignup }: Props) {
             >
               B
             </div>
-          </div>
+          </motion.div>
 
           {/* Smooth curve at bottom */}
           <div
@@ -186,7 +310,10 @@ export default function LoginScreen({ onLoginSuccess, onGoToSignup }: Props) {
 
         {/* Form */}
         <div style={{ padding: "40px", paddingTop: "20px" }}>
-          <h2
+          <motion.h2
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
             style={{
               fontSize: "2rem",
               fontWeight: 700,
@@ -196,11 +323,16 @@ export default function LoginScreen({ onLoginSuccess, onGoToSignup }: Props) {
             }}
           >
             Welcome back
-          </h2>
+          </motion.h2>
 
           <form onSubmit={handleLogin} style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
             {/* Email */}
-            <div style={{ position: "relative" }}>
+            <motion.div 
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4 }}
+              style={{ position: "relative" }}
+            >
               <FaEnvelope
                 style={{
                   position: "absolute",
@@ -215,7 +347,10 @@ export default function LoginScreen({ onLoginSuccess, onGoToSignup }: Props) {
               <input
                 type="email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  setError(null); // Clear error when user starts typing
+                }}
                 placeholder="Email address"
                 required
                 disabled={loading}
@@ -223,18 +358,24 @@ export default function LoginScreen({ onLoginSuccess, onGoToSignup }: Props) {
                   width: "100%",
                   padding: "16px 16px 16px 48px",
                   borderRadius: "16px",
-                  border: `1px solid ${PINTEREST.border}`,
+                  border: `1px solid ${error ? PINTEREST.primary : PINTEREST.border}`,
                   background: PINTEREST.grayLight,
                   fontSize: "16px",
                   color: PINTEREST.textDark,
                   outline: "none",
                   opacity: loading ? 0.7 : 1,
+                  transition: "border-color 0.2s ease",
                 }}
               />
-            </div>
+            </motion.div>
 
             {/* Password */}
-            <div style={{ position: "relative" }}>
+            <motion.div 
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.5 }}
+              style={{ position: "relative" }}
+            >
               <FaLock
                 style={{
                   position: "absolute",
@@ -249,7 +390,10 @@ export default function LoginScreen({ onLoginSuccess, onGoToSignup }: Props) {
               <input
                 type={showPassword ? "text" : "password"}
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  setError(null); // Clear error when user starts typing
+                }}
                 placeholder="Password"
                 required
                 disabled={loading}
@@ -257,18 +401,20 @@ export default function LoginScreen({ onLoginSuccess, onGoToSignup }: Props) {
                   width: "100%",
                   padding: "16px 16px 16px 48px",
                   borderRadius: "16px",
-                  border: `1px solid ${PINTEREST.border}`,
+                  border: `1px solid ${error ? PINTEREST.primary : PINTEREST.border}`,
                   background: PINTEREST.grayLight,
                   fontSize: "16px",
                   color: PINTEREST.textDark,
                   outline: "none",
                   opacity: loading ? 0.7 : 1,
+                  transition: "border-color 0.2s ease",
                 }}
               />
-              <button
+              <motion.button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
                 disabled={loading}
+                whileTap={{ scale: 0.9 }}
                 style={{
                   position: "absolute",
                   right: "16px",
@@ -278,37 +424,74 @@ export default function LoginScreen({ onLoginSuccess, onGoToSignup }: Props) {
                   border: "none",
                   color: PINTEREST.textLight,
                   cursor: loading ? "not-allowed" : "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  padding: "4px",
                 }}
               >
                 {showPassword ? <FaEyeSlash size={18} /> : <FaEye size={18} />}
-              </button>
-            </div>
+              </motion.button>
+            </motion.div>
 
-            {/* Error Message */}
-            {error && (
-              <motion.div
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
+            {/* Forgot Password */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.6 }}
+              style={{ textAlign: "right" }}
+            >
+              <button
+                type="button"
+                onClick={handleForgotPassword}
+                disabled={loading}
                 style={{
-                  background: PINTEREST.redLight,
-                  padding: "14px",
-                  borderRadius: "12px",
-                  textAlign: "center",
+                  background: "none",
+                  border: "none",
                   color: PINTEREST.primary,
                   fontSize: "14px",
                   fontWeight: 500,
+                  cursor: loading ? "not-allowed" : "pointer",
+                  textDecoration: "underline",
                 }}
               >
-                {error}
-              </motion.div>
-            )}
+                Forgot password?
+              </button>
+            </motion.div>
+
+            {/* Error Message */}
+            <AnimatePresence>
+              {error && (
+                <motion.div
+                  key="error"
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  style={{
+                    background: PINTEREST.redLight,
+                    padding: "14px",
+                    borderRadius: "12px",
+                    textAlign: "center",
+                    color: PINTEREST.primary,
+                    fontSize: "14px",
+                    fontWeight: 500,
+                    overflow: "hidden",
+                  }}
+                >
+                  {error}
+                </motion.div>
+              )}
+            </AnimatePresence>
 
             {/* Login Button */}
             <motion.button
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.7 }}
               type="submit"
               disabled={loading}
-              whileHover={{ scale: loading ? 1 : 1.02 }}
-              whileTap={{ scale: loading ? 1 : 0.98 }}
+              whileHover={loading ? {} : { scale: 1.02 }}
+              whileTap={loading ? {} : { scale: 0.98 }}
               style={{
                 width: "100%",
                 padding: "18px",
@@ -321,13 +504,63 @@ export default function LoginScreen({ onLoginSuccess, onGoToSignup }: Props) {
                 cursor: loading ? "not-allowed" : "pointer",
                 marginTop: "8px",
                 opacity: loading ? 0.8 : 1,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "10px",
+                position: "relative",
               }}
             >
-              {loading ? "Signing in..." : "Sign In"}
+              {loading ? (
+                <>
+                  <motion.div
+                    animate={{ rotate: 360 }}
+                    transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                    style={{
+                      width: "20px",
+                      height: "20px",
+                      borderRadius: "50%",
+                      border: `2px solid rgba(255,255,255,0.3)`,
+                      borderTopColor: "white",
+                    }}
+                  />
+                  Signing in...
+                </>
+              ) : (
+                "Sign In"
+              )}
             </motion.button>
 
+            {/* Divider */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.8 }}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                margin: "24px 0",
+              }}
+            >
+              <div style={{ flex: 1, height: "1px", background: PINTEREST.border }} />
+              <span style={{ 
+                padding: "0 16px", 
+                color: PINTEREST.textMuted, 
+                fontSize: "14px",
+                fontWeight: 500 
+              }}>
+                OR
+              </span>
+              <div style={{ flex: 1, height: "1px", background: PINTEREST.border }} />
+            </motion.div>
+
             {/* Sign Up Link */}
-            <div style={{ textAlign: "center", marginTop: "24px" }}>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.9 }}
+              style={{ textAlign: "center" }}
+            >
               <span style={{ color: PINTEREST.textLight, fontSize: "15px" }}>
                 Don't have an account?{" "}
               </span>
@@ -335,7 +568,8 @@ export default function LoginScreen({ onLoginSuccess, onGoToSignup }: Props) {
                 type="button"
                 onClick={onGoToSignup}
                 disabled={loading}
-                whileHover={{ scale: loading ? 1 : 1.05 }}
+                whileHover={loading ? {} : { scale: 1.05 }}
+                whileTap={loading ? {} : { scale: 0.95 }}
                 style={{
                   background: "none",
                   border: "none",
@@ -343,14 +577,18 @@ export default function LoginScreen({ onLoginSuccess, onGoToSignup }: Props) {
                   fontWeight: 600,
                   fontSize: "15px",
                   cursor: loading ? "not-allowed" : "pointer",
+                  textDecoration: "underline",
                 }}
               >
                 Create one
               </motion.button>
-            </div>
+            </motion.div>
           </form>
         </div>
       </motion.div>
     </div>
   );
 }
+
+// Need to import AnimatePresence
+import { AnimatePresence } from "framer-motion";
