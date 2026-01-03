@@ -1,4 +1,5 @@
-// src/pages/HomeScreen.tsx - COMPLETE FIXED VERSION
+/* eslint-disable @typescript-eslint/no-explicit-any */
+// src/pages/HomeScreen.tsx - UPDATED FOR NEW BACKEND
 import { useEffect, useState, useCallback, useMemo, useRef, memo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -48,7 +49,7 @@ const PINTEREST = {
 
 type Offer = {
   id: number;
-  type: "buy" | "sell" | "exchange";
+  type: "sell" | "exchange" | "buy";
   bookTitle: string;
   exchangeBook: string | null;
   price: number | null;
@@ -66,6 +67,9 @@ type Offer = {
   lastUpdated?: string;
   saved?: boolean;
   liked?: boolean;
+  visibility: "public" | "private";
+  state: "open" | "closed";
+  publishedAt?: string;
 };
 
 type Props = {
@@ -118,21 +122,36 @@ export default function HomeScreen({
   const [isSaved, setIsSaved] = useState<Record<number, boolean>>({});
   const [imageErrors, setImageErrors] = useState<Record<number, boolean>>({});
   const [chatLoading, setChatLoading] = useState(false);
+  const [page, setPage] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
+  const limit = 20;
 
   const abortControllerRef = useRef<AbortController | null>(null);
 
-  const fetchOffers = useCallback(async () => {
+  const fetchOffers = useCallback(async (pageNum = 0, isLoadMore = false) => {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
     }
     abortControllerRef.current = new AbortController();
 
-    setLoading(true);
+    if (!isLoadMore) {
+      setLoading(true);
+    }
     setError(null);
     setImageErrors({});
 
     try {
-      const response = await fetchWithTimeout(`${API_BASE}/offers`, {
+      // Check if we're searching or fetching all offers
+      let endpoint = `${API_BASE}/offers`;
+      if (searchQuery.trim()) {
+        endpoint = `${API_BASE}/search-offers?query=${encodeURIComponent(searchQuery)}&`;
+      } else {
+        endpoint += "?";
+      }
+      
+      endpoint += `limit=${limit}&offset=${pageNum * limit}`;
+
+      const response = await fetchWithTimeout(endpoint, {
         signal: abortControllerRef.current.signal,
         headers: {
           "Authorization": `Bearer ${currentUser.token}`,
@@ -159,67 +178,79 @@ export default function HomeScreen({
         rawOffers = data.data;
       }
 
-      // Process offers
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const processed: Offer[] = rawOffers.map((o: any, index: number) => {
-        let imageUrl = null;
-        
-        if (o.imageUrl) {
-          if (o.imageUrl.startsWith('data:image/')) {
-            imageUrl = o.imageUrl;
-          } else if (o.imageUrl.startsWith('http')) {
-            imageUrl = o.imageUrl;
-          } else if (o.imageUrl.startsWith('/')) {
-            imageUrl = `${API_BASE}${o.imageUrl}`;
-          } else {
-            imageUrl = `${API_BASE}/uploads/${o.imageUrl}`;
+      // Filter out private or closed offers (backend should handle this, but double-check)
+       
+      const processed: Offer[] = rawOffers
+        .filter((o: any) => o.visibility === "public" && o.state === "open")
+        .map((o: any, index: number) => {
+          let imageUrl = null;
+          
+          if (o.imageUrl) {
+            if (o.imageUrl.startsWith('data:image/')) {
+              imageUrl = o.imageUrl;
+            } else if (o.imageUrl.startsWith('http')) {
+              imageUrl = o.imageUrl;
+            } else if (o.imageUrl.startsWith('/')) {
+              imageUrl = `${API_BASE}${o.imageUrl}`;
+            } else {
+              imageUrl = `${API_BASE}/uploads/${o.imageUrl}`;
+            }
           }
-        }
-        
-        if (!imageUrl) {
-          const fallbacks = [
-            "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=300&h=400&fit=crop&q=80",
-            "https://images.unsplash.com/photo-1541963463532-d68292c34b19?w=300&h=380&fit=crop&q=80",
-            "https://images.unsplash.com/photo-1512820790803-83ca734da794?w=300&h=420&fit=crop&q=80",
-            "https://images.unsplash.com/photo-1516979187457-637abb4f9353?w=300&h=400&fit=crop&q=80",
-            "https://images.unsplash.com/photo-1532012197267-da84d127e765?w=300&h=380&fit=crop&q=80",
-            "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&h=400&fit=crop&q=80",
-          ];
-          imageUrl = fallbacks[index % fallbacks.length];
-        }
+          
+          if (!imageUrl) {
+            const fallbacks = [
+              "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=300&h=400&fit=crop&q=80",
+              "https://images.unsplash.com/photo-1541963463532-d68292c34b19?w=300&h=380&fit=crop&q=80",
+              "https://images.unsplash.com/photo-1512820790803-83ca734da794?w=300&h=420&fit=crop&q=80",
+              "https://images.unsplash.com/photo-1516979187457-637abb4f9353?w=300&h=400&fit=crop&q=80",
+              "https://images.unsplash.com/photo-1532012197267-da84d127e765?w=300&h=380&fit=crop&q=80",
+              "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&h=400&fit=crop&q=80",
+            ];
+            imageUrl = fallbacks[index % fallbacks.length];
+          }
 
-        return {
-          id: o.id || index,
-          type: o.type || "sell",
-          bookTitle: o.bookTitle || o.title || "Unknown Book",
-          exchangeBook: o.exchangeBook || null,
-          price: o.price ? parseFloat(o.price) : null,
-          condition: o.condition || null,
-          ownerEmail: o.ownerEmail || "unknown@example.com",
-          imageUrl,
-          imageBase64: o.imageBase64 || null,
-          latitude: o.latitude ? parseFloat(o.latitude) : null,
-          longitude: o.longitude ? parseFloat(o.longitude) : null,
-          ownerName: o.ownerName || o.ownerEmail?.split("@")[0] || "User",
-          distance: o.distance || "Nearby",
-          description: o.description || `A great book about ${o.genre || "fiction"}. Perfect condition!`,
-          genre: o.genre || "Fiction",
-          author: o.author || "Unknown Author",
-          lastUpdated: o.lastUpdated || o.created_at || new Date().toISOString(),
-        };
-      });
+          return {
+            id: o.id || index,
+            type: o.type || "sell",
+            bookTitle: o.bookTitle || o.title || "Unknown Book",
+            exchangeBook: o.exchangeBook || null,
+            price: o.price ? parseFloat(o.price) : null,
+            condition: o.condition || null,
+            ownerEmail: o.ownerEmail || "unknown@example.com",
+            imageUrl,
+            imageBase64: o.imageBase64 || null,
+            latitude: o.latitude ? parseFloat(o.latitude) : null,
+            longitude: o.longitude ? parseFloat(o.longitude) : null,
+            ownerName: o.ownerName || o.ownerEmail?.split("@")[0] || "User",
+            distance: o.distance || "Nearby",
+            description: o.description || `A great book about ${o.genre || "fiction"}. Perfect condition!`,
+            genre: o.genre || "Fiction",
+            author: o.author || "Unknown Author",
+            lastUpdated: o.lastUpdated || o.publishedAt || o.created_at || new Date().toISOString(),
+            visibility: o.visibility || "public",
+            state: o.state || "open",
+            publishedAt: o.publishedAt,
+          };
+        });
 
-      setOffers(processed);
+      if (isLoadMore) {
+        setOffers(prev => [...prev, ...processed]);
+      } else {
+        setOffers(processed);
+      }
       
+      // Check if there are more offers
+      setHasMore(processed.length === limit);
+
       const likes: Record<number, boolean> = {};
       const saves: Record<number, boolean> = {};
       processed.forEach(offer => {
         likes[offer.id] = Math.random() > 0.5;
         saves[offer.id] = Math.random() > 0.7;
       });
-      setIsLiked(likes);
-      setIsSaved(saves);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      setIsLiked(prev => ({ ...prev, ...likes }));
+      setIsSaved(prev => ({ ...prev, ...saves }));
+     
     } catch (err: any) {
       if (err.name !== "AbortError") {
         console.error("Error:", err);
@@ -228,14 +259,22 @@ export default function HomeScreen({
     } finally {
       setLoading(false);
     }
-  }, [currentUser.token]);
+  }, [currentUser.token, searchQuery]);
 
   useEffect(() => {
-    fetchOffers();
+    fetchOffers(0, false);
     return () => {
       abortControllerRef.current?.abort();
     };
   }, [fetchOffers]);
+
+  const handleLoadMore = useCallback(() => {
+    if (!loading && hasMore) {
+      const nextPage = page + 1;
+      setPage(nextPage);
+      fetchOffers(nextPage, true);
+    }
+  }, [loading, hasMore, page, fetchOffers]);
 
   const filteredOffers = useMemo(() => {
     let result = offers;
@@ -244,20 +283,11 @@ export default function HomeScreen({
       result = result.filter((o) => o.type === selectedFilter);
     }
 
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
-      result = result.filter(
-        (o) =>
-          o.bookTitle.toLowerCase().includes(q) ||
-          o.author?.toLowerCase().includes(q) ||
-          o.description?.toLowerCase().includes(q) ||
-          o.genre?.toLowerCase().includes(q) ||
-          o.exchangeBook?.toLowerCase().includes(q)
-      );
-    }
+    // Double-check visibility and state
+    result = result.filter((o) => o.visibility === "public" && o.state === "open");
 
     return result;
-  }, [offers, selectedFilter, searchQuery]);
+  }, [offers, selectedFilter]);
 
   const getImageSource = useCallback((offer: Offer) => {
     if (offer.imageUrl) {
@@ -294,13 +324,39 @@ export default function HomeScreen({
     }));
   }, []);
 
-  const handleSave = useCallback((e: React.MouseEvent, id: number) => {
+  const handleSave = useCallback(async (e: React.MouseEvent, id: number) => {
     e.stopPropagation();
+    
+    const newSavedState = !isSaved[id];
     setIsSaved(prev => ({
       ...prev,
-      [id]: !prev[id]
+      [id]: newSavedState
     }));
-  }, []);
+
+    try {
+      const endpoint = newSavedState ? `${API_BASE}/save-offer` : `${API_BASE}/unsave-offer`;
+      const response = await fetchWithTimeout(endpoint, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${currentUser.token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ offer_id: id }),
+      }, 8000);
+
+      if (!response.ok) {
+        // Revert on error
+        setIsSaved(prev => ({
+          ...prev,
+          [id]: !newSavedState
+        }));
+        throw new Error("Failed to update saved status");
+      }
+    } catch (err) {
+      console.error("Save/Unsave error:", err);
+      alert("Failed to update saved status. Please try again.");
+    }
+  }, [currentUser.token, isSaved]);
 
   const getTypeLabel = (type: string) => {
     switch (type) {
@@ -368,7 +424,7 @@ export default function HomeScreen({
       // Find existing chat with this user for this offer
       let existingChat = null;
       if (Array.isArray(chats)) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+         
         existingChat = chats.find((chat: any) => 
           ((chat.user1 === currentUser.email && chat.user2 === offer.ownerEmail) ||
            (chat.user1 === offer.ownerEmail && chat.user2 === currentUser.email)) &&
@@ -438,23 +494,24 @@ export default function HomeScreen({
     setSelectedOffer(null);
   }, []);
 
-  const filterButtons = [
-    { id: "all" as const, label: "All", icon: <FaFilter size={12} /> },
-    { id: "sell" as const, label: "For Sale", icon: <FaDollarSign size={12} /> },
-    { id: "exchange" as const, label: "Exchange", icon: <FaExchangeAlt size={12} /> },
-    { id: "buy" as const, label: "Wanted", icon: <FaTag size={12} /> },
-  ];
-
+  // Update navigation to include My Library
   const navItems = [
     { icon: FaHome, label: "Home", active: true, onClick: () => navigate("/") },
     { icon: FaCompass, label: "Discover", onClick: () => {} },
     { icon: FaBookOpen, label: "My Library", onClick: () => navigate("/my-library") },
-    { icon: FaBookmark, label: "Saved", onClick: () => {} },
+    { icon: FaBookmark, label: "Saved", onClick: () => navigate("/saved") },
     { icon: FaUsers, label: "Following", onClick: () => {} },
     { icon: FaMapMarkedAlt, label: "Map", onClick: onMapPress },
     { icon: FaComments, label: "Messages", onClick: () => navigate("/chat") },
     { icon: FaBell, label: "Notifications", onClick: () => {} },
     { icon: FaStar, label: "Top Picks", onClick: () => {} },
+  ];
+
+  const filterButtons = [
+    { id: "all" as const, label: "All", icon: <FaFilter size={12} /> },
+    { id: "sell" as const, label: "For Sale", icon: <FaDollarSign size={12} /> },
+    { id: "exchange" as const, label: "Exchange", icon: <FaExchangeAlt size={12} /> },
+    { id: "buy" as const, label: "Wanted", icon: <FaTag size={12} /> },
   ];
 
   // Pinterest Card Component
@@ -467,6 +524,11 @@ export default function HomeScreen({
         const saved = isSaved[offer.id] || false;
         const cardHeight = getRandomHeight(index);
         const hasImageError = imageErrors[offer.id];
+        
+        // Check if offer is public and open (should be filtered already, but just in case)
+        if (offer.visibility !== "public" || offer.state !== "open") {
+          return null;
+        }
         
         const displaySrc = hasImageError 
           ? "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=300&h=400&fit=crop&q=80"
@@ -940,7 +1002,15 @@ export default function HomeScreen({
                   type="text"
                   placeholder="Search books, authors, genres..."
                   value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onChange={(e) => {
+                    setSearchQuery(e.target.value);
+                    // Trigger search after typing stops
+                    const handler = setTimeout(() => {
+                      setPage(0);
+                      fetchOffers(0, false);
+                    }, 500);
+                    return () => clearTimeout(handler);
+                  }}
                   style={{
                     width: "100%",
                     padding: "10px 10px 10px 36px",
@@ -1027,17 +1097,25 @@ export default function HomeScreen({
         </header>
 
         {/* Main Feed - Scrollable Pinterest Layout */}
-        <main style={{
-          flex: 1,
-          overflowY: "auto",
-          padding: "16px",
-          display: "grid",
-          gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-          gap: "12px",
-          alignContent: "start",
-          minHeight: 0,
-        }}>
-          {loading ? (
+        <main 
+          style={{
+            flex: 1,
+            overflowY: "auto",
+            padding: "16px",
+            display: "grid",
+            gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+            gap: "12px",
+            alignContent: "start",
+            minHeight: 0,
+          }}
+          onScroll={(e) => {
+            const target = e.target as HTMLDivElement;
+            if (target.scrollHeight - target.scrollTop - target.clientHeight < 100) {
+              handleLoadMore();
+            }
+          }}
+        >
+          {loading && page === 0 ? (
             Array.from({ length: 6 }).map((_, i) => (
               <div
                 key={i}
@@ -1080,7 +1158,10 @@ export default function HomeScreen({
               </p>
               <motion.button
                 whileHover={{ scale: 1.03 }}
-                onClick={fetchOffers}
+                onClick={() => {
+                  setPage(0);
+                  fetchOffers(0, false);
+                }}
                 style={{
                   padding: "10px 20px",
                   background: PINTEREST.primary,
@@ -1154,396 +1235,426 @@ export default function HomeScreen({
               )}
             </div>
           ) : (
-            <AnimatePresence>
-              {filteredOffers.map((offer, index) => (
-                <PinterestCard key={offer.id} offer={offer} index={index} />
-              ))}
-            </AnimatePresence>
+            <>
+              <AnimatePresence>
+                {filteredOffers.map((offer, index) => (
+                  <PinterestCard key={`${offer.id}-${index}`} offer={offer} index={index} />
+                ))}
+              </AnimatePresence>
+              
+              {/* Load More Indicator */}
+              {hasMore && (
+                <div style={{ 
+                  gridColumn: "1 / -1", 
+                  textAlign: "center", 
+                  padding: "20px",
+                }}>
+                  <button
+                    onClick={handleLoadMore}
+                    disabled={loading}
+                    style={{
+                      padding: "10px 20px",
+                      background: PINTEREST.hoverBg,
+                      color: PINTEREST.textDark,
+                      border: `1px solid ${PINTEREST.border}`,
+                      borderRadius: "20px",
+                      fontSize: "14px",
+                      fontWeight: "600",
+                      cursor: loading ? "wait" : "pointer",
+                      opacity: loading ? 0.7 : 1,
+                    }}
+                  >
+                    {loading ? "Loading..." : "Load More"}
+                  </button>
+                </div>
+              )}
+            </>
           )}
         </main>
       </div>
 
-      {/* Selected Offer Detail Modal - PERFECTLY CENTERED */}
-<AnimatePresence>
-  {selectedOffer && (
-    <>
-      {/* Overlay */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        onClick={handleCloseDetail}
-        style={{
-          position: "fixed",
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: "rgba(0, 0, 0, 0.7)",
-          backdropFilter: "blur(4px)",
-          zIndex: 2000,
-        }}
-      />
-      
-      {/* CENTERING WRAPPER */}
-      <div style={{
-        position: "fixed",
-        top: 0,
-        left: 0,
-        width: "100%",
-        height: "100%",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        zIndex: 2001,
-        pointerEvents: "none",
-      }}>
-        {/* Detail Modal */}
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          exit={{ opacity: 0, scale: 0.95 }}
-          transition={{ type: "spring", damping: 25, stiffness: 300 }}
-          style={{
-            width: "calc(100% - 40px)",
-            maxWidth: "400px",
-            maxHeight: "85vh",
-            background: "rgba(255, 255, 255, 0.98)",
-            backdropFilter: "blur(20px)",
-            borderRadius: "20px",
-            padding: "20px",
-            boxShadow: "0 32px 80px rgba(0,0,0,0.3)",
-            overflowY: "auto",
-            border: `1px solid ${PINTEREST.border}`,
-            boxSizing: "border-box",
-            pointerEvents: "auto",
-          }}
-          onClick={(e) => e.stopPropagation()}
-        >
-          {/* Close button */}
-          <motion.button
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.9 }}
-            onClick={handleCloseDetail}
-            style={{
-              position: "absolute",
-              top: "16px",
-              right: "16px",
-              background: PINTEREST.primary,
-              border: "none",
-              color: "white",
-              width: "40px",
-              height: "40px",
-              borderRadius: "50%",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              cursor: "pointer",
-              fontSize: "18px",
-              zIndex: 10,
-              boxShadow: "0 4px 16px rgba(0,0,0,0.2)",
-            }}
-          >
-            <FaTimes />
-          </motion.button>
-
-          {/* Content - KEEP ALL YOUR EXISTING CONTENT HERE */}
-          <div style={{ marginBottom: "20px" }}>
-            {/* Book Image */}
-            <div style={{
-              width: "100%",
-              height: "180px",
-              borderRadius: "12px",
-              overflow: "hidden",
-              marginBottom: "16px",
-              background: PINTEREST.grayLight,
-            }}>
-              <img
-                src={getImageSource(selectedOffer)}
-                alt={selectedOffer.bookTitle}
-                onError={() => handleImageError(selectedOffer.id)}
-                style={{
-                  width: "100%",
-                  height: "100%",
-                  objectFit: "cover",
-                }}
-              />
-            </div>
-
-            {/* Title and Author */}
-            <h3 style={{ 
-              fontSize: "18px", 
-              fontWeight: "700", 
-              margin: "0 0 6px",
-              color: PINTEREST.textDark,
-              lineHeight: 1.3,
-              paddingRight: "40px",
-            }}>
-              {selectedOffer.bookTitle}
-            </h3>
-            <p style={{ 
-              fontSize: "14px", 
-              color: PINTEREST.textLight, 
-              margin: "0 0 12px",
-              fontStyle: "italic",
-            }}>
-              {selectedOffer.author ? `by ${selectedOffer.author}` : "Unknown Author"}
-            </p>
-
-            {/* Metadata */}
-            <div style={{ 
-              display: "flex", 
-              alignItems: "center", 
-              gap: "8px",
-              fontSize: "12px",
-              color: PINTEREST.textLight,
-              marginBottom: "16px",
-              flexWrap: "wrap",
-            }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
-                <FaMapMarkerAlt size={11} /> 
-                <span>{selectedOffer.distance ? `${selectedOffer.distance} away` : "Nearby"}</span>
-              </div>
-              <span style={{ opacity: 0.3 }}>•</span>
-              <div>
-                {selectedOffer.ownerName || selectedOffer.ownerEmail.split("@")[0]}
-              </div>
-              {selectedOffer.lastUpdated && (
-                <>
-                  <span style={{ opacity: 0.3 }}>•</span>
-                  <div>
-                    {formatTimeAgo(selectedOffer.lastUpdated)}
-                  </div>
-                </>
-              )}
-            </div>
-
-            {/* Type Badge */}
-            <div
+      {/* Selected Offer Detail Modal */}
+      <AnimatePresence>
+        {selectedOffer && (
+          <>
+            {/* Overlay */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={handleCloseDetail}
               style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "6px",
-                padding: "6px 12px",
-                borderRadius: "16px",
-                background: `${getTypeColor(selectedOffer.type)}15`,
-                color: getTypeColor(selectedOffer.type),
-                fontSize: "11px",
-                fontWeight: "600",
-                marginBottom: "16px",
-                border: `1px solid ${getTypeColor(selectedOffer.type)}30`,
+                position: "fixed",
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                background: "rgba(0, 0, 0, 0.7)",
+                backdropFilter: "blur(4px)",
+                zIndex: 2000,
               }}
-            >
-              {getTypeIcon(selectedOffer.type)}
-              {getTypeLabel(selectedOffer.type)}
-            </div>
-          </div>
-
-          {/* Description */}
-          {selectedOffer.description && (
-            <div style={{
-              marginBottom: "20px",
-              paddingBottom: "20px",
-              borderBottom: `1px solid ${PINTEREST.border}`,
-              maxHeight: "100px",
-              overflowY: "auto",
-            }}>
-              <h4 style={{ 
-                fontSize: "13px", 
-                fontWeight: "600", 
-                margin: "0 0 8px",
-                color: PINTEREST.textDark,
-              }}>
-                Description
-              </h4>
-              <p style={{
-                fontSize: "13px",
-                color: PINTEREST.textLight,
-                lineHeight: 1.5,
-                margin: 0,
-              }}>
-                {selectedOffer.description}
-              </p>
-            </div>
-          )}
-
-          {/* Price/Exchange Info */}
-          <div style={{ 
-            marginBottom: "24px",
-            padding: "16px",
-            background: PINTEREST.grayLight,
-            borderRadius: "12px",
-            border: `1px solid ${PINTEREST.border}`,
-          }}>
-            <div style={{ fontSize: "11px", color: PINTEREST.textLight, marginBottom: "6px" }}>
-              {selectedOffer.type === "sell" ? "Price" : 
-               selectedOffer.type === "buy" ? "Looking for" : "Exchange for"}
-            </div>
-            <div style={{ 
-              fontSize: "22px", 
-              fontWeight: "800", 
-              color: PINTEREST.primary,
-              display: "flex",
-              alignItems: "center",
-              gap: "6px",
-              marginBottom: "8px",
-            }}>
-              {selectedOffer.type === "sell" && selectedOffer.price ? (
-                <>
-                  <FaDollarSign size={18} /> {formatPrice(selectedOffer.price)}
-                </>
-              ) : selectedOffer.type === "exchange" && selectedOffer.exchangeBook ? (
-                <>
-                  <FaExchangeAlt size={18} /> Exchange
-                </>
-              ) : (
-                <>
-                  <FaTag size={18} /> Wanted
-                </>
-              )}
-            </div>
+            />
             
-            {selectedOffer.exchangeBook && (
-              <div style={{ 
-                fontSize: "13px", 
-                color: PINTEREST.textDark, 
-                fontWeight: "500",
-                padding: "8px 12px",
-                background: "rgba(255,255,255,0.7)",
-                borderRadius: "8px",
-                borderLeft: `3px solid #00A86B`,
-              }}>
-                For: <span style={{ fontWeight: "600" }}>{selectedOffer.exchangeBook}</span>
-              </div>
-            )}
-          </div>
-
-          {/* Chat Button */}
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={() => handleChat(selectedOffer)}
-            disabled={chatLoading || selectedOffer.ownerEmail === currentUser.email}
-            style={{
+            {/* CENTERING WRAPPER */}
+            <div style={{
+              position: "fixed",
+              top: 0,
+              left: 0,
               width: "100%",
-              background: selectedOffer.ownerEmail === currentUser.email ? PINTEREST.textLight : PINTEREST.primary,
-              color: "white",
-              border: "none",
-              padding: "14px",
-              borderRadius: "12px",
-              fontSize: "14px",
-              fontWeight: "700",
-              cursor: selectedOffer.ownerEmail === currentUser.email ? "not-allowed" : (chatLoading ? "wait" : "pointer"),
-              marginBottom: "16px",
+              height: "100%",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              gap: "8px",
-              opacity: chatLoading ? 0.8 : 1,
-            }}
-          >
-            {chatLoading ? (
-              <>
-                <motion.div
-                  animate={{ rotate: 360 }}
-                  transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                  style={{
-                    width: "16px",
-                    height: "16px",
-                    border: `2px solid rgba(255,255,255,0.3)`,
-                    borderTopColor: "white",
-                    borderRadius: "50%",
-                  }}
-                />
-                Starting Chat...
-              </>
-            ) : selectedOffer.ownerEmail === currentUser.email ? (
-              <>
-                <FaCheck size={14} />
-                This is Your Book
-              </>
-            ) : (
-              <>
-                <FaComments size={14} />
-                Contact Owner
-              </>
-            )}
-          </motion.button>
-
-          {/* Action Buttons */}
-          <div style={{
-            display: "flex",
-            gap: "8px",
-            paddingTop: "16px",
-            borderTop: `1px solid ${PINTEREST.border}`,
-          }}>
-            {[
-              { 
-                icon: FaHeart, 
-                label: "Like", 
-                onClick: (e: React.MouseEvent) => handleLike(e, selectedOffer.id), 
-                color: isLiked[selectedOffer.id] ? PINTEREST.primary : PINTEREST.textLight,
-                disabled: false,
-              },
-              { 
-                icon: FaBookmarkSolid, 
-                label: "Save", 
-                onClick: (e: React.MouseEvent) => handleSave(e, selectedOffer.id), 
-                color: isSaved[selectedOffer.id] ? PINTEREST.primary : PINTEREST.textLight,
-                disabled: false,
-              },
-              { 
-                icon: FaShareAlt, 
-                label: "Share", 
-                onClick: (e: React.MouseEvent) => {
-                  e.stopPropagation();
-                  if (navigator.share) {
-                    navigator.share({
-                      title: selectedOffer.bookTitle,
-                      text: `Check out "${selectedOffer.bookTitle}" by ${selectedOffer.author} on Boocozmo`,
-                      url: `${window.location.origin}/offer/${selectedOffer.id}`,
-                    });
-                  }
-                }, 
-                color: PINTEREST.textLight,
-                disabled: false,
-              },
-            ].map((action) => (
-              <motion.button
-                key={action.label}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={action.onClick}
-                disabled={action.disabled}
+              zIndex: 2001,
+              pointerEvents: "none",
+            }}>
+              {/* Detail Modal */}
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                transition={{ type: "spring", damping: 25, stiffness: 300 }}
                 style={{
-                  flex: 1,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: "6px",
-                  padding: "10px",
-                  borderRadius: "10px",
-                  border: "none",
-                  background: `${action.color}10`,
-                  color: action.color,
-                  fontSize: "12px",
-                  fontWeight: "600",
-                  cursor: action.disabled ? "not-allowed" : "pointer",
-                  transition: "all 0.2s ease",
-                  minHeight: "40px",
-                  opacity: action.disabled ? 0.5 : 1,
+                  width: "calc(100% - 40px)",
+                  maxWidth: "400px",
+                  maxHeight: "85vh",
+                  background: "rgba(255, 255, 255, 0.98)",
+                  backdropFilter: "blur(20px)",
+                  borderRadius: "20px",
+                  padding: "20px",
+                  boxShadow: "0 32px 80px rgba(0,0,0,0.3)",
+                  overflowY: "auto",
+                  border: `1px solid ${PINTEREST.border}`,
+                  boxSizing: "border-box",
+                  pointerEvents: "auto",
                 }}
+                onClick={(e) => e.stopPropagation()}
               >
-                <action.icon size={12} />
-                {action.label}
-              </motion.button>
-            ))}
-          </div>
-        </motion.div>
-      </div>
-    </>
-  )}
-</AnimatePresence>
+                {/* Close button */}
+                <motion.button
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.9 }}
+                  onClick={handleCloseDetail}
+                  style={{
+                    position: "absolute",
+                    top: "16px",
+                    right: "16px",
+                    background: PINTEREST.primary,
+                    border: "none",
+                    color: "white",
+                    width: "40px",
+                    height: "40px",
+                    borderRadius: "50%",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    cursor: "pointer",
+                    fontSize: "18px",
+                    zIndex: 10,
+                    boxShadow: "0 4px 16px rgba(0,0,0,0.2)",
+                  }}
+                >
+                  <FaTimes />
+                </motion.button>
+
+                {/* Content */}
+                <div style={{ marginBottom: "20px" }}>
+                  {/* Book Image */}
+                  <div style={{
+                    width: "100%",
+                    height: "180px",
+                    borderRadius: "12px",
+                    overflow: "hidden",
+                    marginBottom: "16px",
+                    background: PINTEREST.grayLight,
+                  }}>
+                    <img
+                      src={getImageSource(selectedOffer)}
+                      alt={selectedOffer.bookTitle}
+                      onError={() => handleImageError(selectedOffer.id)}
+                      style={{
+                        width: "100%",
+                        height: "100%",
+                        objectFit: "cover",
+                      }}
+                    />
+                  </div>
+
+                  {/* Title and Author */}
+                  <h3 style={{ 
+                    fontSize: "18px", 
+                    fontWeight: "700", 
+                    margin: "0 0 6px",
+                    color: PINTEREST.textDark,
+                    lineHeight: 1.3,
+                    paddingRight: "40px",
+                  }}>
+                    {selectedOffer.bookTitle}
+                  </h3>
+                  <p style={{ 
+                    fontSize: "14px", 
+                    color: PINTEREST.textLight, 
+                    margin: "0 0 12px",
+                    fontStyle: "italic",
+                  }}>
+                    {selectedOffer.author ? `by ${selectedOffer.author}` : "Unknown Author"}
+                  </p>
+
+                  {/* Metadata */}
+                  <div style={{ 
+                    display: "flex", 
+                    alignItems: "center", 
+                    gap: "8px",
+                    fontSize: "12px",
+                    color: PINTEREST.textLight,
+                    marginBottom: "16px",
+                    flexWrap: "wrap",
+                  }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+                      <FaMapMarkerAlt size={11} /> 
+                      <span>{selectedOffer.distance ? `${selectedOffer.distance} away` : "Nearby"}</span>
+                    </div>
+                    <span style={{ opacity: 0.3 }}>•</span>
+                    <div>
+                      {selectedOffer.ownerName || selectedOffer.ownerEmail.split("@")[0]}
+                    </div>
+                    {selectedOffer.lastUpdated && (
+                      <>
+                        <span style={{ opacity: 0.3 }}>•</span>
+                        <div>
+                          {formatTimeAgo(selectedOffer.lastUpdated)}
+                        </div>
+                      </>
+                    )}
+                  </div>
+
+                  {/* Type Badge */}
+                  <div
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "6px",
+                      padding: "6px 12px",
+                      borderRadius: "16px",
+                      background: `${getTypeColor(selectedOffer.type)}15`,
+                      color: getTypeColor(selectedOffer.type),
+                      fontSize: "11px",
+                      fontWeight: "600",
+                      marginBottom: "16px",
+                      border: `1px solid ${getTypeColor(selectedOffer.type)}30`,
+                    }}
+                  >
+                    {getTypeIcon(selectedOffer.type)}
+                    {getTypeLabel(selectedOffer.type)}
+                  </div>
+                </div>
+
+                {/* Description */}
+                {selectedOffer.description && (
+                  <div style={{
+                    marginBottom: "20px",
+                    paddingBottom: "20px",
+                    borderBottom: `1px solid ${PINTEREST.border}`,
+                    maxHeight: "100px",
+                    overflowY: "auto",
+                  }}>
+                    <h4 style={{ 
+                      fontSize: "13px", 
+                      fontWeight: "600", 
+                      margin: "0 0 8px",
+                      color: PINTEREST.textDark,
+                    }}>
+                      Description
+                    </h4>
+                    <p style={{
+                      fontSize: "13px",
+                      color: PINTEREST.textLight,
+                      lineHeight: 1.5,
+                      margin: 0,
+                    }}>
+                      {selectedOffer.description}
+                    </p>
+                  </div>
+                )}
+
+                {/* Price/Exchange Info */}
+                <div style={{ 
+                  marginBottom: "24px",
+                  padding: "16px",
+                  background: PINTEREST.grayLight,
+                  borderRadius: "12px",
+                  border: `1px solid ${PINTEREST.border}`,
+                }}>
+                  <div style={{ fontSize: "11px", color: PINTEREST.textLight, marginBottom: "6px" }}>
+                    {selectedOffer.type === "sell" ? "Price" : 
+                     selectedOffer.type === "buy" ? "Looking for" : "Exchange for"}
+                  </div>
+                  <div style={{ 
+                    fontSize: "22px", 
+                    fontWeight: "800", 
+                    color: PINTEREST.primary,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "6px",
+                    marginBottom: "8px",
+                  }}>
+                    {selectedOffer.type === "sell" && selectedOffer.price ? (
+                      <>
+                        <FaDollarSign size={18} /> {formatPrice(selectedOffer.price)}
+                      </>
+                    ) : selectedOffer.type === "exchange" && selectedOffer.exchangeBook ? (
+                      <>
+                        <FaExchangeAlt size={18} /> Exchange
+                      </>
+                    ) : (
+                      <>
+                        <FaTag size={18} /> Wanted
+                      </>
+                    )}
+                  </div>
+                  
+                  {selectedOffer.exchangeBook && (
+                    <div style={{ 
+                      fontSize: "13px", 
+                      color: PINTEREST.textDark, 
+                      fontWeight: "500",
+                      padding: "8px 12px",
+                      background: "rgba(255,255,255,0.7)",
+                      borderRadius: "8px",
+                      borderLeft: `3px solid #00A86B`,
+                    }}>
+                      For: <span style={{ fontWeight: "600" }}>{selectedOffer.exchangeBook}</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Chat Button */}
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => handleChat(selectedOffer)}
+                  disabled={chatLoading || selectedOffer.ownerEmail === currentUser.email}
+                  style={{
+                    width: "100%",
+                    background: selectedOffer.ownerEmail === currentUser.email ? PINTEREST.textLight : PINTEREST.primary,
+                    color: "white",
+                    border: "none",
+                    padding: "14px",
+                    borderRadius: "12px",
+                    fontSize: "14px",
+                    fontWeight: "700",
+                    cursor: selectedOffer.ownerEmail === currentUser.email ? "not-allowed" : (chatLoading ? "wait" : "pointer"),
+                    marginBottom: "16px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: "8px",
+                    opacity: chatLoading ? 0.8 : 1,
+                  }}
+                >
+                  {chatLoading ? (
+                    <>
+                      <motion.div
+                        animate={{ rotate: 360 }}
+                        transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                        style={{
+                          width: "16px",
+                          height: "16px",
+                          border: `2px solid rgba(255,255,255,0.3)`,
+                          borderTopColor: "white",
+                          borderRadius: "50%",
+                        }}
+                      />
+                      Starting Chat...
+                    </>
+                  ) : selectedOffer.ownerEmail === currentUser.email ? (
+                    <>
+                      <FaCheck size={14} />
+                      This is Your Book
+                    </>
+                  ) : (
+                    <>
+                      <FaComments size={14} />
+                      Contact Owner
+                    </>
+                  )}
+                </motion.button>
+
+                {/* Action Buttons */}
+                <div style={{
+                  display: "flex",
+                  gap: "8px",
+                  paddingTop: "16px",
+                  borderTop: `1px solid ${PINTEREST.border}`,
+                }}>
+                  {[
+                    { 
+                      icon: FaHeart, 
+                      label: "Like", 
+                      onClick: (e: React.MouseEvent) => handleLike(e, selectedOffer.id), 
+                      color: isLiked[selectedOffer.id] ? PINTEREST.primary : PINTEREST.textLight,
+                      disabled: false,
+                    },
+                    { 
+                      icon: FaBookmarkSolid, 
+                      label: "Save", 
+                      onClick: (e: React.MouseEvent) => handleSave(e, selectedOffer.id), 
+                      color: isSaved[selectedOffer.id] ? PINTEREST.primary : PINTEREST.textLight,
+                      disabled: false,
+                    },
+                    { 
+                      icon: FaShareAlt, 
+                      label: "Share", 
+                      onClick: (e: React.MouseEvent) => {
+                        e.stopPropagation();
+                        if (navigator.share) {
+                          navigator.share({
+                            title: selectedOffer.bookTitle,
+                            text: `Check out "${selectedOffer.bookTitle}" by ${selectedOffer.author} on Boocozmo`,
+                            url: `${window.location.origin}/offer/${selectedOffer.id}`,
+                          });
+                        }
+                      }, 
+                      color: PINTEREST.textLight,
+                      disabled: false,
+                    },
+                  ].map((action) => (
+                    <motion.button
+                      key={action.label}
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={action.onClick}
+                      disabled={action.disabled}
+                      style={{
+                        flex: 1,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: "6px",
+                        padding: "10px",
+                        borderRadius: "10px",
+                        border: "none",
+                        background: `${action.color}10`,
+                        color: action.color,
+                        fontSize: "12px",
+                        fontWeight: "600",
+                        cursor: action.disabled ? "not-allowed" : "pointer",
+                        transition: "all 0.2s ease",
+                        minHeight: "40px",
+                        opacity: action.disabled ? 0.5 : 1,
+                      }}
+                    >
+                      <action.icon size={12} />
+                      {action.label}
+                    </motion.button>
+                  ))}
+                </div>
+              </motion.div>
+            </div>
+          </>
+        )}
+      </AnimatePresence>
+      
       <style>{`
         @keyframes pulse {
           0%, 100% { opacity: 1; }

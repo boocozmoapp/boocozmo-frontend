@@ -5,10 +5,22 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
   server: {
-    port: 5173, // optional, if you want to fix the port
-    strictPort: true, // optional, prevents Vite from switching ports
+    port: 5173,
+    strictPort: true,
+    host: true, // Important for Cloudflare Tunnel / external access
     allowedHosts: [
-      'delivering-textiles-claire-determining.trycloudflare.com'
+      'delivering-textiles-claire-determining.trycloudflare.com',
+      'localhost',
+      '127.0.0.1',
     ],
+    proxy: {
+      // This fixes all CORS issues with your backend
+      '/api': {
+        target: 'https://boocozmo-api.onrender.com',
+        changeOrigin: true,
+        secure: true,
+        rewrite: (path) => path.replace(/^\/api/, ''),
+      },
+    },
   },
 })
