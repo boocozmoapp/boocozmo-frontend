@@ -15,6 +15,7 @@ import SingleChat from "./pages/SingleChat";
 import OfferDetailScreen from "./pages/OfferDetailScreen";
 import MyLibraryScreen from "./pages/MyLibraryScreen";
 import CommunityScreen from "./pages/CommunityScreen";
+import WelcomeScreen from "./pages/WelcomeScreen";
 import "leaflet/dist/leaflet.css";
 
 type User = {
@@ -36,7 +37,7 @@ function GoodreadsHeader({ user, onLogout }: { user: User; onLogout: () => void 
           
           <div className="flex items-center gap-6">
             <h1 
-              onClick={() => navigate("/")}
+              onClick={() => navigate("/home")}
               className="text-2xl font-serif font-bold text-[#382110] tracking-tighter cursor-pointer hover:no-underline"
             >
               Boocozmo
@@ -44,7 +45,7 @@ function GoodreadsHeader({ user, onLogout }: { user: User; onLogout: () => void 
 
             {/* Desktop Nav */}
             <nav className="hidden md:flex items-center gap-1 text-[#382110] text-[14px]">
-              <button onClick={() => navigate("/")} className="px-3 py-2 font-sans hover:bg-white/50 rounded-sm">Home</button>
+              <button onClick={() => navigate("/home")} className="px-3 py-2 font-sans hover:bg-white/50 rounded-sm">Home</button>
               <button onClick={() => navigate("/my-library")} className="px-3 py-2 font-sans hover:bg-white/50 rounded-sm">My Books</button>
               <div className="relative group">
                  <button className="px-3 py-2 font-sans hover:bg-white/50 rounded-sm flex items-center gap-1">
@@ -55,8 +56,8 @@ function GoodreadsHeader({ user, onLogout }: { user: User; onLogout: () => void 
                      <button onClick={() => navigate("/offer")} className="w-full text-left px-4 py-2 hover:bg-[#f4f1ea]">Post Offer</button>
                      <div className="border-t border-[#eee] my-1"></div>
                      <span className="block px-4 py-1 text-[10px] uppercase text-[#999] font-bold">Genres</span>
-                     <button onClick={() => navigate("/")} className="w-full text-left px-4 py-2 hover:bg-[#f4f1ea]">Fiction</button>
-                     <button onClick={() => navigate("/")} className="w-full text-left px-4 py-2 hover:bg-[#f4f1ea]">Non-Fiction</button>
+                     <button onClick={() => navigate("/home")} className="w-full text-left px-4 py-2 hover:bg-[#f4f1ea]">Fiction</button>
+                     <button onClick={() => navigate("/home")} className="w-full text-left px-4 py-2 hover:bg-[#f4f1ea]">Non-Fiction</button>
                  </div>
               </div>
               <div className="relative group">
@@ -161,8 +162,6 @@ function AppContent() {
     navigate("/login");
   };
 
-  const goTo = (path: string) => () => navigate(path);
-
   if (loading) return <div className="h-screen bg-[#f4f1ea] flex items-center justify-center">Loading...</div>;
 
   const authProps = { currentUser: user! };
@@ -170,8 +169,10 @@ function AppContent() {
   if (!user) {
      return (
         <Routes>
-           <Route path="*" element={<LoginScreen onLoginSuccess={handleAuth} onGoToSignup={() => navigate("/signup")} />} />
+           <Route path="/" element={<WelcomeScreen />} />
+           <Route path="/login" element={<LoginScreen onLoginSuccess={handleAuth} onGoToSignup={() => navigate("/signup")} />} />
            <Route path="/signup" element={<SignupScreen onSignupSuccess={handleAuth} onGoToLogin={() => navigate("/login")} />} />
+           <Route path="*" element={<WelcomeScreen />} />
         </Routes>
      );
   }
@@ -182,15 +183,17 @@ function AppContent() {
       <div className="bg-[#f4f1ea] pb-10"> {/* Global Background */}
          <div className="max-w-[1100px] mx-auto bg-white min-h-[calc(100vh-120px)] shadow-[0_0_10px_rgba(0,0,0,0.02)] border-x border-[#ebebeb]">
             <Routes>
-              <Route path="/" element={<HomeScreen {...authProps} />} />
-              <Route path="/offer" element={<OfferScreen {...authProps} onBack={() => navigate("/")} onProfilePress={() => navigate("/profile")} onMapPress={() => navigate("/map")} onAddPress={() => navigate("/offer")} />} />
+              <Route path="/" element={<HomeScreen {...authProps} />} /> {/* Redirect to home effectively */}
+              <Route path="/home" element={<HomeScreen {...authProps} />} />
+              <Route path="/offer" element={<OfferScreen {...authProps} onBack={() => navigate("/home")} onProfilePress={() => navigate("/profile")} onMapPress={() => navigate("/map")} onAddPress={() => navigate("/offer")} />} />
               <Route path="/offer/:id" element={<OfferDetailScreen {...authProps} />} />
               <Route path="/profile" element={<ProfileScreen {...authProps} />} />
               <Route path="/map" element={<MapScreen {...authProps} />} />
               <Route path="/chat" element={<ChatScreen {...authProps} />} />
               <Route path="/chat/:chatId" element={<SingleChat {...authProps} />} />
-              <Route path="/my-library" element={<MyLibraryScreen {...authProps} onBack={() => navigate("/")} onAddPress={() => navigate("/offer")} onProfilePress={() => navigate("/profile")} onMapPress={() => navigate("/map")} />} />
+              <Route path="/my-library" element={<MyLibraryScreen {...authProps} onBack={() => navigate("/home")} onAddPress={() => navigate("/offer")} onProfilePress={() => navigate("/profile")} onMapPress={() => navigate("/map")} />} />
               <Route path="/community" element={<CommunityScreen />} />
+              <Route path="*" element={<HomeScreen {...authProps} />} />
             </Routes>
          </div>
       </div>
