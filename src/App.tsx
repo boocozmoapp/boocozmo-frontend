@@ -90,7 +90,8 @@ function GoodreadsHeader({ user, onLogout }: { user: User; onLogout: () => void 
           <div className="flex items-center gap-3 md:gap-4 text-[#382110]">
              <button className="md:hidden"><FaSearch size={18} /></button>
              
-             <div className="hidden md:flex items-center gap-3 border-r border-[#ccc] pr-4 mr-1">
+             {/* Icons - Visible on Mobile too */}
+             <div className="flex items-center gap-3 border-r border-[#ccc] pr-4 mr-1">
                <button onClick={() => navigate("/chat")} className="text-[#382110] hover:text-white hover:bg-[#382110] p-1.5 rounded-full transition-colors relative">
                  <FaEnvelope size={16} />
                </button>
