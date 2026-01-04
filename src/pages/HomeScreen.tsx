@@ -1,9 +1,24 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // src/pages/HomeScreen.tsx - BOOCOZMO FINAL (MODALS & ARTISTIC)
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { FaExchangeAlt, FaShoppingCart, FaTags, FaInfoCircle, FaTimes, FaComments, FaHeart, FaMapMarkerAlt, FaBook } from "react-icons/fa";
+import { FaExchangeAlt, FaShoppingCart, FaTags, FaInfoCircle, FaTimes, FaComments, FaHeart, FaMapMarkerAlt, FaBook, FaLocationArrow, FaCrosshairs } from "react-icons/fa";
+import { MapContainer, TileLayer, Marker, useMapEvents } from "react-leaflet";
+import "leaflet/dist/leaflet.css";
+import L from "leaflet";
+import type { LeafletMouseEvent } from "leaflet";
+
+// Fix Leaflet marker icon
+import icon from "leaflet/dist/images/marker-icon.png";
+import iconShadow from "leaflet/dist/images/marker-shadow.png";
+const DefaultIcon = L.icon({
+  iconUrl: icon,
+  shadowUrl: iconShadow,
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+});
+L.Marker.prototype.options.icon = DefaultIcon;
 
 const API_BASE = "https://boocozmo-api.onrender.com";
 
@@ -20,21 +35,89 @@ type Offer = {
   ownerEmail?: string;
   publishedAt?: string;
   distance?: string;
+  latitude?: number;
+  longitude?: number;
 };
 
 type Props = {
   currentUser: { email: string; name: string; id: string; token: string };
 };
 
+// Haversine Distance Helper
+function getDistanceFromLatLonInKm(lat1: number, lon1: number, lat2: number, lon2: number) {
+  var R = 6371; // Radius of the earth in km
+  var dLat = deg2rad(lat2-lat1);  // deg2rad below
+  var dLon = deg2rad(lon2-lon1); 
+  var a = 
+    Math.sin(dLat/2) * Math.sin(dLat/2) +
+    Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) * 
+    Math.sin(dLon/2) * Math.sin(dLon/2)
+    ; 
+  var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); 
+  var d = R * c; // Distance in km
+  return d;
+}
+
+function deg2rad(deg: number) {
+  return deg * (Math.PI/180)
+}
+
+function LocationMarker({ position, setPosition }: { position: { lat: number; lng: number } | null, setPosition: (pos: { lat: number; lng: number }) => void }) {
+  const map = useMapEvents({
+    click(e: LeafletMouseEvent) {
+      setPosition(e.latlng);
+      map.flyTo(e.latlng, map.getZoom());
+    },
+  });
+  useEffect(() => {
+     if(position) map.flyTo(position, map.getZoom());
+  }, [position, map]);
+  return position ? <Marker position={position} /> : null;
+}
+
 export default function HomeScreen({ currentUser }: Props) {
   const navigate = useNavigate();
   const [offers, setOffers] = useState<Offer[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedOffer, setSelectedOffer] = useState<Offer | null>(null);
+  
+  // Location Logic
+  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [showLocationModal, setShowLocationModal] = useState(false);
+  const [tempLocation, setTempLocation] = useState<{ lat: number; lng: number } | null>(null);
+
+  const fetchProfile = useCallback(async () => {
+     try {
+        const response = await fetch(`${API_BASE}/profile/${currentUser.email}`, {
+           headers: { "Authorization": `Bearer ${currentUser.token}` }
+        });
+        if (response.ok) {
+           const data = await response.json();
+           // Attempt to parse location string if it follows "Lat: x, Lng: y" format
+           // Or check if backend returns separate coords
+           let loc = null;
+           
+           if (data.latitude && data.longitude) {
+              loc = { lat: parseFloat(data.latitude), lng: parseFloat(data.longitude) };
+           } else if (data.location) {
+              const match = data.location.match(/Lat:\s*(-?\d+(\.\d+)?),\s*Lng:\s*(-?\d+(\.\d+)?)/);
+              if (match) {
+                 loc = { lat: parseFloat(match[1]), lng: parseFloat(match[3]) };
+              }
+           }
+
+           if (loc) {
+              setUserLocation(loc);
+           }
+        }
+     } catch (e) {
+        console.error("Failed to fetch profile for location", e);
+     }
+  }, [currentUser]);
 
   const fetchOffers = useCallback(async () => {
     try {
-      const response = await fetch(`${API_BASE}/offers?limit=50`, {
+      const response = await fetch(`${API_BASE}/offers?limit=100`, {
         headers: { "Authorization": `Bearer ${currentUser.token}` }
       });
       const data = await response.json();
@@ -52,7 +135,9 @@ export default function HomeScreen({ currentUser }: Props) {
         ownerName: o.ownerName,
         ownerEmail: o.ownerEmail,
         publishedAt: o.publishedAt,
-        distance: "Nearby" 
+        distance: "Unknown",
+        latitude: o.latitude,
+        longitude: o.longitude
       }));
       setOffers(processed);
     } catch (err) {
@@ -63,8 +148,47 @@ export default function HomeScreen({ currentUser }: Props) {
   }, [currentUser.token]);
 
   useEffect(() => {
+    fetchProfile(); // Fetch user location first
     fetchOffers();
-  }, [fetchOffers]);
+  }, [fetchProfile, fetchOffers]);
+
+  const nearestOffers = useMemo(() => {
+     if (!userLocation) return [];
+     return [...offers].map(o => {
+        if (o.latitude && o.longitude) {
+           const dist = getDistanceFromLatLonInKm(userLocation.lat, userLocation.lng, o.latitude, o.longitude);
+           return { ...o, distVal: dist, distance: `${dist.toFixed(1)} km` };
+        }
+        return { ...o, distVal: 99999, distance: "Unknown" };
+     }).sort((a, b) => a.distVal - b.distVal).slice(0, 5); // Top 5 nearest
+  }, [offers, userLocation]);
+
+  const updateLocation = async () => {
+     if (!tempLocation) return;
+     setUserLocation(tempLocation);
+     setShowLocationModal(false);
+     
+     // Save to backend
+     try {
+        await fetch(`${API_BASE}/update-profile`, {
+           method: 'PATCH',
+           headers: { 'Authorization': `Bearer ${currentUser.token}`, 'Content-Type': 'application/json' },
+           body: JSON.stringify({
+              location: `Lat: ${tempLocation.lat.toFixed(6)}, Lng: ${tempLocation.lng.toFixed(6)}`,
+              latitude: tempLocation.lat,
+              longitude: tempLocation.lng
+           })
+        });
+     } catch (e) { console.error("Failed to save loc", e); }
+  };
+
+  const handleAutoDetect = () => {
+     if ("geolocation" in navigator) {
+        navigator.geolocation.getCurrentPosition((pos) => {
+           setTempLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+        });
+     } else { alert("Geolocation not supported"); }
+  };
 
   /* 
     Updated handleContact:
@@ -179,7 +303,7 @@ export default function HomeScreen({ currentUser }: Props) {
                       </div>
                       <div className="border-l border-[#eee] pl-4 flex items-center gap-2">
                          <FaMapMarkerAlt className="text-[#999]" />
-                         {selectedOffer.distance}
+                         {selectedOffer.distance || "Nearby"}
                       </div>
                    </div>
 
@@ -211,6 +335,35 @@ export default function HomeScreen({ currentUser }: Props) {
            </motion.div>
          )}
        </AnimatePresence>
+       
+       {/* Location Modal */}
+       <AnimatePresence>
+         {showLocationModal && (
+           <div className="fixed inset-0 z-[100] bg-black/60 flex items-center justify-center p-4">
+              <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} className="bg-white p-6 rounded-[2px] w-full max-w-lg shadow-2xl">
+                 <h3 className="font-serif font-bold text-xl text-[#382110] mb-4">Pinpoint Your Location</h3>
+                 
+                 <div className="flex gap-2 mb-4">
+                   <button type="button" onClick={handleAutoDetect} className="flex-1 bg-white border border-[#ccc] py-2 text-xs font-bold text-[#555] hover:bg-[#eee] flex items-center justify-center gap-1">
+                      <FaCrosshairs /> Auto Detect
+                   </button>
+                 </div>
+
+                 <div className="h-64 border border-[#ccc] mb-4 relative z-0">
+                    <MapContainer center={userLocation || { lat: 40.7128, lng: -74.0060 }} zoom={13} style={{ height: "100%", width: "100%" }}>
+                         <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                         <LocationMarker position={tempLocation || userLocation} setPosition={setTempLocation} />
+                    </MapContainer>
+                 </div>
+                 
+                 <div className="flex justify-end gap-3">
+                    <button onClick={() => setShowLocationModal(false)} className="text-[#999] text-sm hover:text-[#382110]">Cancel</button>
+                    <button onClick={updateLocation} className="bg-[#382110] text-white px-4 py-2 rounded-full text-sm font-bold shadow-lg hover:scale-105 transition-transform">Save Location</button>
+                 </div>
+              </motion.div>
+           </div>
+         )}
+       </AnimatePresence>
 
        {/* Main Feed */}
        <div className="flex-1 md:pr-6">
@@ -235,15 +388,41 @@ export default function HomeScreen({ currentUser }: Props) {
                 </div>
              </div>
           </div>
-
-          {/* Info Banner */}
-          <div className="mb-8 bg-[#fff] border-l-4 border-[#382110] p-4 shadow-sm flex items-start gap-4">
-             <div className="text-[#382110] mt-1"><FaInfoCircle size={20} /></div>
-             <div>
-                <h2 className="font-serif font-bold text-[#382110] text-lg mb-1">Make Reading Sustainable</h2>
-                <p className="text-sm text-[#555]">Boocozmo connects you with local book lovers. Exchange stories, rescue books, and build a community.</p>
+          
+          {/* Location Banner or Nearest Books */}
+          {!userLocation ? (
+             <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="mb-8 bg-gradient-to-r from-[#f4f1ea] to-white border border-[#d8d8d8] p-4 shadow-sm flex items-center gap-4 rounded-[2px] relative overflow-hidden">
+                <div className="bg-[#382110] p-3 rounded-full text-white z-10"><FaLocationArrow /></div>
+                <div className="flex-1 z-10">
+                   <h2 className="font-serif font-bold text-[#382110] text-sm md:text-base">Enhance Your Experience</h2>
+                   <p className="text-xs text-[#555]">Enter your location to see books available in your immediate neighborhood.</p>
+                </div>
+                <button onClick={() => setShowLocationModal(true)} className="relative z-10 px-4 py-2 bg-[#d37e2f] text-white text-xs font-bold rounded-full hover:bg-[#b56b25] transition-colors shadow-sm">
+                   Set Location
+                </button>
+                <div className="absolute top-0 right-0 w-32 h-32 bg-[#d37e2f]/5 rounded-full blur-2xl -mr-10 -mt-10" />
+             </motion.div>
+          ) : (
+             <div className="mb-10">
+                <div className="mb-4 flex items-center gap-2">
+                   <FaMapMarkerAlt className="text-[#d37e2f]" />
+                   <h2 className="text-[#382110] font-bold text-[16px] font-sans uppercase tracking-widest">Nearest to You</h2>
+                </div>
+                <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide">
+                   {nearestOffers.length > 0 ? nearestOffers.map(offer => (
+                      <div key={offer.id} className="min-w-[140px] w-[140px] flex flex-col gap-2 group">
+                         <div onClick={() => setSelectedOffer(offer)} className="w-full h-[200px] relative shadow-md cursor-pointer overflow-hidden border border-[#eee]">
+                            <img src={offer.imageUrl || "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=300&q=80"} className="w-full h-full object-cover" />
+                            <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-[10px] p-1 text-center font-bold">
+                               {offer.distance} away
+                            </div>
+                         </div>
+                         <h3 className="font-serif font-bold text-[#382110] text-xs leading-tight truncate">{offer.bookTitle}</h3>
+                      </div>
+                   )) : <div className="text-sm text-[#777] italic">No books in your immediate radius yet.</div>}
+                </div>
              </div>
-          </div>
+          )}
 
           <div className="mb-6 border-b border-[#d8d8d8] pb-2 flex justify-between items-end">
              <h2 className="text-[#382110] font-bold text-[16px] font-sans uppercase tracking-widest">Recent Community Listings</h2>
@@ -266,6 +445,12 @@ export default function HomeScreen({ currentUser }: Props) {
                                {offer.type.toUpperCase()}
                              </span>
                          </div>
+                         {/* Distance Badge if user loc known */}
+                         {userLocation && offer.latitude !== undefined && offer.longitude !== undefined && (
+                            <div className="absolute bottom-1 left-1 bg-black/50 text-white px-1.5 rounded text-[9px] font-bold flex items-center gap-1">
+                               <FaLocationArrow size={8} /> {getDistanceFromLatLonInKm(userLocation.lat, userLocation.lng, offer.latitude, offer.longitude).toFixed(1)} km
+                            </div>
+                         )}
                       </div>
                       <div>
                          <h3 onClick={() => setSelectedOffer(offer)} className="font-serif font-bold text-[#382110] text-[13px] md:text-[14px] leading-tight cursor-pointer hover:underline line-clamp-2 min-h-[36px]">

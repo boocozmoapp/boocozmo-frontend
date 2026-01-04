@@ -1,7 +1,22 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // src/pages/SignupScreen.tsx - MINIMAL GOODREADS STYLE
-import React, { useState } from "react";
-import { FaAmazon, FaApple } from "react-icons/fa";
+import React, { useState, useEffect } from "react";
+import { FaAmazon, FaApple, FaMapMarkerAlt, FaCrosshairs } from "react-icons/fa";
+import { MapContainer, TileLayer, Marker, useMapEvents } from "react-leaflet";
+import "leaflet/dist/leaflet.css";
+import L from "leaflet";
+import type { LeafletMouseEvent } from "leaflet";
+
+// Fix Leaflet marker icon
+import icon from "leaflet/dist/images/marker-icon.png";
+import iconShadow from "leaflet/dist/images/marker-shadow.png";
+const DefaultIcon = L.icon({
+  iconUrl: icon,
+  shadowUrl: iconShadow,
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+});
+L.Marker.prototype.options.icon = DefaultIcon;
 
 const API_BASE = "https://boocozmo-api.onrender.com";
 
@@ -10,12 +25,44 @@ type Props = {
   onGoToLogin: () => void;
 };
 
+function LocationMarker({ position, setPosition }: { position: { lat: number; lng: number } | null, setPosition: (pos: { lat: number; lng: number }) => void }) {
+  const map = useMapEvents({
+    click(e: LeafletMouseEvent) {
+      setPosition(e.latlng);
+      map.flyTo(e.latlng, map.getZoom());
+    },
+  });
+
+  useEffect(() => {
+    if (position) map.flyTo(position, map.getZoom());
+  }, [position, map]);
+
+  return position ? <Marker position={position} /> : null;
+}
+
 export default function SignupScreen({ onSignupSuccess, onGoToLogin }: Props) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  // Location State
+  const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [showMap, setShowMap] = useState(false);
+  const [locationName, setLocationName] = useState("");
+
+  const handleAutoDetect = () => {
+     if ("geolocation" in navigator) {
+        navigator.geolocation.getCurrentPosition((pos) => {
+           setLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+           setShowMap(true);
+           setLocationName(`Lat: ${pos.coords.latitude.toFixed(4)}, Lng: ${pos.coords.longitude.toFixed(4)}`);
+        });
+     } else {
+        alert("Geolocation not supported");
+     }
+  };
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -25,6 +72,7 @@ export default function SignupScreen({ onSignupSuccess, onGoToLogin }: Props) {
     setError(null);
 
     try {
+      // 1. Signup
       const res = await fetch(`${API_BASE}/signup`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -41,6 +89,25 @@ export default function SignupScreen({ onSignupSuccess, onGoToLogin }: Props) {
         token: data.token,
       };
 
+      // 2. Update Location (if selected)
+      if (location) {
+         try {
+            await fetch(`${API_BASE}/update-profile`, {
+               method: 'PATCH',
+               headers: { 'Authorization': `Bearer ${user.token}`, 'Content-Type': 'application/json' },
+               body: JSON.stringify({
+                  // Store coordinates in location string as fallback/primary parsing source
+                  location: `Lat: ${location.lat.toFixed(6)}, Lng: ${location.lng.toFixed(6)}`, 
+                  latitude: location.lat,
+                  longitude: location.lng
+               })
+            });
+         } catch (locErr) {
+            console.error("Failed to save location", locErr);
+            // Continue anyway, signup was successful
+         }
+      }
+
       localStorage.setItem("user", JSON.stringify(user));
       onSignupSuccess(user);
     } catch (err: any) {
@@ -51,12 +118,12 @@ export default function SignupScreen({ onSignupSuccess, onGoToLogin }: Props) {
   };
 
   return (
-    <div className="min-h-screen bg-white flex flex-col items-center pt-12 sm:pt-20 px-4">
-      <div className="w-full max-w-[350px] space-y-4">
+    <div className="min-h-screen bg-white flex flex-col items-center pt-8 sm:pt-16 px-4 pb-10">
+      <div className="w-full max-w-[400px] space-y-4">
         {/* Logo */}
-        <div className="text-center mb-8">
+        <div className="text-center mb-6">
           <h1 className="text-4xl font-serif font-bold text-[#382110] tracking-tight">Boocozmo</h1>
-          <p className="text-xs text-[#555] mt-1 font-sans uppercase tracking-widest">Join the Marketplace</p>
+          <p className="text-xs text-[#555] mt-1 font-sans uppercase tracking-widest">Join the Society of Seekers</p>
         </div>
 
         {/* Social Buttons */}
@@ -106,10 +173,44 @@ export default function SignupScreen({ onSignupSuccess, onGoToLogin }: Props) {
             />
           </div>
 
+          {/* Location Picker */}
+          <div className="border border-[#d8d8d8] rounded-[3px] p-3 bg-[#f9f9f9]">
+             <label className="block text-xs font-bold text-[#382110] mb-2 uppercase tracking-wide flex items-center gap-2">
+                <FaMapMarkerAlt /> Set Your Location
+             </label>
+             
+             {!showMap ? (
+                <div className="flex gap-2">
+                   <button type="button" onClick={handleAutoDetect} className="flex-1 bg-white border border-[#ccc] py-2 text-xs font-bold text-[#555] hover:bg-[#eee] flex items-center justify-center gap-1">
+                      <FaCrosshairs /> Auto Detect
+                   </button>
+                   <button type="button" onClick={() => setShowMap(true)} className="flex-1 bg-white border border-[#ccc] py-2 text-xs font-bold text-[#555] hover:bg-[#eee]">
+                      Point on Map
+                   </button>
+                </div>
+             ) : (
+                <div className="space-y-2">
+                   <div className="h-40 w-full rounded border border-[#ccc] overflow-hidden relative z-0">
+                      <MapContainer center={location || { lat: 40.7128, lng: -74.0060 }} zoom={13} style={{ height: "100%", width: "100%" }}>
+                         <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                         <LocationMarker position={location} setPosition={setLocation} />
+                      </MapContainer>
+                   </div>
+                   <div className="flex justify-between items-center text-xs text-[#555]">
+                      <span>{location ? "Location selected" : "Tap map to select"}</span>
+                      <button type="button" onClick={() => setShowMap(false)} className="underline text-red-500">Close Map</button>
+                   </div>
+                </div>
+             )}
+             <p className="text-[10px] text-[#777] mt-2 leading-tight">
+                We use your location to curate the closest book offers for neighborhood exchange.
+             </p>
+          </div>
+
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-[#382110] hover:bg-[#2a190c] text-white font-bold py-2 rounded-[3px] shadow-sm transition-colors disabled:opacity-70"
+            className="w-full bg-[#382110] hover:bg-[#2a190c] text-white font-bold py-2 rounded-[3px] shadow-sm transition-colors disabled:opacity-70 mt-4"
           >
             {loading ? "Creating Account..." : "Sign up"}
           </button>
