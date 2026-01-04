@@ -1,4 +1,4 @@
-// src/SplashScreen.tsx - PINTEREST LITERARY STYLE (Reliable 5-second delay)
+// src/SplashScreen.tsx - FINAL: Calm, Sustainable Green Theme (Simple & Elegant)
 import React, { useEffect } from "react";
 import { motion } from "framer-motion";
 import { FaBookOpen, FaBookmark, FaUsers, FaMapMarkerAlt } from "react-icons/fa";
@@ -12,17 +12,14 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
   const [showContent, setShowContent] = React.useState(false);
 
   useEffect(() => {
-    // 1. Show content immediately
     setShowContent(true);
 
-    // 2. Fill progress bar over ~2 seconds
     const startTime = Date.now();
-    const duration = 2000; // 2 seconds for loading animation
+    const duration = 2000;
 
     const progressInterval = setInterval(() => {
       const elapsed = Date.now() - startTime;
       const newProgress = Math.min((elapsed / duration) * 100, 100);
-
       setProgress(newProgress);
 
       if (newProgress >= 100) {
@@ -30,31 +27,27 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
       }
     }, 30);
 
-    // 3. Wait full 5 seconds before calling onFinish()
     const totalTimer = setTimeout(() => {
       onFinish();
-    }, 5000); // Exactly 5 seconds
+    }, 5000);
 
-    // Cleanup
     return () => {
       clearInterval(progressInterval);
       clearTimeout(totalTimer);
     };
-  }, [onFinish]); // Only run once
+  }, [onFinish]);
 
-  // Pinterest color palette
-  const PINTEREST = {
-    primary: "#E60023",
-    dark: "#A3081A",
-    light: "#FF4D6D",
-    bg: "#FFFFFF",
-    textDark: "#000000",
-    textLight: "#5F5F5F",
-    textMuted: "#8E8E8E",
-    border: "#E1E1E1",
-    hoverBg: "#F5F5F5",
-    grayLight: "#F7F7F7",
-    redLight: "#FFE2E6"
+  // CALM GREEN THEME – Sustainable, Bookish, Natural
+  const GREEN = {
+    dark: "#0F2415",           // Deep forest green (calm, premium)
+    medium: "#1A3A2A",         // Card background
+    accent: "#4A7C59",         // Muted sage green for highlights
+    accentLight: "#6BA87A",
+    textPrimary: "#FFFFFF",
+    textSecondary: "#E8F0E8",  // Soft off-white green
+    textMuted: "#A8B8A8",
+    progressBg: "#2A4A3A",
+    border: "rgba(74, 124, 89, 0.3)",
   };
 
   return (
@@ -67,27 +60,22 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
       display: "flex",
       alignItems: "center",
       justifyContent: "center",
-      background: PINTEREST.bg,
+      background: `linear-gradient(to bottom, ${GREEN.dark} 0%, #0A1C10 100%)`,
       overflow: "hidden",
-      fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+      fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
     }}>
-      {/* Background grid */}
+      {/* Subtle background texture */}
       <div style={{
         position: "absolute",
         top: 0,
         left: 0,
         width: "100%",
         height: "100%",
-        backgroundImage: `
-          linear-gradient(to right, ${PINTEREST.border} 1px, transparent 1px),
-          linear-gradient(to bottom, ${PINTEREST.border} 1px, transparent 1px)
-        `,
-        backgroundSize: "40px 40px",
-        opacity: 0.3,
-        zIndex: 1,
+        background: "radial-gradient(circle at 50% 50%, rgba(74, 124, 89, 0.08) 0%, transparent 70%)",
+        pointerEvents: "none",
       }} />
 
-      {/* Floating books */}
+      {/* Very subtle floating leaves/books */}
       <div style={{
         position: "absolute",
         top: 0,
@@ -95,183 +83,169 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
         width: "100%",
         height: "100%",
         pointerEvents: "none",
+        opacity: 0.08,
       }}>
-        {[...Array(6)].map((_, i) => (
+        {[...Array(5)].map((_, i) => (
           <motion.div
             key={i}
             style={{
               position: "absolute",
-              fontSize: "24px",
-              color: i % 3 === 0 ? PINTEREST.primary : 
-                     i % 3 === 1 ? PINTEREST.textLight : PINTEREST.textMuted,
-              opacity: 0.15,
-              rotate: `${(i * 15) - 45}deg`,
+              fontSize: "28px",
+              color: GREEN.accent,
+              left: `${20 + i * 15}%`,
+              top: `${30 + i * 10}%`,
             }}
-            initial={{ 
-              x: Math.random() * window.innerWidth,
-              y: Math.random() * window.innerHeight,
-              scale: 0
+            animate={{
+              y: [0, -20, 0],
+              rotate: [0, 15, 0],
             }}
-            animate={{ 
-              scale: 1,
-              rotate: [`${(i * 15) - 45}deg`, `${(i * 15) - 30}deg`],
-            }}
-            transition={{ 
-              delay: i * 0.1,
-              duration: 0.8,
+            transition={{
+              duration: 10 + i * 2,
               repeat: Infinity,
-              repeatType: "reverse"
+              ease: "easeInOut",
             }}
           >
-            {i % 2 === 0 ? "📚" : "📖"}
+            {i % 2 === 0 ? "📖" : "📚"}
           </motion.div>
         ))}
       </div>
 
-      {/* Main card */}
+      {/* Main Card - Clean & Minimal */}
       <motion.div
         style={{
           position: "relative",
-          zIndex: 20,
+          zIndex: 10,
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
           justifyContent: "center",
           textAlign: "center",
-          gap: "32px",
-          padding: "48px 40px",
-          borderRadius: "24px",
-          background: "rgba(255, 255, 255, 0.95)",
-          backdropFilter: "blur(20px)",
-          boxShadow: "0 32px 80px rgba(0, 0, 0, 0.08), 0 8px 24px rgba(0, 0, 0, 0.04)",
-          border: `1px solid ${PINTEREST.border}`,
-          maxWidth: "500px",
+          gap: "40px",
+          padding: "60px 48px",
+          borderRadius: "32px",
+          background: GREEN.medium,
+          boxShadow: "0 32px 80px rgba(0, 0, 0, 0.4)",
+          border: `1px solid ${GREEN.border}`,
+          maxWidth: "480px",
           margin: "20px",
         }}
-        initial={{ scale: 0.95, opacity: 0, y: 20 }}
-        animate={showContent ? { scale: 1, opacity: 1, y: 0 } : {}}
-        transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+        initial={{ scale: 0.95, opacity: 0 }}
+        animate={showContent ? { scale: 1, opacity: 1 } : {}}
+        transition={{ duration: 0.8 }}
       >
-        {/* Logo badge */}
+        {/* Simple Logo Circle */}
         <motion.div
           style={{
-            width: "80px",
-            height: "80px",
+            width: "100px",
+            height: "100px",
             borderRadius: "50%",
-            background: PINTEREST.primary,
+            background: GREEN.accent,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
+            boxShadow: "0 12px 32px rgba(0, 0, 0, 0.3)",
+          }}
+          animate={{
+            scale: [1, 1.05, 1],
+          }}
+          transition={{
+            duration: 4,
+            repeat: Infinity,
+            ease: "easeInOut",
+          }}
+        >
+          <span style={{
+            fontSize: "48px",
+            fontWeight: "800",
             color: "white",
-            fontSize: "32px",
-            fontWeight: "700",
-            marginBottom: "16px",
-            boxShadow: "0 8px 32px rgba(230, 0, 35, 0.3)",
-          }}
-          animate={{ 
-            rotate: [0, 10, -10, 0],
-            scale: [1, 1.1, 1]
-          }}
-          transition={{ 
-            delay: 0.5,
-            duration: 0.8,
-            ease: "easeInOut"
-          }}
-        >
-          B
-        </motion.div>
-
-        {/* Logo text */}
-        <motion.h1
-          style={{
-            fontSize: "3rem",
-            fontWeight: 800,
-            color: PINTEREST.textDark,
-            letterSpacing: "-0.02em",
-            margin: 0,
-            background: `linear-gradient(135deg, ${PINTEREST.textDark} 0%, ${PINTEREST.textLight} 100%)`,
-            WebkitBackgroundClip: "text",
-            WebkitTextFillColor: "transparent",
-          }}
-          initial={{ opacity: 0, y: 10 }}
-          animate={showContent ? { opacity: 1, y: 0 } : {}}
-          transition={{ delay: 0.3, duration: 0.4 }}
-        >
-          Boocozmo
-        </motion.h1>
-
-        {/* Tagline */}
-        <motion.div
-          style={{
-            fontSize: "1.125rem",
-            color: PINTEREST.textLight,
-            maxWidth: "400px",
-            lineHeight: "1.6",
-            fontWeight: 400,
-            letterSpacing: "0.01em",
-          }}
-          initial={{ opacity: 0 }}
-          animate={showContent ? { opacity: 1 } : {}}
-          transition={{ delay: 0.5, duration: 0.4 }}
-        >
-          Where book lovers connect
-          <br />
-          <span style={{ 
-            fontSize: "0.95rem", 
-            color: PINTEREST.textMuted,
-            fontWeight: 300,
-            marginTop: "4px",
-            display: "block"
           }}>
-            Discover, share, and exchange literary treasures
+            B
           </span>
         </motion.div>
 
-        {/* Feature icons */}
+        {/* App Name */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={showContent ? { opacity: 1, y: 0 } : {}}
+          transition={{ delay: 0.3 }}
+        >
+          <h1 style={{
+            fontSize: "3rem",
+            fontWeight: 800,
+            margin: 0,
+            color: GREEN.textPrimary,
+            letterSpacing: "-0.02em",
+          }}>
+            Boocozmo
+          </h1>
+        </motion.div>
+
+        {/* Tagline */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={showContent ? { opacity: 1 } : {}}
+          transition={{ delay: 0.5 }}
+          style={{ maxWidth: "380px" }}
+        >
+          <p style={{
+            fontSize: "1.25rem",
+            fontWeight: 600,
+            color: GREEN.textPrimary,
+            margin: "0 0 12px 0",
+          }}>
+            Sustainable Book Sharing
+          </p>
+          <p style={{
+            fontSize: "1rem",
+            color: GREEN.textSecondary,
+            lineHeight: "1.6",
+          }}>
+            Keep stories alive. Reduce waste. Build your personal library and share with your community.
+          </p>
+        </motion.div>
+
+        {/* Minimal Feature Icons */}
         <motion.div
           style={{
             display: "flex",
-            gap: "24px",
-            marginTop: "8px",
+            gap: "32px",
           }}
           initial={{ opacity: 0 }}
           animate={showContent ? { opacity: 1 } : {}}
-          transition={{ delay: 0.7, duration: 0.4 }}
+          transition={{ delay: 0.7 }}
         >
           {[
-            { Icon: FaBookOpen, label: "Discover", color: PINTEREST.primary },
-            { Icon: FaBookmark, label: "Save", color: PINTEREST.textLight },
-            { Icon: FaUsers, label: "Connect", color: PINTEREST.primary },
-            { Icon: FaMapMarkerAlt, label: "Local", color: PINTEREST.textLight },
-          ].map((item, index) => (
+            { Icon: FaBookOpen, label: "Discover" },
+            { Icon: FaBookmark, label: "Save" },
+            { Icon: FaUsers, label: "Connect" },
+            { Icon: FaMapMarkerAlt, label: "Local" },
+          ].map((item, i) => (
             <motion.div
               key={item.label}
               style={{
                 display: "flex",
                 flexDirection: "column",
                 alignItems: "center",
-                gap: "4px",
+                gap: "8px",
               }}
-              initial={{ y: 20, opacity: 0 }}
-              animate={showContent ? { y: 0, opacity: 1 } : {}}
-              transition={{ delay: 0.8 + index * 0.1, duration: 0.3 }}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.8 + i * 0.1 }}
             >
               <div style={{
-                width: "40px",
-                height: "40px",
+                width: "48px",
+                height: "48px",
                 borderRadius: "12px",
-                background: PINTEREST.grayLight,
+                background: "rgba(74, 124, 89, 0.2)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                color: item.color,
-                fontSize: "18px",
               }}>
-                <item.Icon />
+                <item.Icon size={22} color={GREEN.accentLight} />
               </div>
               <span style={{
-                fontSize: "0.75rem",
-                color: PINTEREST.textMuted,
+                fontSize: "0.875rem",
+                color: GREEN.textSecondary,
                 fontWeight: 500,
               }}>
                 {item.label}
@@ -280,75 +254,44 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
           ))}
         </motion.div>
 
-        {/* Progress bar */}
-        <div style={{ width: "100%", maxWidth: "280px", marginTop: "24px" }}>
+        {/* Clean Progress Bar */}
+        <div style={{ width: "100%", maxWidth: "300px", marginTop: "20px" }}>
           <div style={{
             width: "100%",
-            height: "4px",
-            background: PINTEREST.border,
-            borderRadius: "2px",
+            height: "6px",
+            background: GREEN.progressBg,
+            borderRadius: "3px",
             overflow: "hidden",
           }}>
             <motion.div
               style={{
                 height: "100%",
                 width: `${progress}%`,
-                background: `linear-gradient(90deg, ${PINTEREST.primary}, ${PINTEREST.light})`,
-                borderRadius: "2px",
+                background: GREEN.accent,
+                borderRadius: "3px",
               }}
             />
           </div>
 
-          {/* Status text */}
-          <div style={{
-            fontSize: "0.875rem",
-            color: PINTEREST.textMuted,
-            marginTop: "12px",
-            textAlign: "center",
+          <p style={{
+            marginTop: "16px",
+            fontSize: "0.95rem",
+            color: GREEN.textSecondary,
             fontWeight: 500,
           }}>
-            {progress < 100 ? "Loading community..." : "Ready to explore!"}
-          </div>
+            Preparing your library...
+          </p>
         </div>
 
-        {/* Copyright */}
+        {/* Footer */}
         <div style={{
           fontSize: "0.75rem",
-          color: PINTEREST.textMuted,
+          color: GREEN.textMuted,
           marginTop: "24px",
-          opacity: 0.6,
         }}>
-          © {new Date().getFullYear()} Boocozmo • A literary community
+          © {new Date().getFullYear()} Boocozmo
         </div>
       </motion.div>
-
-      {/* Bottom hint */}
-      {progress >= 100 && (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 0.7, y: 0 }}
-          style={{
-            position: "absolute",
-            bottom: "40px",
-            fontSize: "0.875rem",
-            color: PINTEREST.textMuted,
-            display: "flex",
-            alignItems: "center",
-            gap: "8px",
-          }}
-        >
-          <span style={{ animation: "bounce 2s infinite" }}>↓</span>
-          Entering your book community
-          <span style={{ animation: "bounce 2s infinite", animationDelay: "0.5s" }}>↓</span>
-        </motion.div>
-      )}
-
-      <style>{`
-        @keyframes bounce {
-          0%, 100% { transform: translateY(0); }
-          50% { transform: translateY(-4px); }
-        }
-      `}</style>
     </div>
   );
 };

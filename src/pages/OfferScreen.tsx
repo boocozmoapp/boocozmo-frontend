@@ -1,4 +1,5 @@
-// src/pages/OfferScreen.tsx - ENHANCED WITH ADVANCED MAP & EXPAND FEATURE
+/* eslint-disable @typescript-eslint/no-explicit-any */
+// src/pages/OfferScreen.tsx - GREEN ENERGY THEME: Calm, Sustainable, Professional
 import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -13,7 +14,6 @@ import {
   FaTrash,
   FaChevronDown,
   FaChevronUp,
-  FaEllipsisH,
   FaTimes,
   FaHome,
   FaMapMarkedAlt,
@@ -29,38 +29,29 @@ import {
   FaExpand,
   FaCompress,
   FaCrosshairs,
+  FaBars,
 } from "react-icons/fa";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
+import { useNavigate } from "react-router-dom";
 
-const API_BASE = "https://boocozmo-api.onrender.com";
+const API_BASE = "/api";
 
-type Props = {
-  onBack?: () => void;
-  currentUser: { email: string; name: string; id: string; token: string };
-  onProfilePress?: () => void;
-  onMapPress?: () => void;
-  onAddPress?: () => void;
-};
-
-const PINTEREST = {
-  primary: "#E60023",
-  dark: "#A3081A",
-  light: "#FF4D6D",
-  bg: "#FFFFFF",
-  sidebarBg: "#FFFFFF",
-  textDark: "#000000",
-  textLight: "#5F5F5F",
-  textMuted: "#8E8E8E",
-  border: "#E1E1E1",
-  hoverBg: "#F5F5F5",
-  icon: "#767676",
-  redLight: "#FFE2E6",
-  grayLight: "#F7F7F7",
-  overlay: "rgba(0, 0, 0, 0.7)",
-  success: "#00A86B",
-  info: "#1D9BF0",  // This is needed for PINTEREST.info
-  warning: "#FF9500"
+const GREEN = {
+  dark: "#0F2415",
+  medium: "#1A3A2A",
+  accent: "#4A7C59",
+  accentLight: "#6BA87A",
+  textPrimary: "#E8F0E8",
+  textSecondary: "#A8B8A8",
+  textMuted: "#80A080",
+  border: "rgba(74, 124, 89, 0.3)",
+  grayLight: "#2A4A3A",
+  hoverBg: "#255035",
+  icon: "#80A080",
+  success: "#6BA87A",
+  info: "#1D9BF0",
+  warning: "#FF9500",
 };
 
 // Custom marker icon
@@ -72,7 +63,7 @@ const createCustomIcon = () => {
         width: 50px;
         height: 50px;
         border-radius: 50%;
-        background: ${PINTEREST.primary};
+        background: ${GREEN.accent};
         border: 4px solid white;
         display: flex;
         align-items: center;
@@ -80,7 +71,7 @@ const createCustomIcon = () => {
         color: white;
         font-weight: bold;
         font-size: 20px;
-        box-shadow: 0 4px 20px rgba(230, 0, 35, 0.5);
+        box-shadow: 0 4px 20px rgba(74, 124, 89, 0.5);
         cursor: move;
       ">
         📚
@@ -92,6 +83,14 @@ const createCustomIcon = () => {
   });
 };
 
+type Props = {
+  onBack?: () => void;
+  currentUser: { email: string; name: string; id: string; token: string };
+  onProfilePress?: () => void;
+  onMapPress?: () => void;
+  onAddPress?: () => void;
+};
+
 export default function OfferScreen({
   onBack,
   currentUser,
@@ -99,6 +98,8 @@ export default function OfferScreen({
   onMapPress,
   onAddPress,
 }: Props) {
+  const navigate = useNavigate();
+
   const [description, setDescription] = useState("");
   const [condition, setCondition] = useState<"Excellent" | "Very Good" | "Good" | "Fair">("Excellent");
   const [action, setAction] = useState<"sell" | "trade">("sell");
@@ -111,7 +112,7 @@ export default function OfferScreen({
   const [success, setSuccess] = useState(false);
   const [showLocationPicker, setShowLocationPicker] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [mapExpanded, setMapExpanded] = useState(false); // NEW: Map expand state
+  const [mapExpanded, setMapExpanded] = useState(false);
 
   const [latitude, setLatitude] = useState<number | null>(null);
   const [longitude, setLongitude] = useState<number | null>(null);
@@ -124,19 +125,28 @@ export default function OfferScreen({
   const markerInstance = useRef<L.Marker | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Initialize map with advanced features
+  const navItems = [
+    { icon: FaHome, label: "Home", onClick: () => navigate("/") },
+    { icon: FaMapMarkedAlt, label: "Map", onClick: onMapPress || (() => navigate("/map")) },
+    { icon: FaBookOpen, label: "My Library", onClick: () => navigate("/my-library") },
+    { icon: FaCompass, label: "Discover", onClick: () => navigate("/discover") },
+    { icon: FaBookmark, label: "Saved", onClick: () => navigate("/saved") },
+    { icon: FaUsers, label: "Following", onClick: () => navigate("/following") },
+    { icon: FaComments, label: "Messages", onClick: () => navigate("/chat") },
+    { icon: FaBell, label: "Notifications", onClick: () => navigate("/notifications") },
+    { icon: FaStar, label: "Top Picks", onClick: () => navigate("/top-picks") },
+  ];
+
   const initializeMap = useCallback(() => {
     if (!mapRef.current) return;
 
     const defaultLat = latitude ?? 40.7128;
     const defaultLng = longitude ?? -74.006;
 
-    // Remove existing map if any
     if (mapInstance.current) {
       mapInstance.current.remove();
     }
 
-    // Create enhanced map instance
     const map = L.map(mapRef.current, {
       center: [defaultLat, defaultLng],
       zoom: 15,
@@ -155,24 +165,16 @@ export default function OfferScreen({
 
     mapInstance.current = map;
 
-    // Add tile layer with multiple options
     L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
       attribution: '© OpenStreetMap contributors, © CARTO',
       subdomains: 'abcd',
       maxZoom: 20,
     }).addTo(map);
 
-    // Add scale control
-    L.control.scale({
-      imperial: true,
-      metric: true,
-      position: 'bottomleft'
-    }).addTo(map);
+    L.control.scale({ imperial: true, metric: true, position: 'bottomleft' }).addTo(map);
 
-    // Create custom marker
     const customIcon = createCustomIcon();
-    
-    // Add draggable marker
+
     const marker = L.marker([defaultLat, defaultLng], {
       icon: customIcon,
       draggable: true,
@@ -182,53 +184,32 @@ export default function OfferScreen({
 
     markerInstance.current = marker;
 
-    // Marker drag events
-    marker.on("dragstart", () => {
-      marker.setOpacity(0.7);
-    });
-
+    marker.on("dragstart", () => marker.setOpacity(0.7));
     marker.on("dragend", async () => {
       const pos = marker.getLatLng();
       setLatitude(pos.lat);
       setLongitude(pos.lng);
       setLocationSet(true);
       marker.setOpacity(1);
-      
-      // Reverse geocode to get address
       await reverseGeocode(pos.lat, pos.lng);
     });
 
-    // Map click to set location
     map.on("click", async (e: L.LeafletMouseEvent) => {
       const { lat, lng } = e.latlng;
       setLatitude(lat);
       setLongitude(lng);
       setLocationSet(true);
       marker.setLatLng([lat, lng]);
-      
-      // Reverse geocode to get address
       await reverseGeocode(lat, lng);
     });
-
-    // Add click listener for expand feature
-    map.on("click", (e) => {
-      // Don't trigger expand on marker clicks (handled by marker events)
-      if (e.originalEvent.target !== mapRef.current) return;
-      
-      // Optional: You could add expand on map double-click
-      // For now, we'll use the expand button
-    });
-
   }, [latitude, longitude]);
 
-  // Reverse geocode function to get address from coordinates
   const reverseGeocode = async (lat: number, lng: number) => {
     try {
       const response = await fetch(
         `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&zoom=18&addressdetails=1`
       );
       const data = await response.json();
-      
       if (data.display_name) {
         const address = data.display_name.split(',').slice(0, 3).join(',');
         setCurrentAddress(address);
@@ -239,11 +220,10 @@ export default function OfferScreen({
     }
   };
 
-  // Detect user location with high accuracy
   const detectLocation = useCallback(async () => {
     setIsLocating(true);
     setError(null);
-    
+
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         async (pos) => {
@@ -253,63 +233,38 @@ export default function OfferScreen({
           setLocationSet(true);
           setIsLocating(false);
 
-          // Update map
           if (mapInstance.current) {
-            mapInstance.current.setView([latitude, longitude], 17, {
-              animate: true,
-              duration: 0.5
-            });
-            
-            if (markerInstance.current) {
-              markerInstance.current.setLatLng([latitude, longitude]);
-            }
+            mapInstance.current.setView([latitude, longitude], 17, { animate: true, duration: 0.5 });
+            if (markerInstance.current) markerInstance.current.setLatLng([latitude, longitude]);
           }
 
-          // Get address
           await reverseGeocode(latitude, longitude);
         },
-         
         () => {
           setError("Location access denied. Tap map to set manually.");
           setIsLocating(false);
         },
-        { 
-          enableHighAccuracy: true, 
-          timeout: 15000,
-          maximumAge: 0
-        }
+        { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
       );
     } else {
-      setError("Geolocation not supported by your browser");
+      setError("Geolocation not supported");
       setIsLocating(false);
     }
   }, []);
 
-  // Initialize map on mount and when expand state changes
   useEffect(() => {
     if (showLocationPicker) {
-      // Small delay to ensure DOM is ready
-      setTimeout(() => {
-        initializeMap();
-      }, 100);
+      setTimeout(() => initializeMap(), 100);
     }
   }, [showLocationPicker, initializeMap]);
 
-  // Re-center map when location changes
   useEffect(() => {
     if (mapInstance.current && latitude && longitude) {
-      mapInstance.current.setView([latitude, longitude], 15, {
-        animate: true,
-        duration: 0.5
-      });
-      
-      if (markerInstance.current) {
-        markerInstance.current.setLatLng([latitude, longitude]);
-      }
+      mapInstance.current.setView([latitude, longitude], 15, { animate: true, duration: 0.5 });
+      if (markerInstance.current) markerInstance.current.setLatLng([latitude, longitude]);
     }
   }, [latitude, longitude]);
 
-  // Cleanup map on unmount
   useEffect(() => {
     return () => {
       if (mapInstance.current) {
@@ -319,21 +274,12 @@ export default function OfferScreen({
     };
   }, []);
 
-  // Handle image selection
   const handleImagePick = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    
-    if (file.size > 5 * 1024 * 1024) {
-      setError("Image too large (max 5MB)");
-      return;
-    }
-    
-    if (!file.type.startsWith('image/')) {
-      setError("Please select an image file");
-      return;
-    }
-    
+    if (file.size > 5 * 1024 * 1024) return setError("Image too large (max 5MB)");
+    if (!file.type.startsWith('image/')) return setError("Please select an image file");
+
     setImage(file);
     const reader = new FileReader();
     reader.onload = () => setImagePreview(reader.result as string);
@@ -347,34 +293,17 @@ export default function OfferScreen({
   };
 
   const conditionOptions = [
-    { value: "Excellent", color: "#10B981", icon: "✨" },
-    { value: "Very Good", color: PINTEREST.primary, icon: "👍" },
+    { value: "Excellent", color: GREEN.success, icon: "✨" },
+    { value: "Very Good", color: GREEN.accentLight, icon: "👍" },
     { value: "Good", color: "#F59E0B", icon: "👌" },
-    { value: "Fair", color: "#64748B", icon: "📖" },
+    { value: "Fair", color: GREEN.textSecondary, icon: "📖" },
   ] as const;
 
-  // Submit offer
   const handleSubmit = async () => {
-    // Validation
-    if (!description.trim()) {
-      setError("Please describe the book");
-      return;
-    }
-    
-    if (action === "sell" && (!price || isNaN(Number(price)) || Number(price) <= 0)) {
-      setError("Enter a valid price");
-      return;
-    }
-    
-    if (action === "trade" && !exchangeBook.trim()) {
-      setError("Enter the book you want to trade for");
-      return;
-    }
-    
-    if (!locationSet) {
-      setError("Please set your location");
-      return;
-    }
+    if (!description.trim()) return setError("Please describe the book");
+    if (action === "sell" && (!price || isNaN(Number(price)) || Number(price) <= 0)) return setError("Enter a valid price");
+    if (action === "trade" && !exchangeBook.trim()) return setError("Enter the book you want to trade for");
+    if (!locationSet) return setError("Please set your location");
 
     setLoading(true);
     setError(null);
@@ -426,7 +355,6 @@ export default function OfferScreen({
         setSuccess(false);
         if (onBack) onBack();
       }, 2000);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       setError(err.message || "Failed to post offer");
     } finally {
@@ -434,75 +362,49 @@ export default function OfferScreen({
     }
   };
 
-  // Toggle map expansion
   const toggleMapExpansion = () => {
     setMapExpanded(!mapExpanded);
-    
-    // Re-initialize map after expansion state change
     setTimeout(() => {
       if (mapRef.current && mapInstance.current) {
         mapInstance.current.invalidateSize();
-        
-        // Re-center on marker if location is set
         if (latitude && longitude) {
-          mapInstance.current.setView([latitude, longitude], 15, {
-            animate: true,
-            duration: 0.3
-          });
+          mapInstance.current.setView([latitude, longitude], 15, { animate: true, duration: 0.3 });
         }
       }
     }, 50);
   };
 
-  // Center map on current location
   const centerOnLocation = () => {
     if (mapInstance.current && latitude && longitude) {
-      mapInstance.current.setView([latitude, longitude], 17, {
-        animate: true,
-        duration: 0.5
-      });
+      mapInstance.current.setView([latitude, longitude], 17, { animate: true, duration: 0.5 });
     }
   };
-
-  const navItems = [
-    { icon: FaHome, label: "Home", onClick: () => {} },
-    { icon: FaCompass, label: "Discover", onClick: () => {} },
-    { icon: FaBookOpen, label: "My Books", onClick: () => {} },
-    { icon: FaBookmark, label: "Saved", onClick: () => {} },
-    { icon: FaUsers, label: "Following", onClick: () => {} },
-    { icon: FaMapMarkedAlt, label: "Map", onClick: onMapPress },
-    { icon: FaComments, label: "Messages", onClick: () => {} },
-    { icon: FaBell, label: "Notifications", onClick: () => {} },
-    { icon: FaStar, label: "Top Picks", onClick: () => {} },
-  ];
 
   return (
     <div style={{
       height: "100vh",
       width: "100vw",
-      background: PINTEREST.bg,
+      background: GREEN.dark,
       display: "flex",
       fontFamily: "'Inter', -apple-system, sans-serif",
       overflow: "hidden",
     }}>
-      {/* Sidebar */}
+      {/* Sidebar Navigation */}
       <motion.aside
         initial={{ x: -300 }}
         animate={{ x: sidebarOpen ? 0 : -300 }}
         transition={{ type: "spring", damping: 25 }}
         style={{
           width: "240px",
-          background: PINTEREST.sidebarBg,
-          borderRight: `1px solid ${PINTEREST.border}`,
+          background: GREEN.medium,
+          borderRight: `1px solid ${GREEN.border}`,
           position: "fixed",
           top: 0,
           left: 0,
           bottom: 0,
-          zIndex: 100,
+          zIndex: 1000,
           padding: "20px 16px",
           overflowY: "auto",
-          display: "flex",
-          flexDirection: "column",
         }}
       >
         <div style={{ marginBottom: "24px" }}>
@@ -511,7 +413,7 @@ export default function OfferScreen({
               width: "32px",
               height: "32px",
               borderRadius: "50%",
-              background: PINTEREST.primary,
+              background: GREEN.accent,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -521,11 +423,7 @@ export default function OfferScreen({
             }}>
               B
             </div>
-            <span style={{
-              fontSize: "20px",
-              fontWeight: "700",
-              color: PINTEREST.primary,
-            }}>
+            <span style={{ fontSize: "20px", fontWeight: "800", color: GREEN.textPrimary }}>
               Boocozmo
             </span>
           </div>
@@ -533,14 +431,14 @@ export default function OfferScreen({
 
         <motion.div
           whileHover={{ scale: 1.02 }}
-          onClick={onProfilePress}
+          onClick={onProfilePress || (() => navigate("/profile"))}
           style={{
             display: "flex",
             alignItems: "center",
             gap: "12px",
             padding: "12px",
             borderRadius: "12px",
-            background: PINTEREST.hoverBg,
+            background: GREEN.hoverBg,
             marginBottom: "24px",
             cursor: "pointer",
           }}
@@ -549,7 +447,7 @@ export default function OfferScreen({
             width: "40px",
             height: "40px",
             borderRadius: "50%",
-            background: `linear-gradient(135deg, ${PINTEREST.primary}, ${PINTEREST.dark})`,
+            background: GREEN.accent,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -560,12 +458,10 @@ export default function OfferScreen({
             {currentUser.name.charAt(0).toUpperCase()}
           </div>
           <div>
-            <div style={{ fontSize: "14px", fontWeight: "600", color: PINTEREST.textDark }}>
+            <div style={{ fontSize: "14px", fontWeight: "600", color: GREEN.textPrimary }}>
               {currentUser.name.split(" ")[0]}
             </div>
-            <div style={{ fontSize: "12px", color: PINTEREST.textLight }}>
-              View profile
-            </div>
+            <div style={{ fontSize: "12px", color: GREEN.textSecondary }}>View profile</div>
           </div>
         </motion.div>
 
@@ -575,7 +471,10 @@ export default function OfferScreen({
               key={item.label}
               whileHover={{ x: 4 }}
               whileTap={{ scale: 0.98 }}
-              onClick={item.onClick}
+              onClick={() => {
+                item.onClick();
+                setSidebarOpen(false);
+              }}
               style={{
                 display: "flex",
                 alignItems: "center",
@@ -584,7 +483,7 @@ export default function OfferScreen({
                 padding: "12px",
                 background: "transparent",
                 border: "none",
-                color: PINTEREST.textDark,
+                color: GREEN.textPrimary,
                 fontSize: "14px",
                 fontWeight: "500",
                 cursor: "pointer",
@@ -599,32 +498,39 @@ export default function OfferScreen({
           ))}
         </nav>
 
-        <motion.button
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          onClick={onAddPress}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "12px",
-            padding: "14px",
-            background: PINTEREST.primary,
-            color: "white",
-            border: "none",
-            borderRadius: "24px",
-            fontSize: "14px",
-            fontWeight: "600",
-            cursor: "pointer",
-            width: "100%",
-            justifyContent: "center",
-            marginTop: "20px",
-          }}
-        >
-          <FaPlus /> Share a Book
-        </motion.button>
+        {onAddPress && (
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => {
+              onAddPress();
+              setSidebarOpen(false);
+            }}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "12px",
+              padding: "14px",
+              background: GREEN.accent,
+              color: "white",
+              border: "none",
+              borderRadius: "24px",
+              fontSize: "14px",
+              fontWeight: "600",
+              cursor: "pointer",
+              width: "100%",
+              justifyContent: "center",
+              marginTop: "20px",
+              boxShadow: "0 4px 20px rgba(74, 124, 89, 0.4)",
+            }}
+          >
+            <FaPlus /> Share a Book
+          </motion.button>
+        )}
 
         <motion.button
           whileHover={{ x: 4 }}
+          onClick={() => setSidebarOpen(false)}
           style={{
             display: "flex",
             alignItems: "center",
@@ -633,7 +539,7 @@ export default function OfferScreen({
             padding: "12px",
             background: "transparent",
             border: "none",
-            color: PINTEREST.textLight,
+            color: GREEN.textSecondary,
             fontSize: "14px",
             fontWeight: "500",
             cursor: "pointer",
@@ -657,61 +563,57 @@ export default function OfferScreen({
       }}>
         <header style={{
           padding: "12px 20px",
-          background: PINTEREST.bg,
-          position: "sticky",
-          top: 0,
-          zIndex: 50,
-          borderBottom: `1px solid ${PINTEREST.border}`,
-          display: "flex",
-          alignItems: "center",
-          gap: "16px",
+          background: GREEN.medium,
+          borderBottom: `1px solid ${GREEN.border}`,
+          flexShrink: 0,
+          zIndex: 100,
         }}>
-          <motion.button
-            whileTap={{ scale: 0.9 }}
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-            style={{
-              width: "40px",
-              height: "40px",
-              borderRadius: "50%",
-              background: PINTEREST.hoverBg,
-              border: "none",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              color: PINTEREST.textDark,
-              cursor: "pointer",
-            }}
-          >
-            {sidebarOpen ? <FaTimes /> : <FaEllipsisH />}
-          </motion.button>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "12px", flex: 1 }}>
+              <div
+                onClick={() => setSidebarOpen(!sidebarOpen)}
+                style={{
+                  width: "48px",
+                  height: "48px",
+                  borderRadius: "8px",
+                  background: GREEN.grayLight,
+                  border: `1px solid ${GREEN.border}`,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  cursor: "pointer",
+                }}
+              >
+                {sidebarOpen ? <FaTimes size={20} color={GREEN.textPrimary} /> : <FaBars size={20} color={GREEN.textPrimary} />}
+              </div>
 
-          <motion.button
-            whileTap={{ scale: 0.9 }}
-            onClick={onBack}
-            style={{
-              width: "40px",
-              height: "40px",
-              borderRadius: "50%",
-              background: PINTEREST.hoverBg,
-              border: "none",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              color: PINTEREST.textDark,
-              cursor: "pointer",
-            }}
-          >
-            <FaArrowLeft size={18} />
-          </motion.button>
+              <button
+                onClick={onBack || (() => navigate(-1))}
+                style={{
+                  width: "48px",
+                  height: "48px",
+                  borderRadius: "8px",
+                  background: GREEN.grayLight,
+                  border: `1px solid ${GREEN.border}`,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  cursor: "pointer",
+                }}
+              >
+                <FaArrowLeft size={20} color={GREEN.textPrimary} />
+              </button>
 
-          <h1 style={{
-            fontSize: "20px",
-            fontWeight: "700",
-            color: PINTEREST.textDark,
-            margin: 0,
-          }}>
-            Share a Book
-          </h1>
+              <h1 style={{
+                fontSize: "20px",
+                fontWeight: "700",
+                color: GREEN.textPrimary,
+                margin: 0,
+              }}>
+                Share a Book
+              </h1>
+            </div>
+          </div>
         </header>
 
         <main style={{
@@ -732,19 +634,18 @@ export default function OfferScreen({
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               style={{
-                background: "white",
+                background: GREEN.medium,
                 borderRadius: "16px",
                 padding: "20px",
                 marginBottom: "16px",
-                boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
-                border: `1px solid ${PINTEREST.border}`,
+                border: `1px solid ${GREEN.border}`,
               }}
             >
               <label style={{
                 display: "block",
                 fontSize: "14px",
                 fontWeight: "600",
-                color: PINTEREST.textDark,
+                color: GREEN.textPrimary,
                 marginBottom: "8px",
               }}>
                 Book Description *
@@ -759,18 +660,19 @@ export default function OfferScreen({
                   minHeight: "120px",
                   padding: "12px",
                   borderRadius: "12px",
-                  border: `1px solid ${PINTEREST.border}`,
-                  background: PINTEREST.grayLight,
+                  border: `1px solid ${GREEN.border}`,
+                  background: GREEN.grayLight,
                   fontSize: "16px",
                   resize: "none",
                   boxSizing: "border-box",
                   fontFamily: "inherit",
                   lineHeight: 1.5,
+                  color: GREEN.textPrimary,
                 }}
               />
               <div style={{
                 fontSize: "12px",
-                color: PINTEREST.textMuted,
+                color: GREEN.textMuted,
                 marginTop: "8px",
                 textAlign: "right",
               }}>
@@ -784,19 +686,18 @@ export default function OfferScreen({
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1 }}
               style={{
-                background: "white",
+                background: GREEN.medium,
                 borderRadius: "16px",
                 padding: "20px",
                 marginBottom: "16px",
-                boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
-                border: `1px solid ${PINTEREST.border}`,
+                border: `1px solid ${GREEN.border}`,
               }}
             >
               <label style={{
                 display: "block",
                 fontSize: "14px",
                 fontWeight: "600",
-                color: PINTEREST.textDark,
+                color: GREEN.textPrimary,
                 marginBottom: "12px",
               }}>
                 Condition
@@ -813,9 +714,9 @@ export default function OfferScreen({
                       minWidth: "80px",
                       padding: "12px 8px",
                       borderRadius: "12px",
-                      border: `2px solid ${condition === opt.value ? opt.color : PINTEREST.border}`,
-                      background: condition === opt.value ? `${opt.color}15` : "white",
-                      color: condition === opt.value ? opt.color : PINTEREST.textDark,
+                      border: `2px solid ${condition === opt.value ? opt.color : GREEN.border}`,
+                      background: condition === opt.value ? `${opt.color}20` : GREEN.grayLight,
+                      color: condition === opt.value ? opt.color : GREEN.textPrimary,
                       fontSize: "14px",
                       fontWeight: "600",
                       cursor: "pointer",
@@ -838,19 +739,18 @@ export default function OfferScreen({
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.15 }}
               style={{
-                background: "white",
+                background: GREEN.medium,
                 borderRadius: "16px",
                 padding: "20px",
                 marginBottom: "16px",
-                boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
-                border: `1px solid ${PINTEREST.border}`,
+                border: `1px solid ${GREEN.border}`,
               }}
             >
               <label style={{
                 display: "block",
                 fontSize: "14px",
                 fontWeight: "600",
-                color: PINTEREST.textDark,
+                color: GREEN.textPrimary,
                 marginBottom: "12px",
               }}>
                 I want to...
@@ -864,9 +764,9 @@ export default function OfferScreen({
                     flex: 1,
                     padding: "16px",
                     borderRadius: "12px",
-                    border: `2px solid ${action === "sell" ? PINTEREST.primary : PINTEREST.border}`,
-                    background: action === "sell" ? PINTEREST.redLight : "white",
-                    color: action === "sell" ? PINTEREST.primary : PINTEREST.textDark,
+                    border: `2px solid ${action === "sell" ? GREEN.accent : GREEN.border}`,
+                    background: action === "sell" ? GREEN.hoverBg : GREEN.grayLight,
+                    color: action === "sell" ? GREEN.accentLight : GREEN.textPrimary,
                     fontWeight: "600",
                     fontSize: "15px",
                     display: "flex",
@@ -888,9 +788,9 @@ export default function OfferScreen({
                     flex: 1,
                     padding: "16px",
                     borderRadius: "12px",
-                    border: `2px solid ${action === "trade" ? "#00A86B" : PINTEREST.border}`,
-                    background: action === "trade" ? "#00A86B15" : "white",
-                    color: action === "trade" ? "#00A86B" : PINTEREST.textDark,
+                    border: `2px solid ${action === "trade" ? GREEN.success : GREEN.border}`,
+                    background: action === "trade" ? `${GREEN.success}20` : GREEN.grayLight,
+                    color: action === "trade" ? GREEN.success : GREEN.textPrimary,
                     fontWeight: "600",
                     fontSize: "15px",
                     display: "flex",
@@ -912,19 +812,18 @@ export default function OfferScreen({
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
               style={{
-                background: "white",
+                background: GREEN.medium,
                 borderRadius: "16px",
                 padding: "20px",
                 marginBottom: "16px",
-                boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
-                border: `1px solid ${PINTEREST.border}`,
+                border: `1px solid ${GREEN.border}`,
               }}
             >
               <label style={{
                 display: "block",
                 fontSize: "14px",
                 fontWeight: "600",
-                color: PINTEREST.textDark,
+                color: GREEN.textPrimary,
                 marginBottom: "8px",
               }}>
                 {action === "sell" ? "Price *" : "Trade For *"}
@@ -936,7 +835,7 @@ export default function OfferScreen({
                     left: "12px",
                     top: "50%",
                     transform: "translateY(-50%)",
-                    color: PINTEREST.textMuted,
+                    color: GREEN.textMuted,
                   }} />
                   <input
                     type="number"
@@ -949,10 +848,11 @@ export default function OfferScreen({
                       width: "100%",
                       padding: "12px 12px 12px 36px",
                       borderRadius: "12px",
-                      border: `1px solid ${PINTEREST.border}`,
-                      background: PINTEREST.grayLight,
+                      border: `1px solid ${GREEN.border}`,
+                      background: GREEN.grayLight,
                       fontSize: "16px",
                       boxSizing: "border-box",
+                      color: GREEN.textPrimary,
                     }}
                   />
                 </div>
@@ -963,7 +863,7 @@ export default function OfferScreen({
                     left: "12px",
                     top: "50%",
                     transform: "translateY(-50%)",
-                    color: PINTEREST.textMuted,
+                    color: GREEN.textMuted,
                   }} />
                   <input
                     type="text"
@@ -974,10 +874,11 @@ export default function OfferScreen({
                       width: "100%",
                       padding: "12px 12px 12px 36px",
                       borderRadius: "12px",
-                      border: `1px solid ${PINTEREST.border}`,
-                      background: PINTEREST.grayLight,
+                      border: `1px solid ${GREEN.border}`,
+                      background: GREEN.grayLight,
                       fontSize: "16px",
                       boxSizing: "border-box",
+                      color: GREEN.textPrimary,
                     }}
                   />
                 </div>
@@ -990,19 +891,18 @@ export default function OfferScreen({
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.25 }}
               style={{
-                background: "white",
+                background: GREEN.medium,
                 borderRadius: "16px",
                 padding: "20px",
                 marginBottom: "16px",
-                boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
-                border: `1px solid ${PINTEREST.border}`,
+                border: `1px solid ${GREEN.border}`,
               }}
             >
               <label style={{
                 display: "block",
                 fontSize: "14px",
                 fontWeight: "600",
-                color: PINTEREST.textDark,
+                color: GREEN.textPrimary,
                 marginBottom: "12px",
               }}>
                 Photo (Optional)
@@ -1033,7 +933,7 @@ export default function OfferScreen({
                         position: "absolute",
                         top: "8px",
                         right: "8px",
-                        background: PINTEREST.primary,
+                        background: GREEN.accent,
                         color: "white",
                         border: "none",
                         width: "32px",
@@ -1058,8 +958,8 @@ export default function OfferScreen({
                     style={{
                       padding: "40px 20px",
                       borderRadius: "12px",
-                      border: `2px dashed ${PINTEREST.border}`,
-                      background: PINTEREST.grayLight,
+                      border: `2px dashed ${GREEN.border}`,
+                      background: GREEN.grayLight,
                       textAlign: "center",
                       cursor: "pointer",
                       transition: "all 0.2s ease",
@@ -1067,20 +967,20 @@ export default function OfferScreen({
                   >
                     <FaCamera style={{
                       fontSize: "32px",
-                      color: PINTEREST.primary,
+                      color: GREEN.accent,
                       marginBottom: "12px",
                     }} />
                     <div style={{
                       fontSize: "15px",
                       fontWeight: "600",
-                      color: PINTEREST.textDark,
+                      color: GREEN.textPrimary,
                       marginBottom: "4px",
                     }}>
                       Tap to add photo
                     </div>
                     <div style={{
                       fontSize: "12px",
-                      color: PINTEREST.textMuted,
+                      color: GREEN.textMuted,
                     }}>
                       JPG or PNG, max 5MB
                     </div>
@@ -1101,32 +1001,31 @@ export default function OfferScreen({
                     alignItems: "center",
                     justifyContent: "space-between",
                     padding: "8px 12px",
-                    background: PINTEREST.redLight,
+                    background: GREEN.hoverBg,
                     borderRadius: "8px",
                     fontSize: "13px",
-                    color: PINTEREST.textDark,
+                    color: GREEN.textPrimary,
                   }}>
                     <span style={{ fontWeight: "500" }}>
                       {image.name} ({(image.size / 1024 / 1024).toFixed(2)} MB)
                     </span>
-                    <FaCheckCircle color={PINTEREST.primary} />
+                    <FaCheckCircle color={GREEN.success} />
                   </div>
                 )}
               </div>
             </motion.div>
 
-            {/* Enhanced Location Section with Expand Feature */}
+            {/* Location Picker */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3 }}
               style={{
-                background: "white",
+                background: GREEN.medium,
                 borderRadius: "16px",
                 padding: "20px",
                 marginBottom: "16px",
-                boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
-                border: `1px solid ${PINTEREST.border}`,
+                border: `1px solid ${GREEN.border}`,
                 position: "relative",
               }}
             >
@@ -1139,41 +1038,38 @@ export default function OfferScreen({
                 <label style={{
                   fontSize: "14px",
                   fontWeight: "600",
-                  color: PINTEREST.textDark,
+                  color: GREEN.textPrimary,
                   display: "flex",
                   alignItems: "center",
                   gap: "8px",
                 }}>
-                  <FaMapMarkerAlt color={PINTEREST.primary} />
+                  <FaMapMarkerAlt color={GREEN.accent} />
                   Location *
                 </label>
                 
-                <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-                  <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={() => setShowLocationPicker(!showLocationPicker)}
-                    style={{
-                      border: "none",
-                      color: PINTEREST.primary,
-                      fontSize: "14px",
-                      fontWeight: "600",
-                      cursor: "pointer",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "4px",
-                      padding: "6px 12px",
-                      borderRadius: "8px",
-                      background: showLocationPicker ? PINTEREST.redLight : "transparent",
-                    }}
-                  >
-                    {showLocationPicker ? <FaChevronUp /> : <FaChevronDown />}
-                    {showLocationPicker ? "Hide Map" : "Set Location"}
-                  </motion.button>
-                </div>
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => setShowLocationPicker(!showLocationPicker)}
+                  style={{
+                    border: "none",
+                    color: GREEN.accent,
+                    fontSize: "14px",
+                    fontWeight: "600",
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "4px",
+                    padding: "6px 12px",
+                    borderRadius: "8px",
+                    background: showLocationPicker ? GREEN.hoverBg : "transparent",
+                  }}
+                >
+                  {showLocationPicker ? <FaChevronUp /> : <FaChevronDown />}
+                  {showLocationPicker ? "Hide Map" : "Set Location"}
+                </motion.button>
               </div>
 
-              {/* Location Address Display */}
               <div style={{
                 display: "flex",
                 alignItems: "center",
@@ -1183,10 +1079,10 @@ export default function OfferScreen({
                 <div style={{
                   flex: 1,
                   padding: "12px",
-                  background: PINTEREST.grayLight,
+                  background: GREEN.grayLight,
                   borderRadius: "8px",
                   fontSize: "13px",
-                  color: locationSet ? PINTEREST.textDark : PINTEREST.textMuted,
+                  color: locationSet ? GREEN.textPrimary : GREEN.textMuted,
                   fontWeight: locationSet ? "500" : "400",
                   minHeight: "40px",
                   display: "flex",
@@ -1198,52 +1094,49 @@ export default function OfferScreen({
                   )}
                 </div>
                 
-                <div style={{ display: "flex", gap: "4px" }}>
-                  <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={detectLocation}
-                    disabled={isLocating}
-                    style={{
-                      padding: "12px",
-                      borderRadius: "8px",
-                      border: "none",
-                      background: PINTEREST.primary,
-                      color: "white",
-                      fontSize: "14px",
-                      fontWeight: "600",
-                      cursor: isLocating ? "not-allowed" : "pointer",
-                      opacity: isLocating ? 0.7 : 1,
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "6px",
-                      minWidth: "120px",
-                      justifyContent: "center",
-                    }}
-                  >
-                    {isLocating ? (
-                      <>
-                        <div style={{
-                          width: "12px",
-                          height: "12px",
-                          border: "2px solid white",
-                          borderTopColor: "transparent",
-                          borderRadius: "50%",
-                          animation: "spin 1s linear infinite",
-                        }} />
-                        Detecting...
-                      </>
-                    ) : (
-                      <>
-                        <FaLocationArrow />
-                        Detect
-                      </>
-                    )}
-                  </motion.button>
-                </div>
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={detectLocation}
+                  disabled={isLocating}
+                  style={{
+                    padding: "12px",
+                    borderRadius: "8px",
+                    border: "none",
+                    background: GREEN.accent,
+                    color: "white",
+                    fontSize: "14px",
+                    fontWeight: "600",
+                    cursor: isLocating ? "not-allowed" : "pointer",
+                    opacity: isLocating ? 0.7 : 1,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "6px",
+                    minWidth: "120px",
+                    justifyContent: "center",
+                  }}
+                >
+                  {isLocating ? (
+                    <>
+                      <div style={{
+                        width: "12px",
+                        height: "12px",
+                        border: "2px solid white",
+                        borderTopColor: "transparent",
+                        borderRadius: "50%",
+                        animation: "spin 1s linear infinite",
+                      }} />
+                      Detecting...
+                    </>
+                  ) : (
+                    <>
+                      <FaLocationArrow />
+                      Detect
+                    </>
+                  )}
+                </motion.button>
               </div>
 
-              {/* Expandable Map Container */}
               <AnimatePresence>
                 {showLocationPicker && (
                   <motion.div
@@ -1256,11 +1149,10 @@ export default function OfferScreen({
                       marginTop: "12px",
                       position: "relative",
                       borderRadius: "12px",
-                      border: mapExpanded ? `3px solid ${PINTEREST.primary}` : `2px solid ${PINTEREST.border}`,
+                      border: mapExpanded ? `3px solid ${GREEN.accent}` : `2px solid ${GREEN.border}`,
                       zIndex: mapExpanded ? 1000 : "auto",
                     }}
                   >
-                    {/* Map Controls Overlay */}
                     <div style={{
                       position: "absolute",
                       top: "12px",
@@ -1270,7 +1162,6 @@ export default function OfferScreen({
                       flexDirection: "column",
                       gap: "8px",
                     }}>
-                      {/* Expand/Collapse Button */}
                       <motion.button
                         whileHover={{ scale: 1.1 }}
                         whileTap={{ scale: 0.9 }}
@@ -1279,7 +1170,7 @@ export default function OfferScreen({
                           width: "40px",
                           height: "40px",
                           borderRadius: "50%",
-                          background: PINTEREST.primary,
+                          background: GREEN.accent,
                           border: "none",
                           color: "white",
                           display: "flex",
@@ -1293,7 +1184,6 @@ export default function OfferScreen({
                         {mapExpanded ? <FaCompress /> : <FaExpand />}
                       </motion.button>
 
-                      {/* Center on Location Button */}
                       {locationSet && (
                         <motion.button
                           whileHover={{ scale: 1.1 }}
@@ -1303,7 +1193,7 @@ export default function OfferScreen({
                             width: "40px",
                             height: "40px",
                             borderRadius: "50%",
-                            background: PINTEREST.info,
+                            background: GREEN.info,
                             border: "none",
                             color: "white",
                             display: "flex",
@@ -1319,30 +1209,26 @@ export default function OfferScreen({
                       )}
                     </div>
 
-                    {/* Map Instructions */}
                     <div style={{
                       position: "absolute",
                       bottom: "12px",
                       left: "12px",
                       right: "12px",
                       zIndex: 1001,
-                      background: "rgba(255,255,255,0.9)",
+                      background: "rgba(26,58,42,0.9)",
                       backdropFilter: "blur(10px)",
                       padding: "8px 12px",
                       borderRadius: "8px",
                       fontSize: "12px",
-                      color: PINTEREST.textDark,
+                      color: GREEN.textPrimary,
                       fontWeight: "500",
                       display: "flex",
                       justifyContent: "space-between",
                       alignItems: "center",
-                      boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+                      boxShadow: "0 2px 8px rgba(0,0,0,0.3)",
                     }}>
                       <span>
-                        {mapExpanded 
-                          ? "Drag the marker or tap the map to set location" 
-                          : "Drag marker or tap map to set location"
-                        }
+                        Drag marker or tap map to set location
                       </span>
                       {mapExpanded && (
                         <motion.button
@@ -1351,7 +1237,7 @@ export default function OfferScreen({
                           onClick={toggleMapExpansion}
                           style={{
                             padding: "6px 12px",
-                            background: PINTEREST.primary,
+                            background: GREEN.accent,
                             color: "white",
                             border: "none",
                             borderRadius: "6px",
@@ -1365,13 +1251,12 @@ export default function OfferScreen({
                       )}
                     </div>
 
-                    {/* Map Container */}
                     <div
                       ref={mapRef}
                       style={{
                         width: "100%",
                         height: "100%",
-                        borderRadius: mapExpanded ? "10px" : "10px",
+                        borderRadius: "10px",
                       }}
                     />
                   </motion.div>
@@ -1379,7 +1264,7 @@ export default function OfferScreen({
               </AnimatePresence>
             </motion.div>
 
-            {/* Error & Success Messages */}
+            {/* Error / Success */}
             <AnimatePresence>
               {error && (
                 <motion.div
@@ -1387,13 +1272,13 @@ export default function OfferScreen({
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -10 }}
                   style={{
-                    background: PINTEREST.redLight,
-                    borderLeft: `4px solid ${PINTEREST.primary}`,
+                    background: GREEN.hoverBg,
+                    borderLeft: `4px solid ${GREEN.warning}`,
                     padding: "12px 16px",
                     borderRadius: "8px",
                     marginBottom: "16px",
                     fontSize: "14px",
-                    color: PINTEREST.textDark,
+                    color: GREEN.textPrimary,
                   }}
                 >
                   {error}
@@ -1408,19 +1293,19 @@ export default function OfferScreen({
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.9 }}
                   style={{
-                    background: "#E6F7EE",
-                    borderLeft: "4px solid #10B981",
+                    background: `${GREEN.success}20`,
+                    borderLeft: `4px solid ${GREEN.success}`,
                     padding: "12px 16px",
                     borderRadius: "8px",
                     marginBottom: "16px",
                     fontSize: "14px",
-                    color: PINTEREST.textDark,
+                    color: GREEN.textPrimary,
                     display: "flex",
                     alignItems: "center",
                     gap: "8px",
                   }}
                 >
-                  <FaCheckCircle color="#10B981" />
+                  <FaCheckCircle color={GREEN.success} />
                   Book posted successfully! Redirecting...
                 </motion.div>
               )}
@@ -1431,9 +1316,8 @@ export default function OfferScreen({
         {/* Submit Button */}
         <div style={{
           padding: "16px 20px",
-          background: PINTEREST.bg,
-          borderTop: `1px solid ${PINTEREST.border}`,
-          position: "relative",
+          background: GREEN.medium,
+          borderTop: `1px solid ${GREEN.border}`,
           zIndex: 50,
         }}>
           <motion.button
@@ -1446,7 +1330,7 @@ export default function OfferScreen({
               padding: "16px",
               borderRadius: "24px",
               border: "none",
-              background: loading ? PINTEREST.hoverBg : PINTEREST.primary,
+              background: loading ? GREEN.grayLight : GREEN.accent,
               color: "white",
               fontSize: "16px",
               fontWeight: "700",
@@ -1492,7 +1376,7 @@ export default function OfferScreen({
               left: 0,
               right: 0,
               bottom: 0,
-              background: PINTEREST.overlay,
+              background: "rgba(0,0,0,0.8)",
               backdropFilter: "blur(8px)",
               zIndex: 999,
               display: "flex",
@@ -1501,19 +1385,13 @@ export default function OfferScreen({
               padding: "20px",
             }}
             onClick={toggleMapExpansion}
-          >
-            {/* This overlay just provides the background blur */}
-          </motion.div>
+          />
         )}
       </AnimatePresence>
 
       <style>{`
         @keyframes spin {
           to { transform: rotate(360deg); }
-        }
-        
-        .custom-offer-marker {
-          transition: transform 0.3s ease;
         }
         
         .custom-offer-marker:hover {
@@ -1523,23 +1401,19 @@ export default function OfferScreen({
         .leaflet-control-zoom {
           border-radius: 8px !important;
           overflow: hidden !important;
-          box-shadow: 0 2px 8px rgba(0,0,0,0.1) !important;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.3) !important;
         }
         
         .leaflet-control-scale {
-          background: rgba(255, 255, 255, 0.9) !important;
+          background: rgba(26,58,42,0.9) !important;
           border-radius: 4px !important;
           padding: 4px 8px !important;
           font-size: 11px !important;
+          color: ${GREEN.textPrimary} !important;
         }
         
         .leaflet-container {
           font-family: 'Inter', -apple-system, sans-serif !important;
-        }
-        
-        /* Smooth transitions for map expansion */
-        .leaflet-map-container {
-          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
       `}</style>
     </div>

@@ -1,4 +1,5 @@
-// src/pages/ChatScreen.tsx - UPDATED (Fixed navigation)
+/* eslint-disable @typescript-eslint/no-explicit-any */
+// src/pages/ChatScreen.tsx - GREEN ENERGY THEME: Calm, Sustainable, Professional
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { 
@@ -9,7 +10,7 @@ import {
   FaBell,
   FaBookmark,
   FaCompass,
-  FaBookOpen,
+  FaBookOpen as FaBookOpenIcon,
   FaStar,
   FaCog,
   FaBars,
@@ -18,22 +19,21 @@ import {
 } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 
-const API_BASE = "https://boocozmo-api.onrender.com";
+const API_BASE = "/api";
 
-const PINTEREST = {
-  primary: "#E60023",
-  dark: "#A3081A",
-  light: "#FF4D6D",
-  bg: "#FFFFFF",
-  sidebarBg: "#FFFFFF",
-  textDark: "#000000",
-  textLight: "#5F5F5F",
-  textMuted: "#8E8E8E",
-  border: "#E1E1E1",
-  hoverBg: "#F5F5F5",
-  icon: "#767676",
-  redLight: "#FFE2E6",
-  grayLight: "#F7F7F7",
+const GREEN = {
+  dark: "#0F2415",
+  medium: "#1A3A2A",
+  accent: "#4A7C59",
+  accentLight: "#6BA87A",
+  textPrimary: "#E8F0E8",
+  textSecondary: "#A8B8A8",
+  textMuted: "#80A080",
+  border: "rgba(74, 124, 89, 0.3)",
+  grayLight: "#2A4A3A",
+  hoverBg: "#255035",
+  icon: "#80A080",
+  success: "#6BA87A",
 };
 
 type Conversation = {
@@ -89,7 +89,6 @@ export default function ChatScreen({
 
         const data: Conversation[] = await resp.json();
         setConversations(data);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } catch (err: any) {
         console.error("Chat fetch error:", err);
         setError("Failed to load messages. Using demo data.");
@@ -101,7 +100,6 @@ export default function ChatScreen({
 
     fetchChats();
 
-    // Poll every 30 seconds
     const interval = setInterval(fetchChats, 30000);
     return () => clearInterval(interval);
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -185,24 +183,23 @@ export default function ChatScreen({
     });
   };
 
-  // UPDATED NAVIGATION ITEMS - Fixed onClick handlers
   const navItems = [
     { icon: FaHome, label: "Home", onClick: () => navigate("/") },
     { icon: FaMapMarkedAlt, label: "Map", onClick: onMapPress || (() => navigate("/map")) },
-    { icon: FaBookOpen, label: "My Library", onClick: () => navigate("/my-library") },
-    { icon: FaCompass, label: "Discover", onClick: () => navigate("/discover") },
+    { icon: FaBookOpenIcon, label: "My Library", onClick: () => navigate("/my-library") },
+    { icon: FaCompass, label: "Discover", onClick: () => {} },
     { icon: FaBookmark, label: "Saved", onClick: () => navigate("/saved") },
-    { icon: FaUsers, label: "Following", onClick: () => navigate("/following") },
+    { icon: FaUsers, label: "Following", onClick: () => {} },
     { icon: FaComments, label: "Messages", active: true, onClick: () => navigate("/chat") },
-    { icon: FaBell, label: "Notifications", onClick: () => navigate("/notifications") },
-    { icon: FaStar, label: "Top Picks", onClick: () => navigate("/top-picks") },
+    { icon: FaBell, label: "Notifications", onClick: () => {} },
+    { icon: FaStar, label: "Top Picks", onClick: () => {} },
   ];
 
   return (
     <div style={{
       height: "100vh",
       width: "100vw",
-      background: PINTEREST.bg,
+      background: GREEN.dark,
       display: "flex",
       fontFamily: "'Inter', -apple-system, sans-serif",
       overflow: "hidden",
@@ -214,8 +211,8 @@ export default function ChatScreen({
         transition={{ type: "spring", damping: 25 }}
         style={{
           width: "240px",
-          background: PINTEREST.sidebarBg,
-          borderRight: `1px solid ${PINTEREST.border}`,
+          background: GREEN.medium,
+          borderRight: `1px solid ${GREEN.border}`,
           position: "fixed",
           top: 0,
           left: 0,
@@ -233,7 +230,7 @@ export default function ChatScreen({
               width: "32px",
               height: "32px",
               borderRadius: "50%",
-              background: PINTEREST.primary,
+              background: GREEN.accent,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -245,8 +242,8 @@ export default function ChatScreen({
             </div>
             <span style={{
               fontSize: "20px",
-              fontWeight: "700",
-              color: PINTEREST.primary,
+              fontWeight: "800",
+              color: GREEN.textPrimary,
             }}>
               Boocozmo
             </span>
@@ -262,7 +259,7 @@ export default function ChatScreen({
             gap: "12px",
             padding: "12px",
             borderRadius: "12px",
-            background: PINTEREST.hoverBg,
+            background: GREEN.hoverBg,
             marginBottom: "24px",
             cursor: "pointer",
           }}
@@ -271,7 +268,7 @@ export default function ChatScreen({
             width: "40px",
             height: "40px",
             borderRadius: "50%",
-            background: `linear-gradient(135deg, ${PINTEREST.primary}, ${PINTEREST.dark})`,
+            background: GREEN.accent,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -282,10 +279,10 @@ export default function ChatScreen({
             {currentUser.name.charAt(0).toUpperCase()}
           </div>
           <div>
-            <div style={{ fontSize: "14px", fontWeight: "600", color: PINTEREST.textDark }}>
+            <div style={{ fontSize: "14px", fontWeight: "600", color: GREEN.textPrimary }}>
               {currentUser.name.split(' ')[0]}
             </div>
-            <div style={{ fontSize: "12px", color: PINTEREST.textLight }}>
+            <div style={{ fontSize: "12px", color: GREEN.textSecondary }}>
               View profile
             </div>
           </div>
@@ -304,9 +301,9 @@ export default function ChatScreen({
                 gap: "12px",
                 width: "100%",
                 padding: "12px",
-                background: item.active ? PINTEREST.redLight : "transparent",
+                background: item.active ? GREEN.hoverBg : "transparent",
                 border: "none",
-                color: item.active ? PINTEREST.primary : PINTEREST.textDark,
+                color: item.active ? GREEN.accentLight : GREEN.textPrimary,
                 fontSize: "14px",
                 fontWeight: item.active ? "600" : "500",
                 cursor: "pointer",
@@ -321,29 +318,32 @@ export default function ChatScreen({
           ))}
         </nav>
 
-        <motion.button
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          onClick={onAddPress || (() => navigate("/create"))}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "12px",
-            padding: "14px",
-            background: PINTEREST.primary,
-            color: "white",
-            border: "none",
-            borderRadius: "24px",
-            fontSize: "14px",
-            fontWeight: "600",
-            cursor: "pointer",
-            width: "100%",
-            justifyContent: "center",
-            marginTop: "20px",
-          }}
-        >
-          <FaPlus /> Share a Book
-        </motion.button>
+        {onAddPress && (
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={onAddPress}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "12px",
+              padding: "14px",
+              background: GREEN.accent,
+              color: "white",
+              border: "none",
+              borderRadius: "24px",
+              fontSize: "14px",
+              fontWeight: "600",
+              cursor: "pointer",
+              width: "100%",
+              justifyContent: "center",
+              marginTop: "20px",
+              boxShadow: "0 4px 20px rgba(74, 124, 89, 0.4)",
+            }}
+          >
+            <FaPlus /> Share a Book
+          </motion.button>
+        )}
 
         <motion.button
           whileHover={{ x: 4 }}
@@ -356,7 +356,7 @@ export default function ChatScreen({
             padding: "12px",
             background: "transparent",
             border: "none",
-            color: PINTEREST.textLight,
+            color: GREEN.textSecondary,
             fontSize: "14px",
             fontWeight: "500",
             cursor: "pointer",
@@ -380,11 +380,11 @@ export default function ChatScreen({
       }}>
         <header style={{
           padding: "12px 20px",
-          background: PINTEREST.bg,
+          background: GREEN.medium,
           position: "sticky",
           top: 0,
           zIndex: 50,
-          borderBottom: `1px solid ${PINTEREST.border}`,
+          borderBottom: `1px solid ${GREEN.border}`,
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
@@ -397,12 +397,12 @@ export default function ChatScreen({
                 width: "56px",
                 height: "56px",
                 borderRadius: "50%",
-                background: PINTEREST.hoverBg,
+                background: GREEN.grayLight,
                 border: "none",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                color: PINTEREST.textDark,
+                color: GREEN.textPrimary,
                 cursor: "pointer",
               }}
             >
@@ -412,7 +412,7 @@ export default function ChatScreen({
             <h1 style={{
               fontSize: "24px",
               fontWeight: "700",
-              color: PINTEREST.textDark,
+              color: GREEN.textPrimary,
               margin: 0,
             }}>
               Messages
@@ -427,12 +427,12 @@ export default function ChatScreen({
                 width: "56px",
                 height: "56px",
                 borderRadius: "50%",
-                background: PINTEREST.hoverBg,
+                background: GREEN.grayLight,
                 border: "none",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                color: PINTEREST.textDark,
+                color: GREEN.textPrimary,
                 cursor: "pointer",
                 position: "relative",
               }}
@@ -445,7 +445,7 @@ export default function ChatScreen({
                 width: "10px",
                 height: "10px",
                 borderRadius: "50%",
-                background: PINTEREST.primary,
+                background: GREEN.accent,
               }} />
             </motion.button>
           </div>
@@ -455,27 +455,27 @@ export default function ChatScreen({
           flex: 1,
           overflowY: "auto",
           padding: "20px",
-          background: PINTEREST.bg,
+          background: GREEN.dark,
         }}>
           {loading ? (
             <div style={{ textAlign: "center", padding: "60px 20px" }}>
               <div style={{
                 width: "48px",
                 height: "48px",
-                border: `4px solid ${PINTEREST.grayLight}`,
-                borderTopColor: PINTEREST.primary,
+                border: `4px solid ${GREEN.grayLight}`,
+                borderTopColor: GREEN.accent,
                 borderRadius: "50%",
                 margin: "0 auto 20px",
                 animation: "spin 1s linear infinite",
               }} />
-              <p style={{ color: PINTEREST.textLight, fontSize: "16px" }}>
+              <p style={{ color: GREEN.textSecondary, fontSize: "16px" }}>
                 Loading messages...
               </p>
             </div>
           ) : error ? (
             <div style={{ textAlign: "center", padding: "60px 20px" }}>
-              <div style={{ fontSize: "64px", marginBottom: "20px", opacity: 0.5 }}>💬</div>
-              <p style={{ color: PINTEREST.textLight, fontSize: "16px", marginBottom: "20px" }}>
+              <div style={{ fontSize: "64px", marginBottom: "20px", opacity: 0.5 }}>Messages</div>
+              <p style={{ color: GREEN.textSecondary, fontSize: "16px", marginBottom: "20px" }}>
                 {error}
               </p>
               <motion.button
@@ -484,7 +484,7 @@ export default function ChatScreen({
                 onClick={() => window.location.reload()}
                 style={{
                   padding: "12px 28px",
-                  background: PINTEREST.primary,
+                  background: GREEN.accent,
                   color: "white",
                   border: "none",
                   borderRadius: "24px",
@@ -502,19 +502,19 @@ export default function ChatScreen({
                 width: "100px",
                 height: "100px",
                 borderRadius: "50%",
-                background: PINTEREST.redLight,
+                background: GREEN.grayLight,
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
                 margin: "0 auto 24px",
-                color: PINTEREST.primary,
+                color: GREEN.accentLight,
               }}>
                 <FaComments size={40} />
               </div>
-              <h3 style={{ fontSize: "20px", fontWeight: "600", color: PINTEREST.textDark, marginBottom: "8px" }}>
+              <h3 style={{ fontSize: "20px", fontWeight: "600", color: GREEN.textPrimary, marginBottom: "8px" }}>
                 No messages yet
               </h3>
-              <p style={{ color: PINTEREST.textLight, fontSize: "15px", maxWidth: "300px", margin: "0 auto 32px" }}>
+              <p style={{ color: GREEN.textSecondary, fontSize: "15px", maxWidth: "300px", margin: "0 auto 32px" }}>
                 Start chatting from any book offer
               </p>
               <motion.button
@@ -523,7 +523,7 @@ export default function ChatScreen({
                 onClick={() => navigate("/")}
                 style={{
                   padding: "14px 32px",
-                  background: PINTEREST.primary,
+                  background: GREEN.accent,
                   color: "white",
                   border: "none",
                   borderRadius: "24px",
@@ -544,7 +544,7 @@ export default function ChatScreen({
                   onClick={() => handleChatClick(conv)}
                   style={{
                     width: "100%",
-                    background: "white",
+                    background: GREEN.medium,
                     border: "none",
                     borderRadius: "16px",
                     padding: "16px",
@@ -554,16 +554,16 @@ export default function ChatScreen({
                     gap: "16px",
                     textAlign: "left",
                     cursor: "pointer",
-                    boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
+                    boxShadow: "0 4px 12px rgba(0,0,0,0.2)",
                     transition: "all 0.2s ease",
                   }}
-                  whileHover={{ y: -2, boxShadow: "0 8px 20px rgba(0,0,0,0.1)" }}
+                  whileHover={{ y: -4, boxShadow: "0 12px 24px rgba(0,0,0,0.4)" }}
                 >
                   <div style={{
                     width: "56px",
                     height: "56px",
                     borderRadius: "50%",
-                    background: `linear-gradient(135deg, ${PINTEREST.primary}, ${PINTEREST.dark})`,
+                    background: GREEN.accent,
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
@@ -582,13 +582,13 @@ export default function ChatScreen({
                           fontSize: "16px",
                           fontWeight: "600",
                           margin: "0 0 4px",
-                          color: PINTEREST.textDark,
+                          color: GREEN.textPrimary,
                         }}>
                           {conv.other_user_name || "Unknown User"}
                         </h3>
                         <p style={{
                           fontSize: "14px",
-                          color: PINTEREST.textLight,
+                          color: GREEN.textSecondary,
                           margin: 0,
                           overflow: "hidden",
                           textOverflow: "ellipsis",
@@ -600,7 +600,7 @@ export default function ChatScreen({
                       <div style={{ textAlign: "right" }}>
                         <span style={{
                           fontSize: "12px",
-                          color: PINTEREST.textMuted,
+                          color: GREEN.textMuted,
                         }}>
                           {formatTime(conv.last_message_at || conv.created_at)}
                         </span>
@@ -609,7 +609,7 @@ export default function ChatScreen({
                             width: "10px",
                             height: "10px",
                             borderRadius: "50%",
-                            background: PINTEREST.primary,
+                            background: GREEN.accentLight,
                             margin: "8px auto 0",
                           }} />
                         )}
@@ -630,12 +630,8 @@ export default function ChatScreen({
         * { -webkit-tap-highlight-color: transparent; }
         ::-webkit-scrollbar { width: 8px; }
         ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: ${PINTEREST.border}; border-radius: 10px; }
-        ::-webkit-scrollbar-thumb:hover { background: ${PINTEREST.textLight}; }
-        @media (max-width: 768px) {
-          aside { display: none; }
-          div[style*="marginLeft"] { margin-left: 0 !important; }
-        }
+        ::-webkit-scrollbar-thumb { background: ${GREEN.border}; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: ${GREEN.textMuted}; }
       `}</style>
     </div>
   );

@@ -1,5 +1,6 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
-// src/pages/MyLibraryScreen.tsx - REDESIGNED LAYOUT
+// src/pages/MyLibraryScreen.tsx - GREEN ENERGY THEME: Calm, Sustainable, Professional
 import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -31,26 +32,23 @@ import {
 } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 
-const API_BASE = "https://boocozmo-api.onrender.com";
+const API_BASE = "/api";
 
-const PINTEREST = {
-  primary: "#E60023",
-  dark: "#A3081A",
-  light: "#FF4D6D",
-  bg: "#FFFFFF",
-  sidebarBg: "#FAFAFA",
-  textDark: "#1A1A1A",
-  textLight: "#666666",
-  textMuted: "#8A8A8A",
-  border: "#E5E5E5",
-  hoverBg: "#F0F0F0",
-  icon: "#767676",
-  redLight: "#FFE2E6",
-  grayLight: "#F5F5F5",
-  overlay: "rgba(0, 0, 0, 0.5)",
-  success: "#00A86B",
-  cardShadow: "0 1px 3px rgba(0,0,0,0.08)",
-  cardShadowHover: "0 4px 12px rgba(0,0,0,0.12)",
+const GREEN = {
+  dark: "#0F2415",
+  medium: "#1A3A2A",
+  accent: "#4A7C59",
+  accentLight: "#6BA87A",
+  textPrimary: "#E8F0E8",
+  textSecondary: "#A8B8A8",
+  textMuted: "#80A080",
+  border: "rgba(74, 124, 89, 0.3)",
+  grayLight: "#2A4A3A",
+  hoverBg: "#255035",
+  icon: "#80A080",
+  success: "#6BA87A",
+  cardShadow: "0 4px 12px rgba(0,0,0,0.2)",
+  cardShadowHover: "0 12px 24px rgba(0,0,0,0.4)",
 };
 
 type Offer = {
@@ -156,20 +154,18 @@ export default function MyLibraryScreen({
 
   const abortControllerRef = useRef<AbortController | null>(null);
 
-  // Navigation items
   const navItems = [
     { icon: FaHome, label: "Home", onClick: () => navigate("/") },
     { icon: FaMapMarkedAlt, label: "Map", onClick: onMapPress || (() => navigate("/map")) },
     { icon: FaBookOpenIcon, label: "My Library", active: true, onClick: () => navigate("/my-library") },
-    { icon: FaCompass, label: "Discover", onClick: () => navigate("/discover") },
+    { icon: FaCompass, label: "Discover", onClick: () => {} },
     { icon: FaBookmark, label: "Saved", onClick: () => navigate("/saved") },
-    { icon: FaUsers, label: "Following", onClick: () => navigate("/following") },
+    { icon: FaUsers, label: "Following", onClick: () => {} },
     { icon: FaComments, label: "Messages", onClick: () => navigate("/chat") },
-    { icon: FaBell, label: "Notifications", onClick: () => navigate("/notifications") },
-    { icon: FaStar, label: "Top Picks", onClick: () => navigate("/top-picks") },
+    { icon: FaBell, label: "Notifications", onClick: () => {} },
+    { icon: FaStar, label: "Top Picks", onClick: () => {} },
   ];
 
-  // Fetch user's private libraries (stores)
   const fetchStores = useCallback(async () => {
     if (abortControllerRef.current) abortControllerRef.current.abort();
     abortControllerRef.current = new AbortController();
@@ -193,7 +189,6 @@ export default function MyLibraryScreen({
     }
   }, [currentUser.email, currentUser.token, selectedStore]);
 
-  // Fetch books in selected library
   const fetchStoreOffers = useCallback(async (store: Store) => {
     if (!store?.offerIds?.length) {
       setStoreOffers([]);
@@ -226,7 +221,6 @@ export default function MyLibraryScreen({
     }
   }, [currentUser.token]);
 
-  // Create new private library
   const handleCreateStore = async () => {
     if (!newStoreName.trim()) return alert("Enter a library name");
     setCreatingStore(true);
@@ -251,7 +245,6 @@ export default function MyLibraryScreen({
     }
   };
 
-  // Add private book to library (type: sell, no public offer yet)
   const handleAddBook = async () => {
     if (!selectedStore) return alert("Select a library");
     if (!newBookForm.bookTitle.trim() || !newBookForm.author.trim()) return alert("Title & author required");
@@ -292,7 +285,6 @@ export default function MyLibraryScreen({
       });
 
       if (!response.ok) throw new Error("Failed to add book");
-      // Immediately refresh books in current library
       await fetchStoreOffers(selectedStore);
       setNewBookForm({
         bookTitle: "",
@@ -312,7 +304,6 @@ export default function MyLibraryScreen({
     }
   };
 
-  // Publish book as public offer using /submit-offer route
   const handlePublish = async () => {
     if (!bookToPublish) return;
     if (publishForm.type === "sell" && !publishForm.price) return alert("Enter price");
@@ -320,7 +311,6 @@ export default function MyLibraryScreen({
 
     setPublishing(true);
     try {
-      // Use existing image if available
       const imageBase64 = bookToPublish.imageBase64 || bookToPublish.imageUrl || null;
 
       const offerPayload = {
@@ -330,7 +320,7 @@ export default function MyLibraryScreen({
         price: publishForm.type === "sell" ? Number(publishForm.price) : null,
         latitude: publishForm.latitude,
         longitude: publishForm.longitude,
-        image: imageBase64, // backend accepts base64
+        image: imageBase64,
         condition: bookToPublish.condition,
       };
 
@@ -368,7 +358,6 @@ export default function MyLibraryScreen({
       if (!response.ok) throw new Error("Failed");
       await fetchStoreOffers(selectedStore);
       alert("Book removed from library");
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (err) {
       alert("Failed to remove");
     }
@@ -408,7 +397,7 @@ export default function MyLibraryScreen({
   }, [storeOffers, searchQuery]);
 
   return (
-    <div style={{ height: "100vh", width: "100vw", background: PINTEREST.bg, display: "flex", overflow: "hidden", fontFamily: "'Inter', sans-serif" }}>
+    <div style={{ height: "100vh", width: "100vw", background: GREEN.dark, display: "flex", overflow: "hidden", fontFamily: "'Inter', sans-serif" }}>
       {/* Sidebar Navigation */}
       <motion.aside
         initial={{ x: -300 }}
@@ -416,8 +405,8 @@ export default function MyLibraryScreen({
         transition={{ type: "spring", damping: 25 }}
         style={{
           width: "240px",
-          background: PINTEREST.sidebarBg,
-          borderRight: `1px solid ${PINTEREST.border}`,
+          background: GREEN.medium,
+          borderRight: `1px solid ${GREEN.border}`,
           position: "fixed",
           top: 0,
           left: 0,
@@ -427,14 +416,13 @@ export default function MyLibraryScreen({
           overflowY: "auto",
         }}
       >
-        {/* Logo */}
         <div style={{ marginBottom: "24px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
             <div style={{
               width: "32px",
               height: "32px",
               borderRadius: "50%",
-              background: `linear-gradient(135deg, ${PINTEREST.primary}, ${PINTEREST.dark})`,
+              background: GREEN.accent,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -444,18 +432,12 @@ export default function MyLibraryScreen({
             }}>
               B
             </div>
-            <span style={{ 
-              fontSize: "20px", 
-              fontWeight: "800", 
-              color: PINTEREST.textDark,
-              letterSpacing: "-0.5px",
-            }}>
-              boocozmo
+            <span style={{ fontSize: "20px", fontWeight: "800", color: GREEN.textPrimary }}>
+              Boocozmo
             </span>
           </div>
         </div>
 
-        {/* User Profile */}
         <motion.div
           whileHover={{ scale: 1.02 }}
           onClick={onProfilePress || (() => navigate("/profile"))}
@@ -465,7 +447,7 @@ export default function MyLibraryScreen({
             gap: "12px",
             padding: "12px",
             borderRadius: "12px",
-            background: PINTEREST.hoverBg,
+            background: GREEN.hoverBg,
             marginBottom: "24px",
             cursor: "pointer",
           }}
@@ -474,7 +456,7 @@ export default function MyLibraryScreen({
             width: "40px",
             height: "40px",
             borderRadius: "50%",
-            background: `linear-gradient(135deg, ${PINTEREST.primary}, ${PINTEREST.dark})`,
+            background: GREEN.accent,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -485,14 +467,13 @@ export default function MyLibraryScreen({
             {currentUser.name.charAt(0).toUpperCase()}
           </div>
           <div>
-            <div style={{ fontSize: "14px", fontWeight: "600", color: PINTEREST.textDark }}>
+            <div style={{ fontSize: "14px", fontWeight: "600", color: GREEN.textPrimary }}>
               {currentUser.name.split(" ")[0]}
             </div>
-            <div style={{ fontSize: "12px", color: PINTEREST.textLight }}>View profile</div>
+            <div style={{ fontSize: "12px", color: GREEN.textSecondary }}>View profile</div>
           </div>
         </motion.div>
 
-        {/* Navigation */}
         <nav style={{ flex: 1 }}>
           {navItems.map((item) => (
             <motion.button
@@ -509,9 +490,9 @@ export default function MyLibraryScreen({
                 gap: "12px",
                 width: "100%",
                 padding: "12px",
-                background: item.active ? PINTEREST.redLight : "transparent",
+                background: item.active ? GREEN.hoverBg : "transparent",
                 border: "none",
-                color: item.active ? PINTEREST.primary : PINTEREST.textDark,
+                color: item.active ? GREEN.accentLight : GREEN.textPrimary,
                 fontSize: "14px",
                 fontWeight: item.active ? "600" : "500",
                 cursor: "pointer",
@@ -526,7 +507,6 @@ export default function MyLibraryScreen({
           ))}
         </nav>
 
-        {/* Create Button */}
         {onAddPress && (
           <motion.button
             whileHover={{ scale: 1.05 }}
@@ -540,7 +520,7 @@ export default function MyLibraryScreen({
               alignItems: "center",
               gap: "12px",
               padding: "14px",
-              background: PINTEREST.primary,
+              background: GREEN.accent,
               color: "white",
               border: "none",
               borderRadius: "24px",
@@ -550,14 +530,13 @@ export default function MyLibraryScreen({
               width: "100%",
               justifyContent: "center",
               marginTop: "20px",
-              boxShadow: "0 4px 20px rgba(230, 0, 35, 0.3)",
+              boxShadow: "0 4px 20px rgba(74, 124, 89, 0.4)",
             }}
           >
             <FaPlus /> Share a Book
           </motion.button>
         )}
 
-        {/* Settings */}
         <motion.button
           whileHover={{ x: 4 }}
           onClick={() => navigate("/settings")}
@@ -569,7 +548,7 @@ export default function MyLibraryScreen({
             padding: "12px",
             background: "transparent",
             border: "none",
-            color: PINTEREST.textLight,
+            color: GREEN.textSecondary,
             fontSize: "14px",
             fontWeight: "500",
             cursor: "pointer",
@@ -595,69 +574,47 @@ export default function MyLibraryScreen({
         {/* Header */}
         <header style={{
           padding: "12px 20px",
-          background: "white",
-          borderBottom: `1px solid ${PINTEREST.border}`,
+          background: GREEN.medium,
+          borderBottom: `1px solid ${GREEN.border}`,
           flexShrink: 0,
           zIndex: 100,
         }}>
-          <div style={{ 
-            display: "flex", 
-            alignItems: "center", 
-            justifyContent: "space-between",
-            marginBottom: "12px",
-          }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12px" }}>
             <div style={{ display: "flex", alignItems: "center", gap: "12px", flex: 1 }}>
-              {/* Menu Button */}
               <div
                 onClick={() => setSidebarOpen(!sidebarOpen)}
                 style={{
                   width: "36px",
                   height: "36px",
                   borderRadius: "8px",
-                  background: PINTEREST.hoverBg,
-                  border: `1px solid ${PINTEREST.border}`,
+                  background: GREEN.grayLight,
+                  border: `1px solid ${GREEN.border}`,
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
                   cursor: "pointer",
-                  flexShrink: 0,
                 }}
               >
-                {sidebarOpen ? (
-                  <FaTimes 
-                    size={16} 
-                    color={PINTEREST.textDark}
-                    style={{ display: 'block' }}
-                  />
-                ) : (
-                  <FaBars 
-                    size={16} 
-                    color={PINTEREST.textDark}
-                    style={{ display: 'block' }}
-                  />
-                )}
+                {sidebarOpen ? <FaTimes size={16} color={GREEN.textPrimary} /> : <FaBars size={16} color={GREEN.textPrimary} />}
               </div>
 
-              {/* Back Button */}
               <button
                 onClick={onBack || (() => navigate(-1))}
                 style={{
                   width: "36px",
                   height: "36px",
                   borderRadius: "8px",
-                  background: PINTEREST.hoverBg,
-                  border: `1px solid ${PINTEREST.border}`,
+                  background: GREEN.grayLight,
+                  border: `1px solid ${GREEN.border}`,
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
                   cursor: "pointer",
-                  flexShrink: 0,
                 }}
               >
-                <FaArrowLeft size={16} color={PINTEREST.textDark} />
+                <FaArrowLeft size={16} color={GREEN.textPrimary} />
               </button>
 
-              {/* Search */}
               <div style={{ position: "relative", flex: 1 }}>
                 <FaSearch
                   size={12}
@@ -666,8 +623,7 @@ export default function MyLibraryScreen({
                     left: "12px",
                     top: "50%",
                     transform: "translateY(-50%)",
-                    color: PINTEREST.icon,
-                    zIndex: 1,
+                    color: GREEN.icon,
                   }}
                 />
                 <input
@@ -679,24 +635,21 @@ export default function MyLibraryScreen({
                     width: "100%",
                     padding: "10px 10px 10px 36px",
                     borderRadius: "20px",
-                    border: `1px solid ${PINTEREST.border}`,
-                    fontSize: "14px",
-                    background: PINTEREST.grayLight,
-                    color: PINTEREST.textDark,
+                    border: `1px solid ${GREEN.border}`,
+                    background: GREEN.grayLight,
+                    color: GREEN.textPrimary,
                     outline: "none",
-                    fontFamily: "inherit",
                   }}
                 />
               </div>
             </div>
 
-            {/* Add Book Button */}
             <motion.button 
               whileHover={{ scale: 1.05 }} 
               onClick={() => setShowAddBookModal(true)}
               style={{ 
                 padding: "10px 20px", 
-                background: PINTEREST.primary, 
+                background: GREEN.accent, 
                 color: "white", 
                 border: "none", 
                 borderRadius: 8, 
@@ -713,21 +666,21 @@ export default function MyLibraryScreen({
 
         {/* Main Content Area */}
         <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
-          {/* Libraries Row - Horizontal Scroll */}
+          {/* Libraries Row */}
           <div style={{
             padding: "20px 24px",
-            background: "white",
-            borderBottom: `1px solid ${PINTEREST.border}`,
+            background: GREEN.medium,
+            borderBottom: `1px solid ${GREEN.border}`,
             flexShrink: 0,
           }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
-              <h2 style={{ fontSize: "20px", fontWeight: "700", margin: 0 }}>My Libraries</h2>
+              <h2 style={{ fontSize: "20px", fontWeight: "700", margin: 0, color: GREEN.textPrimary }}>My Libraries</h2>
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 onClick={() => setShowCreateStoreModal(true)}
                 style={{
                   padding: "8px 16px",
-                  background: PINTEREST.primary,
+                  background: GREEN.accent,
                   color: "white",
                   border: "none",
                   borderRadius: "8px",
@@ -743,40 +696,19 @@ export default function MyLibraryScreen({
               </motion.button>
             </div>
 
-            {/* Libraries Cards Row */}
-            <div style={{ 
-              display: "flex", 
-              gap: "16px", 
-              overflowX: "auto",
-              paddingBottom: "8px",
-              scrollbarWidth: "thin",
-            }}>
+            <div style={{ display: "flex", gap: "16px", overflowX: "auto", paddingBottom: "8px" }}>
               {loading ? (
                 <div style={{ padding: "40px 20px", textAlign: "center", width: "100%" }}>
                   Loading libraries...
                 </div>
               ) : stores.length === 0 ? (
-                <div style={{ 
-                  padding: "40px 20px", 
-                  textAlign: "center", 
-                  width: "100%",
-                  border: `2px dashed ${PINTEREST.border}`,
-                  borderRadius: "12px",
-                }}>
-                  <FaFolder size={40} style={{ color: PINTEREST.textLight, opacity: 0.5, marginBottom: "16px" }} />
-                  <p style={{ marginBottom: "16px", color: PINTEREST.textLight }}>No libraries yet</p>
+                <div style={{ padding: "40px 20px", textAlign: "center", width: "100%", border: `2px dashed ${GREEN.border}`, borderRadius: "12px" }}>
+                  <FaFolder size={40} style={{ color: GREEN.textSecondary, opacity: 0.5, marginBottom: "16px" }} />
+                  <p style={{ marginBottom: "16px", color: GREEN.textSecondary }}>No libraries yet</p>
                   <motion.button 
                     whileHover={{ scale: 1.05 }} 
                     onClick={() => setShowCreateStoreModal(true)}
-                    style={{ 
-                      padding: "10px 20px", 
-                      background: PINTEREST.primary, 
-                      color: "white", 
-                      border: "none", 
-                      borderRadius: "8px",
-                      fontSize: "14px",
-                      fontWeight: "600",
-                    }}
+                    style={{ padding: "10px 20px", background: GREEN.accent, color: "white", border: "none", borderRadius: "8px", fontSize: "14px", fontWeight: "600" }}
                   >
                     Create First Library
                   </motion.button>
@@ -793,14 +725,14 @@ export default function MyLibraryScreen({
                         width: "180px",
                         height: "140px",
                         borderRadius: "12px",
-                        background: selectedStore?.id === store.id ? PINTEREST.redLight : "white",
-                        border: `2px solid ${selectedStore?.id === store.id ? PINTEREST.primary : PINTEREST.border}`,
+                        background: selectedStore?.id === store.id ? GREEN.hoverBg : GREEN.medium,
+                        border: `2px solid ${selectedStore?.id === store.id ? GREEN.accent : GREEN.border}`,
                         padding: "16px",
                         cursor: "pointer",
                         display: "flex",
                         flexDirection: "column",
                         justifyContent: "space-between",
-                        boxShadow: PINTEREST.cardShadow,
+                        boxShadow: GREEN.cardShadow,
                       }}
                     >
                       <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
@@ -808,11 +740,11 @@ export default function MyLibraryScreen({
                           width: "48px",
                           height: "48px",
                           borderRadius: "10px",
-                          background: selectedStore?.id === store.id ? PINTEREST.primary : PINTEREST.grayLight,
+                          background: selectedStore?.id === store.id ? GREEN.accent : GREEN.grayLight,
                           display: "flex",
                           alignItems: "center",
                           justifyContent: "center",
-                          color: selectedStore?.id === store.id ? "white" : PINTEREST.primary,
+                          color: "white",
                           fontSize: "20px",
                         }}>
                           <FaFolder />
@@ -822,50 +754,45 @@ export default function MyLibraryScreen({
                             fontSize: "16px",
                             fontWeight: "600",
                             margin: 0,
-                            color: PINTEREST.textDark,
+                            color: GREEN.textPrimary,
                             overflow: "hidden",
                             textOverflow: "ellipsis",
                             whiteSpace: "nowrap",
                           }}>
                             {store.name}
                           </h3>
-                          <p style={{
-                            fontSize: "12px",
-                            color: PINTEREST.textLight,
-                            margin: "4px 0 0",
-                          }}>
+                          <p style={{ fontSize: "12px", color: GREEN.textSecondary, margin: "4px 0 0" }}>
                             {store.offerIds?.length || 0} books
                           </p>
                         </div>
                       </div>
                       <div style={{
                         fontSize: "11px",
-                        color: PINTEREST.textMuted,
+                        color: GREEN.textMuted,
                         paddingTop: "8px",
-                        borderTop: `1px solid ${PINTEREST.border}`,
+                        borderTop: `1px solid ${GREEN.border}`,
                       }}>
                         Private • {new Date(store.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                       </div>
                     </motion.div>
                   ))}
-                  
-                  {/* Add New Library Card */}
+
                   <motion.div
-                    whileHover={{ y: -4, backgroundColor: PINTEREST.hoverBg }}
+                    whileHover={{ y: -4 }}
                     onClick={() => setShowCreateStoreModal(true)}
                     style={{
                       flexShrink: 0,
                       width: "180px",
                       height: "140px",
                       borderRadius: "12px",
-                      border: `2px dashed ${PINTEREST.primary}`,
+                      border: `2px dashed ${GREEN.accent}`,
                       padding: "16px",
                       cursor: "pointer",
                       display: "flex",
                       flexDirection: "column",
                       alignItems: "center",
                       justifyContent: "center",
-                      color: PINTEREST.primary,
+                      color: GREEN.accent,
                       background: "transparent",
                     }}
                   >
@@ -883,20 +810,19 @@ export default function MyLibraryScreen({
           <div style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column" }}>
             {selectedStore ? (
               <>
-                {/* Selected Library Header */}
                 <div style={{
                   padding: "16px 24px",
-                  background: "white",
-                  borderBottom: `1px solid ${PINTEREST.border}`,
+                  background: GREEN.medium,
+                  borderBottom: `1px solid ${GREEN.border}`,
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "space-between",
                 }}>
                   <div>
-                    <h3 style={{ fontSize: "18px", fontWeight: "700", margin: "0 0 4px" }}>
+                    <h3 style={{ fontSize: "18px", fontWeight: "700", margin: "0 0 4px", color: GREEN.textPrimary }}>
                       {selectedStore.name}
                     </h3>
-                    <div style={{ display: "flex", gap: "12px", fontSize: "13px", color: PINTEREST.textLight }}>
+                    <div style={{ display: "flex", gap: "12px", fontSize: "13px", color: GREEN.textSecondary }}>
                       <span><FaBook size={12} /> {storeOffers.length} books</span>
                       <span><FaEyeSlash size={12} /> Private Collection</span>
                     </div>
@@ -905,12 +831,10 @@ export default function MyLibraryScreen({
                   <div style={{ display: "flex", gap: "12px" }}>
                     <motion.button
                       whileHover={{ scale: 1.05 }}
-                      onClick={() => {
-                        setShowAddBookModal(true);
-                      }}
+                      onClick={() => setShowAddBookModal(true)}
                       style={{
                         padding: "10px 20px",
-                        background: PINTEREST.primary,
+                        background: GREEN.accent,
                         color: "white",
                         border: "none",
                         borderRadius: "8px",
@@ -927,7 +851,6 @@ export default function MyLibraryScreen({
                   </div>
                 </div>
 
-                {/* Books Grid */}
                 <div style={{ 
                   flex: 1, 
                   overflowY: "auto", 
@@ -935,35 +858,19 @@ export default function MyLibraryScreen({
                   display: "grid",
                   gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",
                   gap: "20px",
-                  alignContent: "start",
                 }}>
                   {loadingOffers ? (
                     <div style={{ gridColumn: "1 / -1", textAlign: "center", padding: "60px 20px" }}>
-                      <div style={{
-                        width: "40px",
-                        height: "40px",
-                        border: `3px solid ${PINTEREST.primary}20`,
-                        borderTopColor: PINTEREST.primary,
-                        borderRadius: "50%",
-                        margin: "0 auto",
-                        animation: "spin 1s linear infinite",
-                      }} />
-                      <p style={{ marginTop: "16px", color: PINTEREST.textLight }}>Loading books...</p>
+                      <div style={{ width: "40px", height: "40px", border: `3px solid ${GREEN.accent}20`, borderTopColor: GREEN.accent, borderRadius: "50%", margin: "0 auto", animation: "spin 1s linear infinite" }} />
+                      <p style={{ marginTop: "16px", color: GREEN.textSecondary }}>Loading books...</p>
                     </div>
                   ) : filteredOffers.length === 0 ? (
-                    <div style={{ 
-                      gridColumn: "1 / -1", 
-                      textAlign: "center", 
-                      padding: "60px 20px",
-                      background: "white",
-                      borderRadius: "16px",
-                      border: `2px dashed ${PINTEREST.border}`,
-                    }}>
-                      <FaBook size={60} style={{ color: PINTEREST.textLight, opacity: 0.5, marginBottom: "20px" }} />
-                      <h3 style={{ fontSize: "20px", fontWeight: "600", color: PINTEREST.textDark, marginBottom: "8px" }}>
+                    <div style={{ gridColumn: "1 / -1", textAlign: "center", padding: "60px 20px", background: GREEN.medium, borderRadius: "16px", border: `2px dashed ${GREEN.border}` }}>
+                      <FaBook size={60} style={{ color: GREEN.textSecondary, opacity: 0.5, marginBottom: "20px" }} />
+                      <h3 style={{ fontSize: "20px", fontWeight: "600", color: GREEN.textPrimary, marginBottom: "8px" }}>
                         Empty Library
                       </h3>
-                      <p style={{ color: PINTEREST.textLight, fontSize: "15px", marginBottom: "24px" }}>
+                      <p style={{ color: GREEN.textSecondary, fontSize: "15px", marginBottom: "24px" }}>
                         No books in this library yet
                       </p>
                       <motion.button
@@ -971,227 +878,201 @@ export default function MyLibraryScreen({
                         onClick={() => setShowAddBookModal(true)}
                         style={{
                           padding: "12px 28px",
-                          background: PINTEREST.primary,
+                          background: GREEN.accent,
                           color: "white",
                           border: "none",
                           borderRadius: "8px",
                           fontSize: "15px",
                           fontWeight: "600",
-                          cursor: "pointer",
                         }}
                       >
                         Add First Book
                       </motion.button>
                     </div>
                   ) : (
-                    <AnimatePresence>
-                      {filteredOffers.map(offer => (
-                        <motion.div
-                          key={offer.id}
-                          initial={{ opacity: 0, y: 20 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0 }}
-                          whileHover={{ y: -4 }}
+                    filteredOffers.map(offer => (
+                      <motion.div
+                        key={offer.id}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        whileHover={{ y: -4 }}
+                        style={{
+                          position: "relative",
+                          borderRadius: "12px",
+                          overflow: "hidden",
+                          background: GREEN.medium,
+                          boxShadow: GREEN.cardShadow,
+                          border: `1px solid ${GREEN.border}`,
+                        }}
+                      >
+                        <button
+                          onClick={(e) => { 
+                            e.stopPropagation(); 
+                            setShowBookMenu(showBookMenu === offer.id ? null : offer.id); 
+                          }}
                           style={{
-                            position: "relative",
-                            borderRadius: "12px",
-                            overflow: "hidden",
-                            background: "white",
-                            boxShadow: PINTEREST.cardShadow,
-                            border: `1px solid ${PINTEREST.border}`,
+                            position: "absolute",
+                            top: "8px",
+                            right: "8px",
+                            width: "28px",
+                            height: "28px",
+                            borderRadius: "6px",
+                            background: "rgba(26, 58, 42, 0.9)",
+                            border: `1px solid ${GREEN.border}`,
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            cursor: "pointer",
+                            zIndex: 10,
                           }}
                         >
-                          <button
-                            onClick={(e) => { 
-                              e.stopPropagation(); 
-                              setShowBookMenu(showBookMenu === offer.id ? null : offer.id); 
-                            }}
+                          <FaEllipsisV size={14} color={GREEN.textPrimary} />
+                        </button>
+
+                        {showBookMenu === offer.id && (
+                          <motion.div
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
                             style={{
                               position: "absolute",
-                              top: "8px",
+                              top: "40px",
                               right: "8px",
-                              width: "28px",
-                              height: "28px",
-                              borderRadius: "6px",
-                              background: "rgba(255, 255, 255, 0.9)",
-                              border: `1px solid ${PINTEREST.border}`,
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "center",
-                              cursor: "pointer",
-                              zIndex: 10,
+                              background: GREEN.medium,
+                              borderRadius: "8px",
+                              boxShadow: GREEN.cardShadowHover,
+                              border: `1px solid ${GREEN.border}`,
+                              zIndex: 20,
+                              minWidth: "180px",
                             }}
+                            onClick={e => e.stopPropagation()}
                           >
-                            <FaEllipsisV size={14} />
-                          </button>
-
-                          {showBookMenu === offer.id && (
-                            <motion.div
-                              initial={{ opacity: 0, scale: 0.95 }}
-                              animate={{ opacity: 1, scale: 1 }}
-                              style={{
-                                position: "absolute",
-                                top: "40px",
-                                right: "8px",
-                                background: "white",
-                                borderRadius: "8px",
-                                boxShadow: PINTEREST.cardShadowHover,
-                                border: `1px solid ${PINTEREST.border}`,
-                                zIndex: 20,
-                                minWidth: "180px",
-                                overflow: "hidden",
+                            <button
+                              onClick={() => {
+                                setBookToPublish(offer);
+                                setPublishForm({
+                                  type: "sell",
+                                  price: "",
+                                  exchangeBook: "",
+                                  latitude: offer.latitude || 40.7128,
+                                  longitude: offer.longitude || -74.0060,
+                                });
+                                setShowPublishModal(true);
+                                setShowBookMenu(null);
                               }}
-                              onClick={e => e.stopPropagation()}
-                            >
-                              <button
-                                onClick={() => {
-                                  setBookToPublish(offer);
-                                  setPublishForm({
-                                    type: "sell",
-                                    price: "",
-                                    exchangeBook: "",
-                                    latitude: offer.latitude || 40.7128,
-                                    longitude: offer.longitude || -74.0060,
-                                  });
-                                  setShowPublishModal(true);
-                                  setShowBookMenu(null);
-                                }}
-                                style={{
-                                  width: "100%",
-                                  padding: "12px 16px",
-                                  background: "transparent",
-                                  border: "none",
-                                  borderBottom: `1px solid ${PINTEREST.border}`,
-                                  color: PINTEREST.textDark,
-                                  fontSize: "14px",
-                                  fontWeight: "500",
-                                  cursor: "pointer",
-                                  display: "flex",
-                                  alignItems: "center",
-                                  gap: "10px",
-                                  textAlign: "left",
-                                }}
-                              >
-                                <FaGlobe size={14} /> Publish as Offer
-                              </button>
-                              <button
-                                onClick={() => { 
-                                  handleRemove(offer.id); 
-                                  setShowBookMenu(null); 
-                                }}
-                                style={{
-                                  width: "100%",
-                                  padding: "12px 16px",
-                                  background: "transparent",
-                                  border: "none",
-                                  color: PINTEREST.primary,
-                                  fontSize: "14px",
-                                  fontWeight: "500",
-                                  cursor: "pointer",
-                                  display: "flex",
-                                  alignItems: "center",
-                                  gap: "10px",
-                                  textAlign: "left",
-                                }}
-                              >
-                                <FaTrash size={14} /> Remove from Library
-                              </button>
-                            </motion.div>
-                          )}
-
-                          <div style={{ height: "140px", overflow: "hidden" }}>
-                            <img
-                              src={getImageSource(offer)}
-                              alt={offer.bookTitle}
                               style={{
                                 width: "100%",
-                                height: "100%",
-                                objectFit: "cover",
+                                padding: "12px 16px",
+                                background: "transparent",
+                                border: "none",
+                                borderBottom: `1px solid ${GREEN.border}`,
+                                color: GREEN.textPrimary,
+                                fontSize: "14px",
+                                fontWeight: "500",
+                                cursor: "pointer",
+                                display: "flex",
+                                alignItems: "center",
+                                gap: "10px",
+                                textAlign: "left",
                               }}
-                            />
-                            <div style={{
-                              position: "absolute",
-                              top: "8px",
-                              left: "8px",
-                              background: PINTEREST.primary,
-                              color: "white",
-                              padding: "4px 8px",
-                              borderRadius: "6px",
-                              fontSize: "10px",
-                              fontWeight: "600",
-                            }}>
-                              Private
-                            </div>
-                          </div>
+                            >
+                              <FaGlobe size={14} /> Publish as Offer
+                            </button>
+                            <button
+                              onClick={() => { 
+                                handleRemove(offer.id); 
+                                setShowBookMenu(null); 
+                              }}
+                              style={{
+                                width: "100%",
+                                padding: "12px 16px",
+                                background: "transparent",
+                                border: "none",
+                                color: "#FF6B6B",
+                                fontSize: "14px",
+                                fontWeight: "500",
+                                cursor: "pointer",
+                                display: "flex",
+                                alignItems: "center",
+                                gap: "10px",
+                                textAlign: "left",
+                              }}
+                            >
+                              <FaTrash size={14} /> Remove from Library
+                            </button>
+                          </motion.div>
+                        )}
 
-                          <div style={{ padding: "16px" }}>
-                            <h4 style={{
-                              fontSize: "14px",
-                              fontWeight: "600",
-                              margin: "0 0 6px",
-                              color: PINTEREST.textDark,
-                              lineHeight: 1.3,
-                              overflow: "hidden",
-                              display: "-webkit-box",
-                              WebkitLineClamp: 2,
-                              WebkitBoxOrient: "vertical",
-                            }}>
-                              {offer.bookTitle}
-                            </h4>
-                            {offer.author && (
-                              <p style={{
-                                fontSize: "12px",
-                                color: PINTEREST.textLight,
-                                fontStyle: "italic",
-                                margin: "0 0 8px",
-                                overflow: "hidden",
-                                textOverflow: "ellipsis",
-                                whiteSpace: "nowrap",
-                              }}>
-                                {offer.author}
-                              </p>
-                            )}
-                            <div style={{
-                              display: "flex",
-                              justifyContent: "space-between",
-                              alignItems: "center",
-                              fontSize: "12px",
-                              color: PINTEREST.textLight,
-                            }}>
-                              <span style={{
-                                background: PINTEREST.grayLight,
-                                padding: "4px 8px",
-                                borderRadius: "6px",
-                              }}>
-                                {offer.genre || "Fiction"}
-                              </span>
-                              <span>{offer.condition || "Good"}</span>
-                            </div>
+                        <div style={{ height: "140px", overflow: "hidden" }}>
+                          <img
+                            src={getImageSource(offer)}
+                            alt={offer.bookTitle}
+                            style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                          />
+                          <div style={{
+                            position: "absolute",
+                            top: "8px",
+                            left: "8px",
+                            background: GREEN.accent,
+                            color: "white",
+                            padding: "4px 8px",
+                            borderRadius: "6px",
+                            fontSize: "10px",
+                            fontWeight: "600",
+                          }}>
+                            Private
                           </div>
-                        </motion.div>
-                      ))}
-                    </AnimatePresence>
+                        </div>
+
+                        <div style={{ padding: "16px" }}>
+                          <h4 style={{
+                            fontSize: "14px",
+                            fontWeight: "600",
+                            margin: "0 0 6px",
+                            color: GREEN.textPrimary,
+                            lineHeight: 1.3,
+                            overflow: "hidden",
+                            display: "-webkit-box",
+                            WebkitLineClamp: 2,
+                            WebkitBoxOrient: "vertical",
+                          }}>
+                            {offer.bookTitle}
+                          </h4>
+                          {offer.author && (
+                            <p style={{
+                              fontSize: "12px",
+                              color: GREEN.textSecondary,
+                              fontStyle: "italic",
+                              margin: "0 0 8px",
+                            }}>
+                              {offer.author}
+                            </p>
+                          )}
+                          <div style={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            fontSize: "12px",
+                            color: GREEN.textSecondary,
+                          }}>
+                            <span style={{ background: GREEN.grayLight, padding: "4px 8px", borderRadius: "6px" }}>
+                              {offer.genre || "Fiction"}
+                            </span>
+                            <span>{offer.condition || "Good"}</span>
+                          </div>
+                        </div>
+                      </motion.div>
+                    ))
                   )}
                 </div>
               </>
             ) : (
-              <div style={{ 
-                flex: 1, 
-                display: "flex", 
-                alignItems: "center", 
-                justifyContent: "center",
-                padding: "40px",
-              }}>
+              <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: "40px" }}>
                 <div style={{ textAlign: "center", maxWidth: "400px" }}>
-                  <FaFolder size={80} style={{ color: PINTEREST.textLight, opacity: 0.5, marginBottom: "24px" }} />
-                  <h3 style={{ fontSize: "22px", fontWeight: "600", color: PINTEREST.textDark, marginBottom: "12px" }}>
+                  <FaFolder size={80} style={{ color: GREEN.textSecondary, opacity: 0.5, marginBottom: "24px" }} />
+                  <h3 style={{ fontSize: "22px", fontWeight: "600", color: GREEN.textPrimary, marginBottom: "12px" }}>
                     Select a Library
                   </h3>
-                  <p style={{ color: PINTEREST.textLight, fontSize: "16px", lineHeight: 1.5 }}>
+                  <p style={{ color: GREEN.textSecondary, fontSize: "16px", lineHeight: 1.5 }}>
                     Choose a library from the row above to view and manage your private books
-                  </p>
-                  <p style={{ color: PINTEREST.textMuted, fontSize: "14px", marginTop: "16px" }}>
-                    Or create a new library to get started
                   </p>
                 </div>
               </div>
@@ -1200,18 +1081,18 @@ export default function MyLibraryScreen({
         </div>
       </div>
 
-      {/* Modals (same as before) */}
+      {/* Modals */}
       <AnimatePresence>
         {showCreateStoreModal && (
           <>
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowCreateStoreModal(false)} style={{ position: "fixed", inset: 0, background: PINTEREST.overlay, zIndex: 1000 }} />
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowCreateStoreModal(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", zIndex: 1000 }} />
             <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} style={{ position: "fixed", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1001 }} onClick={e => e.stopPropagation()}>
-              <div style={{ background: "white", borderRadius: 16, padding: 32, width: "90%", maxWidth: 480, boxShadow: "0 20px 60px rgba(0,0,0,0.3)" }}>
-                <h3 style={{ fontSize: 20, fontWeight: 700, marginBottom: 24, textAlign: "center" }}>Create New Library</h3>
-                <input type="text" value={newStoreName} onChange={e => setNewStoreName(e.target.value)} placeholder="e.g. My Sci-Fi Collection" autoFocus style={{ width: "100%", padding: 14, borderRadius: 8, border: `1px solid ${PINTEREST.border}`, fontSize: 16, marginBottom: 24 }} />
+              <div style={{ background: GREEN.medium, borderRadius: 16, padding: 32, width: "90%", maxWidth: 480, boxShadow: "0 20px 60px rgba(0,0,0,0.4)" }}>
+                <h3 style={{ fontSize: 20, fontWeight: 700, marginBottom: 24, textAlign: "center", color: GREEN.textPrimary }}>Create New Library</h3>
+                <input type="text" value={newStoreName} onChange={e => setNewStoreName(e.target.value)} placeholder="e.g. My Sci-Fi Collection" autoFocus style={{ width: "100%", padding: 14, borderRadius: 8, border: `1px solid ${GREEN.border}`, background: GREEN.grayLight, color: GREEN.textPrimary, fontSize: 16, marginBottom: 24 }} />
                 <div style={{ display: "flex", justifyContent: "flex-end", gap: 12 }}>
-                  <button onClick={() => setShowCreateStoreModal(false)} style={{ padding: "12px 24px", background: PINTEREST.grayLight, borderRadius: 8, fontWeight: 600 }}>Cancel</button>
-                  <button onClick={handleCreateStore} disabled={creatingStore || !newStoreName.trim()} style={{ padding: "12px 24px", background: PINTEREST.primary, color: "white", borderRadius: 8, fontWeight: 600 }}>
+                  <button onClick={() => setShowCreateStoreModal(false)} style={{ padding: "12px 24px", background: GREEN.grayLight, borderRadius: 8, fontWeight: 600, color: GREEN.textPrimary }}>Cancel</button>
+                  <button onClick={handleCreateStore} disabled={creatingStore || !newStoreName.trim()} style={{ padding: "12px 24px", background: GREEN.accent, color: "white", borderRadius: 8, fontWeight: 600 }}>
                     {creatingStore ? "Creating..." : "Create"}
                   </button>
                 </div>
@@ -1224,27 +1105,21 @@ export default function MyLibraryScreen({
       <AnimatePresence>
         {showAddBookModal && selectedStore && (
           <>
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowAddBookModal(false)} style={{ position: "fixed", inset: 0, background: PINTEREST.overlay, zIndex: 1000 }} />
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowAddBookModal(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", zIndex: 1000 }} />
             <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} style={{ position: "fixed", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px", zIndex: 1001 }} onClick={e => e.stopPropagation()}>
-              <div style={{ background: "white", borderRadius: 16, width: "100%", maxWidth: 640, maxHeight: "95vh", overflowY: "auto", boxShadow: "0 24px 80px rgba(0,0,0,0.3)", padding: "32px" }}>
-                <h3 style={{ fontSize: 22, fontWeight: 700, marginBottom: 8, textAlign: "center" }}>Add Book to "{selectedStore.name}"</h3>
-                <p style={{ textAlign: "center", color: PINTEREST.textLight, marginBottom: 32 }}>This book will stay <strong>private</strong> until you choose to publish it later.</p>
+              <div style={{ background: GREEN.medium, borderRadius: 16, width: "100%", maxWidth: 640, maxHeight: "95vh", overflowY: "auto", boxShadow: "0 24px 80px rgba(0,0,0,0.4)", padding: "32px" }}>
+                <h3 style={{ fontSize: 22, fontWeight: 700, marginBottom: 8, textAlign: "center", color: GREEN.textPrimary }}>Add Book to "{selectedStore.name}"</h3>
+                <p style={{ textAlign: "center", color: GREEN.textSecondary, marginBottom: 32 }}>This book will stay <strong>private</strong> until you choose to publish it later.</p>
 
-                {/* Image */}
                 <div style={{ marginBottom: 28 }}>
-                  <label style={{ display: "block", marginBottom: 10, fontWeight: 600, fontSize: 15 }}>Book Cover (optional)</label>
-                  <div onClick={() => document.getElementById("bookImageInput")?.click()} style={{ height: 240, border: `2px dashed ${PINTEREST.border}`, borderRadius: 16, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", cursor: "pointer", background: newBookForm.imagePreview ? `url(${newBookForm.imagePreview}) center/cover` : PINTEREST.grayLight, position: "relative" }}>
+                  <label style={{ display: "block", marginBottom: 10, fontWeight: 600, color: GREEN.textPrimary }}>Book Cover (optional)</label>
+                  <div onClick={() => document.getElementById("bookImageInput")?.click()} style={{ height: 240, border: `2px dashed ${GREEN.border}`, borderRadius: 16, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", cursor: "pointer", background: newBookForm.imagePreview ? `url(${newBookForm.imagePreview}) center/cover` : GREEN.grayLight, position: "relative" }}>
                     {!newBookForm.imagePreview && (
                       <>
-                        <FaImage size={40} style={{ color: PINTEREST.textLight, marginBottom: 12 }} />
-                        <p style={{ margin: 0, fontSize: 15, color: PINTEREST.textLight }}>Click to upload cover</p>
-                        <p style={{ margin: "6px 0 0", fontSize: 13, color: PINTEREST.textMuted }}>JPG, PNG up to 5MB</p>
+                        <FaImage size={40} style={{ color: GREEN.textSecondary, marginBottom: 12 }} />
+                        <p style={{ margin: 0, fontSize: 15, color: GREEN.textSecondary }}>Click to upload cover</p>
+                        <p style={{ margin: "6px 0 0", fontSize: 13, color: GREEN.textMuted }}>JPG, PNG up to 5MB</p>
                       </>
-                    )}
-                    {newBookForm.imagePreview && (
-                      <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.4)", borderRadius: 16, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                        <FaImage size={40} style={{ color: "white" }} />
-                      </div>
                     )}
                   </div>
                   <input id="bookImageInput" type="file" accept="image/*" onChange={e => {
@@ -1255,43 +1130,42 @@ export default function MyLibraryScreen({
                   }} style={{ display: "none" }} />
                   {newBookForm.imagePreview && (
                     <div style={{ textAlign: "center", marginTop: 12 }}>
-                      <button onClick={() => setNewBookForm(prev => ({ ...prev, imageFile: null, imagePreview: null }))} style={{ color: PINTEREST.primary, fontSize: 14, background: "none", border: "none", cursor: "pointer" }}>Remove Image</button>
+                      <button onClick={() => setNewBookForm(prev => ({ ...prev, imageFile: null, imagePreview: null }))} style={{ color: GREEN.accent, fontSize: 14, background: "none", border: "none", cursor: "pointer" }}>Remove Image</button>
                     </div>
                   )}
                 </div>
 
-                {/* Form */}
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 20, marginBottom: 28 }}>
                   <div>
-                    <label style={{ display: "block", marginBottom: 8, fontWeight: 600 }}>Title <span style={{ color: PINTEREST.primary }}>*</span></label>
-                    <input type="text" value={newBookForm.bookTitle} onChange={e => setNewBookForm(prev => ({ ...prev, bookTitle: e.target.value }))} placeholder="e.g. The Great Gatsby" style={{ width: "100%", padding: 12, borderRadius: 8, border: `1px solid ${PINTEREST.border}`, fontSize: 15 }} />
+                    <label style={{ display: "block", marginBottom: 8, fontWeight: 600, color: GREEN.textPrimary }}>Title <span style={{ color: GREEN.accent }}>*</span></label>
+                    <input type="text" value={newBookForm.bookTitle} onChange={e => setNewBookForm(prev => ({ ...prev, bookTitle: e.target.value }))} placeholder="e.g. The Great Gatsby" style={{ width: "100%", padding: 12, borderRadius: 8, border: `1px solid ${GREEN.border}`, background: GREEN.grayLight, color: GREEN.textPrimary, fontSize: 15 }} />
                   </div>
                   <div>
-                    <label style={{ display: "block", marginBottom: 8, fontWeight: 600 }}>Author <span style={{ color: PINTEREST.primary }}>*</span></label>
-                    <input type="text" value={newBookForm.author} onChange={e => setNewBookForm(prev => ({ ...prev, author: e.target.value }))} placeholder="e.g. F. Scott Fitzgerald" style={{ width: "100%", padding: 12, borderRadius: 8, border: `1px solid ${PINTEREST.border}`, fontSize: 15 }} />
+                    <label style={{ display: "block", marginBottom: 8, fontWeight: 600, color: GREEN.textPrimary }}>Author <span style={{ color: GREEN.accent }}>*</span></label>
+                    <input type="text" value={newBookForm.author} onChange={e => setNewBookForm(prev => ({ ...prev, author: e.target.value }))} placeholder="e.g. F. Scott Fitzgerald" style={{ width: "100%", padding: 12, borderRadius: 8, border: `1px solid ${GREEN.border}`, background: GREEN.grayLight, color: GREEN.textPrimary, fontSize: 15 }} />
                   </div>
                   <div>
-                    <label style={{ display: "block", marginBottom: 8, fontWeight: 600 }}>Genre</label>
-                    <select value={newBookForm.genre} onChange={e => setNewBookForm(prev => ({ ...prev, genre: e.target.value }))} style={{ width: "100%", padding: 12, borderRadius: 8, border: `1px solid ${PINTEREST.border}`, fontSize: 15, background: "white" }}>
+                    <label style={{ display: "block", marginBottom: 8, fontWeight: 600, color: GREEN.textPrimary }}>Genre</label>
+                    <select value={newBookForm.genre} onChange={e => setNewBookForm(prev => ({ ...prev, genre: e.target.value }))} style={{ width: "100%", padding: 12, borderRadius: 8, border: `1px solid ${GREEN.border}`, background: GREEN.grayLight, color: GREEN.textPrimary, fontSize: 15 }}>
                       <option>Fiction</option><option>Non-Fiction</option><option>Science Fiction</option><option>Fantasy</option><option>Mystery</option><option>Romance</option><option>Biography</option><option>History</option><option>Self-Help</option>
                     </select>
                   </div>
                   <div>
-                    <label style={{ display: "block", marginBottom: 8, fontWeight: 600 }}>Condition</label>
-                    <select value={newBookForm.condition} onChange={e => setNewBookForm(prev => ({ ...prev, condition: e.target.value }))} style={{ width: "100%", padding: 12, borderRadius: 8, border: `1px solid ${PINTEREST.border}`, fontSize: 15, background: "white" }}>
+                    <label style={{ display: "block", marginBottom: 8, fontWeight: 600, color: GREEN.textPrimary }}>Condition</label>
+                    <select value={newBookForm.condition} onChange={e => setNewBookForm(prev => ({ ...prev, condition: e.target.value }))} style={{ width: "100%", padding: 12, borderRadius: 8, border: `1px solid ${GREEN.border}`, background: GREEN.grayLight, color: GREEN.textPrimary, fontSize: 15 }}>
                       <option>New</option><option>Like New</option><option>Good</option><option>Fair</option><option>Poor</option>
                     </select>
                   </div>
                 </div>
 
                 <div style={{ marginBottom: 32 }}>
-                  <label style={{ display: "block", marginBottom: 8, fontWeight: 600 }}>Description (optional)</label>
-                  <textarea value={newBookForm.description} onChange={e => setNewBookForm(prev => ({ ...prev, description: e.target.value }))} rows={4} placeholder="Add notes about edition, highlights, or condition details..." style={{ width: "100%", padding: 12, borderRadius: 8, border: `1px solid ${PINTEREST.border}`, fontSize: 15, resize: "vertical" }} />
+                  <label style={{ display: "block", marginBottom: 8, fontWeight: 600, color: GREEN.textPrimary }}>Description (optional)</label>
+                  <textarea value={newBookForm.description} onChange={e => setNewBookForm(prev => ({ ...prev, description: e.target.value }))} rows={4} placeholder="Add notes about edition, highlights, or condition details..." style={{ width: "100%", padding: 12, borderRadius: 8, border: `1px solid ${GREEN.border}`, background: GREEN.grayLight, color: GREEN.textPrimary, fontSize: 15, resize: "vertical" }} />
                 </div>
 
                 <div style={{ display: "flex", justifyContent: "flex-end", gap: 16 }}>
-                  <button onClick={() => setShowAddBookModal(false)} style={{ padding: "14px 28px", background: PINTEREST.grayLight, borderRadius: 8, fontWeight: 600, fontSize: 15 }}>Cancel</button>
-                  <button onClick={handleAddBook} disabled={addingBook || !newBookForm.bookTitle.trim() || !newBookForm.author.trim()} style={{ padding: "14px 28px", background: addingBook ? PINTEREST.textLight : PINTEREST.primary, color: "white", borderRadius: 8, fontWeight: 600, fontSize: 15, cursor: addingBook ? "not-allowed" : "pointer" }}>
+                  <button onClick={() => setShowAddBookModal(false)} style={{ padding: "14px 28px", background: GREEN.grayLight, borderRadius: 8, fontWeight: 600, color: GREEN.textPrimary }}>Cancel</button>
+                  <button onClick={handleAddBook} disabled={addingBook || !newBookForm.bookTitle.trim() || !newBookForm.author.trim()} style={{ padding: "14px 28px", background: addingBook ? GREEN.grayLight : GREEN.accent, color: "white", borderRadius: 8, fontWeight: 600, cursor: addingBook ? "not-allowed" : "pointer" }}>
                     {addingBook ? "Adding Book..." : "Add to Library"}
                   </button>
                 </div>
@@ -1304,13 +1178,13 @@ export default function MyLibraryScreen({
       <AnimatePresence>
         {showPublishModal && bookToPublish && (
           <>
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowPublishModal(false)} style={{ position: "fixed", inset: 0, background: PINTEREST.overlay, zIndex: 1000 }} />
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowPublishModal(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", zIndex: 1000 }} />
             <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} style={{ position: "fixed", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px", zIndex: 1001 }} onClick={e => e.stopPropagation()}>
-              <div style={{ background: "white", borderRadius: 16, padding: 32, width: "100%", maxWidth: 500, boxShadow: "0 20px 60px rgba(0,0,0,0.3)" }}>
-                <h3 style={{ fontSize: 20, fontWeight: 700, marginBottom: 24 }}>Publish "{bookToPublish.bookTitle}"</h3>
+              <div style={{ background: GREEN.medium, borderRadius: 16, padding: 32, width: "100%", maxWidth: 500, boxShadow: "0 20px 60px rgba(0,0,0,0.4)" }}>
+                <h3 style={{ fontSize: 20, fontWeight: 700, marginBottom: 24, color: GREEN.textPrimary }}>Publish "{bookToPublish.bookTitle}"</h3>
 
                 <div style={{ marginBottom: 24 }}>
-                  <label style={{ display: "block", marginBottom: 8, fontWeight: 600 }}>Offer Type</label>
+                  <label style={{ display: "block", marginBottom: 8, fontWeight: 600, color: GREEN.textPrimary }}>Offer Type</label>
                   <div style={{ display: "flex", gap: 12 }}>
                     <button
                       onClick={() => setPublishForm(prev => ({ ...prev, type: "sell" }))}
@@ -1318,9 +1192,9 @@ export default function MyLibraryScreen({
                         flex: 1,
                         padding: "12px",
                         borderRadius: 8,
-                        background: publishForm.type === "sell" ? PINTEREST.primary : PINTEREST.grayLight,
-                        color: publishForm.type === "sell" ? "white" : PINTEREST.textDark,
-                        border: `1px solid ${publishForm.type === "sell" ? PINTEREST.primary : PINTEREST.border}`,
+                        background: publishForm.type === "sell" ? GREEN.accent : GREEN.grayLight,
+                        color: publishForm.type === "sell" ? "white" : GREEN.textPrimary,
+                        border: `1px solid ${publishForm.type === "sell" ? GREEN.accent : GREEN.border}`,
                       }}
                     >
                       <FaDollarSign style={{ marginRight: 6 }} /> For Sale
@@ -1331,9 +1205,9 @@ export default function MyLibraryScreen({
                         flex: 1,
                         padding: "12px",
                         borderRadius: 8,
-                        background: publishForm.type === "exchange" ? PINTEREST.success : PINTEREST.grayLight,
-                        color: publishForm.type === "exchange" ? "white" : PINTEREST.textDark,
-                        border: `1px solid ${publishForm.type === "exchange" ? PINTEREST.success : PINTEREST.border}`,
+                        background: publishForm.type === "exchange" ? GREEN.success : GREEN.grayLight,
+                        color: publishForm.type === "exchange" ? "white" : GREEN.textPrimary,
+                        border: `1px solid ${publishForm.type === "exchange" ? GREEN.success : GREEN.border}`,
                       }}
                     >
                       <FaExchangeAlt style={{ marginRight: 6 }} /> Exchange
@@ -1343,7 +1217,7 @@ export default function MyLibraryScreen({
 
                 {publishForm.type === "sell" && (
                   <div style={{ marginBottom: 24 }}>
-                    <label style={{ display: "block", marginBottom: 8, fontWeight: 600 }}>Price ($)</label>
+                    <label style={{ display: "block", marginBottom: 8, fontWeight: 600, color: GREEN.textPrimary }}>Price ($)</label>
                     <input
                       type="number"
                       value={publishForm.price}
@@ -1351,34 +1225,34 @@ export default function MyLibraryScreen({
                       placeholder="e.g. 15.99"
                       min="0"
                       step="0.01"
-                      style={{ width: "100%", padding: 12, borderRadius: 8, border: `1px solid ${PINTEREST.border}` }}
+                      style={{ width: "100%", padding: 12, borderRadius: 8, border: `1px solid ${GREEN.border}`, background: GREEN.grayLight, color: GREEN.textPrimary }}
                     />
                   </div>
                 )}
 
                 {publishForm.type === "exchange" && (
                   <div style={{ marginBottom: 24 }}>
-                    <label style={{ display: "block", marginBottom: 8, fontWeight: 600 }}>Book you want in exchange</label>
+                    <label style={{ display: "block", marginBottom: 8, fontWeight: 600, color: GREEN.textPrimary }}>Book you want in exchange</label>
                     <input
                       type="text"
                       value={publishForm.exchangeBook}
                       onChange={e => setPublishForm(prev => ({ ...prev, exchangeBook: e.target.value }))}
                       placeholder="e.g. The Hobbit"
-                      style={{ width: "100%", padding: 12, borderRadius: 8, border: `1px solid ${PINTEREST.border}` }}
+                      style={{ width: "100%", padding: 12, borderRadius: 8, border: `1px solid ${GREEN.border}`, background: GREEN.grayLight, color: GREEN.textPrimary }}
                     />
                   </div>
                 )}
 
                 <div style={{ marginBottom: 24 }}>
-                  <label style={{ display: "block", marginBottom: 8, fontWeight: 600 }}>Location <FaMapMarkerAlt style={{ marginLeft: 6 }} /></label>
-                  <p style={{ fontSize: 13, color: PINTEREST.textLight, margin: "4px 0 12px" }}>
+                  <label style={{ display: "block", marginBottom: 8, fontWeight: 600, color: GREEN.textPrimary }}>Location <FaMapMarkerAlt style={{ marginLeft: 6 }} /></label>
+                  <p style={{ fontSize: 13, color: GREEN.textSecondary, margin: "4px 0 12px" }}>
                     Default: New York. You can update later in your profile.
                   </p>
                 </div>
 
                 <div style={{ display: "flex", justifyContent: "flex-end", gap: 12 }}>
-                  <button onClick={() => setShowPublishModal(false)} style={{ padding: "12px 24px", background: PINTEREST.grayLight, borderRadius: 8, fontWeight: 600 }}>Cancel</button>
-                  <button onClick={handlePublish} disabled={publishing} style={{ padding: "12px 24px", background: publishing ? PINTEREST.textLight : PINTEREST.primary, color: "white", borderRadius: 8, fontWeight: 600 }}>
+                  <button onClick={() => setShowPublishModal(false)} style={{ padding: "12px 24px", background: GREEN.grayLight, borderRadius: 8, fontWeight: 600, color: GREEN.textPrimary }}>Cancel</button>
+                  <button onClick={handlePublish} disabled={publishing} style={{ padding: "12px 24px", background: publishing ? GREEN.grayLight : GREEN.accent, color: "white", borderRadius: 8, fontWeight: 600 }}>
                     {publishing ? "Publishing..." : "Publish Offer"}
                   </button>
                 </div>
@@ -1392,33 +1266,9 @@ export default function MyLibraryScreen({
         @keyframes spin {
           to { transform: rotate(360deg); }
         }
-        
-        ::-webkit-scrollbar {
-          width: 8px;
-          height: 8px;
-        }
-        
-        ::-webkit-scrollbar-track {
-          background: ${PINTEREST.grayLight};
-        }
-        
-        ::-webkit-scrollbar-thumb {
-          background: ${PINTEREST.border};
-          border-radius: 4px;
-        }
-        
-        ::-webkit-scrollbar-thumb:hover {
-          background: ${PINTEREST.textLight};
-        }
-        
         input:focus, select:focus, textarea:focus {
           outline: none;
-          border-color: ${PINTEREST.primary} !important;
-          box-shadow: 0 0 0 3px rgba(230, 0, 35, 0.1);
-        }
-        
-        * {
-          -webkit-tap-highlight-color: transparent;
+          border-color: ${GREEN.accent} !important;
         }
       `}</style>
     </div>
