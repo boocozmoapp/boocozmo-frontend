@@ -1,9 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-// src/App.tsx - PREMIUM THEME
+// src/App.tsx - GOODREADS EXACT REPLICA
 import React, { useEffect, useState } from "react";
 import { BrowserRouter, Routes, Route, useNavigate, useLocation } from "react-router-dom";
-import { motion, AnimatePresence } from "framer-motion";
-import { FaHome, FaSearch, FaPlusSquare, FaBookOpen, FaUser } from "react-icons/fa";
+import { FaSearch, FaUserCircle, FaCaretDown, FaBell, FaEnvelope, FaBookOpen, FaHome, FaSignOutAlt } from "react-icons/fa";
 import SplashScreen from "./pages/SplashScreen";
 import HomeScreen from "./pages/HomeScreen";
 import OfferScreen from "./pages/OfferScreen";
@@ -25,153 +24,184 @@ type User = {
   token: string;
 } | null;
 
-// Premium loading screen
-function PremiumLoadingScreen() {
-  return (
-    <div className="fixed inset-0 bg-primary flex flex-col items-center justify-center z-50 overflow-hidden">
-      {/* Background Glow */}
-      <div className="absolute top-[-20%] left-[-20%] w-[60%] h-[60%] bg-secondary/10 rounded-full blur-[120px]" />
-      <div className="absolute bottom-[-20%] right-[-20%] w-[60%] h-[60%] bg-primary-light/20 rounded-full blur-[120px]" />
-
-      <motion.div
-        animate={{ rotate: 360 }}
-        transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-        className="w-16 h-16 border-4 border-primary-light border-t-secondary rounded-full"
-      />
-      <motion.p
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.5 }}
-        className="mt-6 text-text-muted font-serif tracking-widest text-sm"
-      >
-        LOADING EXPERIENCE...
-      </motion.p>
-    </div>
-  );
-}
-
-function MobileNavBar() {
+// Goodreads Header
+function GoodreadsHeader({ user, onLogout }: { user: User; onLogout: () => void }) {
   const navigate = useNavigate();
-  const location = useLocation();
-
-  const navItems = [
-    { icon: FaHome, route: "/", label: "Home" },
-    { icon: FaSearch, route: "/map", label: "Explore" },
-    { icon: FaPlusSquare, route: "/offer", label: "Post" },
-    { icon: FaBookOpen, route: "/my-library", label: "Library" },
-    { icon: FaUser, route: "/profile", label: "You" },
-  ];
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   return (
-    <div className="md:hidden fixed bottom-6 left-4 right-4 h-16 bg-primary/95 backdrop-blur-xl border border-white/10 rounded-2xl z-50 flex items-center justify-around px-2 shadow-2xl shadow-black/50">
-      {navItems.map((item) => {
-        const isActive = location.pathname === item.route;
-        return (
-          <button
-            key={item.label}
-            onClick={() => navigate(item.route)}
-            className={`relative flex flex-col items-center justify-center w-full h-full space-y-1 transition-colors ${
-              isActive ? "text-secondary" : "text-gray-400 hover:text-white"
-            }`}
-          >
-            <item.icon size={isActive ? 24 : 22} />
-            {isActive && (
-              <motion.div
-                layoutId="nav-indicator"
-                className="absolute -bottom-2 w-1 h-1 rounded-full bg-secondary"
-              />
-            )}
-          </button>
-        );
-      })}
-    </div>
+    <>
+      <header className="bg-[#f4f1ea] border-b border-[#d8d8d8] px-4 h-[50px] md:h-[60px] flex items-center sticky top-0 z-50 shadow-[0_1px_2px_rgba(0,0,0,0.05)]">
+        <div className="max-w-[1100px] mx-auto w-full flex items-center justify-between">
+          
+          <div className="flex items-center gap-6">
+            <h1 
+              onClick={() => navigate("/")}
+              className="text-2xl font-serif font-bold text-[#382110] tracking-tighter cursor-pointer hover:no-underline"
+            >
+              Boocozmo
+            </h1>
+
+            {/* Desktop Nav */}
+            <nav className="hidden md:flex items-center gap-1 text-[#382110] text-[14px]">
+              <button onClick={() => navigate("/")} className="px-3 py-2 font-sans hover:bg-white/50 rounded-sm">Home</button>
+              <button onClick={() => navigate("/my-library")} className="px-3 py-2 font-sans hover:bg-white/50 rounded-sm">My Books</button>
+              <div className="relative group">
+                 <button className="px-3 py-2 font-sans hover:bg-white/50 rounded-sm flex items-center gap-1">
+                   Browse <FaCaretDown size={10} className="text-[#999]" />
+                 </button>
+                 <div className="absolute top-full left-0 w-40 bg-white border border-[#d8d8d8] shadow-lg rounded-[3px] py-1 hidden group-hover:block z-50">
+                     <button onClick={() => navigate("/map")} className="w-full text-left px-4 py-2 hover:bg-[#f4f1ea]">Map View</button>
+                     <button onClick={() => navigate("/offer")} className="w-full text-left px-4 py-2 hover:bg-[#f4f1ea]">Post Offer</button>
+                     <div className="border-t border-[#eee] my-1"></div>
+                     <span className="block px-4 py-1 text-[10px] uppercase text-[#999] font-bold">Genres</span>
+                     <button onClick={() => navigate("/")} className="w-full text-left px-4 py-2 hover:bg-[#f4f1ea]">Fiction</button>
+                     <button onClick={() => navigate("/")} className="w-full text-left px-4 py-2 hover:bg-[#f4f1ea]">Non-Fiction</button>
+                 </div>
+              </div>
+              <div className="relative group">
+                 <button className="px-3 py-2 font-sans hover:bg-white/50 rounded-sm flex items-center gap-1">
+                   Community <FaCaretDown size={10} className="text-[#999]" />
+                 </button>
+                 <div className="absolute top-full left-0 w-40 bg-white border border-[#d8d8d8] shadow-lg rounded-[3px] py-1 hidden group-hover:block z-50">
+                     <button onClick={() => navigate("/community")} className="w-full text-left px-4 py-2 hover:bg-[#f4f1ea]">Discussions</button>
+                     <button onClick={() => navigate("/chat")} className="w-full text-left px-4 py-2 hover:bg-[#f4f1ea]">Messages</button>
+                 </div>
+              </div>
+            </nav>
+          </div>
+
+          {/* Search Bar - Desktop */}
+          <div className="hidden md:flex flex-1 max-w-[350px] mx-4">
+             <div className="relative w-full">
+                <input 
+                  type="text" 
+                  placeholder="Search books"
+                  className="w-full bg-white border border-[#d8d8d8] rounded-[3px] py-1.5 px-3 text-sm focus:outline-none focus:border-[#00635d] focus:ring-1 focus:ring-[#00635d] shadow-inner"
+                />
+                <button className="absolute right-0 top-0 bottom-0 px-3 text-[#555] hover:bg-[#eee] transition-colors rounded-r-[3px]">
+                  <FaSearch />
+                </button>
+             </div>
+          </div>
+
+          {/* Icons / Profile */}
+          <div className="flex items-center gap-3 md:gap-4 text-[#382110]">
+             <button className="md:hidden"><FaSearch size={18} /></button>
+             
+             <div className="hidden md:flex items-center gap-3 border-r border-[#ccc] pr-4 mr-1">
+               <button onClick={() => navigate("/chat")} className="text-[#382110] hover:text-white hover:bg-[#382110] p-1.5 rounded-full transition-colors relative">
+                 <FaEnvelope size={16} />
+               </button>
+               <button className="text-[#382110] hover:text-white hover:bg-[#382110] p-1.5 rounded-full transition-colors">
+                 <FaBell size={16} />
+               </button>
+             </div>
+
+             <div className="relative" onClick={() => setIsMenuOpen(!isMenuOpen)}>
+                <div className="w-8 h-8 rounded-full bg-[#e9e9e9] border border-[#ccc] flex items-center justify-center cursor-pointer overflow-hidden">
+                   {user?.name ? <span className="font-bold text-xs text-[#555]">{user.name.charAt(0)}</span> : <FaUserCircle className="text-[#999]" />}
+                </div>
+                
+                {/* Profile Dropdown */}
+                {isMenuOpen && (
+                   <div className="absolute right-0 top-10 w-48 bg-white border border-[#d8d8d8] shadow-lg rounded-[3px] py-1 z-50">
+                      <div className="px-4 py-2 border-b border-[#eee] text-sm text-[#382110] font-bold truncate">
+                        {user?.name}
+                      </div>
+                      <button onClick={() => navigate("/profile")} className="w-full text-left px-4 py-2 text-sm text-[#382110] hover:underline hover:bg-[#f4f1ea]">Profile</button>
+                      <button onClick={() => navigate("/my-library")} className="w-full text-left px-4 py-2 text-sm text-[#382110] hover:underline hover:bg-[#f4f1ea]">My Books</button>
+                      <button onClick={onLogout} className="w-full text-left px-4 py-2 text-sm text-[#382110] hover:underline hover:bg-[#f4f1ea] flex items-center gap-2">
+                        Sign out <FaSignOutAlt size={12} />
+                      </button>
+                   </div>
+                )}
+             </div>
+          </div>
+        </div>
+      </header>
+      
+      {/* Mobile Subheader (Like Screenshot) */}
+      <div className="md:hidden bg-white border-b border-[#eee] py-2 px-4 shadow-sm flex justify-between text-[13px] font-sans font-medium text-[#382110] overflow-x-auto whitespace-nowrap">
+         <span onClick={() => navigate("/my-library")} className="cursor-pointer">My Books</span>
+         <span onClick={() => navigate("/map")} className="cursor-pointer border-l border-[#eee] pl-4">Browse</span>
+         <span onClick={() => navigate("/community")} className="cursor-pointer border-l border-[#eee] pl-4">Community</span>
+      </div>
+    </>
   );
 }
 
 function AppContent() {
   const [user, setUser] = useState<User>(null);
-  const [isLoadingUser, setIsLoadingUser] = useState(true);
+  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
   useEffect(() => {
-    const initializeUser = async () => {
-      const saved = localStorage.getItem("user");
-      if (saved) {
-        try {
-          const parsedUser = JSON.parse(saved) as User;
-          if (parsedUser && parsedUser.token && parsedUser.email) {
-            setUser(parsedUser);
-          } else {
-            localStorage.removeItem("user");
-          }
-        } catch (error) {
-          console.error("Error loading user:", error);
-          localStorage.removeItem("user");
-        }
+    const saved = localStorage.getItem("user");
+    if (saved) {
+      try {
+        const u = JSON.parse(saved);
+        if (u && u.token) setUser(u);
+      } catch (e) {
+        console.error(e);
       }
-      setIsLoadingUser(false);
-    };
-
-    initializeUser();
+    }
+    setLoading(false);
   }, []);
 
-  const handleAuthSuccess = (userData: { email: string; name: string; id: string; token: string }) => {
-    const fullUser: User = {
-      email: userData.email,
-      name: userData.name,
-      id: userData.id.toString(),
-      token: userData.token,
-    };
-
+  const handleAuth = (u: any) => {
+    const fullUser = { ...u, id: u.id.toString() };
     localStorage.setItem("user", JSON.stringify(fullUser));
     setUser(fullUser);
   };
 
-  const goTo = (path: string) => () => navigate(path);
-
-  if (isLoadingUser) {
-    return <PremiumLoadingScreen />;
-  }
-
-  const authorized = !!user;
-
-  // Helper to render protected route or redirect
-  const ProtectedRoute = ({ element }: { element: React.ReactElement }) => {
-    return authorized ? element : <LoginScreen onLoginSuccess={handleAuthSuccess} onGoToSignup={goTo("/signup")} />;
+  const handleLogout = () => {
+    localStorage.removeItem("user");
+    setUser(null);
+    navigate("/login");
   };
 
-  return (
-    <div className="w-screen h-screen overflow-hidden bg-primary text-text-main flex flex-col relative">
-      <div className="flex-1 overflow-hidden relative z-0">
+  const goTo = (path: string) => () => navigate(path);
+
+  if (loading) return <div className="h-screen bg-[#f4f1ea] flex items-center justify-center">Loading...</div>;
+
+  const authProps = { currentUser: user! };
+
+  if (!user) {
+     return (
         <Routes>
-          {/* Public Routes */}
-          <Route path="/login" element={authorized ? <HomeScreen currentUser={user!} onAddPress={goTo("/offer")} onProfilePress={goTo("/profile")} onMapPress={goTo("/map")} /> : <LoginScreen onLoginSuccess={handleAuthSuccess} onGoToSignup={goTo("/signup")} />} />
-          <Route path="/signup" element={authorized ? <HomeScreen currentUser={user!} onAddPress={goTo("/offer")} onProfilePress={goTo("/profile")} onMapPress={goTo("/map")} /> : <SignupScreen onSignupSuccess={handleAuthSuccess} onGoToLogin={goTo("/login")} />} />
-
-          {/* Protected Routes */}
-          <Route path="/" element={<ProtectedRoute element={<HomeScreen currentUser={user!} onAddPress={goTo("/offer")} onProfilePress={goTo("/profile")} onMapPress={goTo("/map")} />} />} />
-          <Route path="/offer" element={<ProtectedRoute element={<OfferScreen onBack={goTo("/")} currentUser={user!} onProfilePress={goTo("/profile")} onMapPress={goTo("/map")} onAddPress={goTo("/offer")} />} />} />
-          <Route path="/offer/:id" element={<ProtectedRoute element={<OfferDetailScreen currentUser={user!} />} />} />
-          <Route path="/profile" element={<ProtectedRoute element={<ProfileScreen currentUser={user!} />} />} />
-          <Route path="/map" element={<ProtectedRoute element={<MapScreen currentUser={user!} />} />} />
-          <Route path="/chat" element={<ProtectedRoute element={<ChatScreen currentUser={user!} />} />} />
-          <Route path="/chat/:chatId" element={<ProtectedRoute element={<SingleChat currentUser={user!} />} />} />
-          <Route path="/my-library" element={<ProtectedRoute element={<MyLibraryScreen currentUser={user!} onBack={goTo("/")} onAddPress={goTo("/offer")} onProfilePress={goTo("/profile")} onMapPress={goTo("/map")} />} />} />
-          <Route path="/community" element={<ProtectedRoute element={<CommunityScreen />} />} />
+           <Route path="*" element={<LoginScreen onLoginSuccess={handleAuth} onGoToSignup={() => navigate("/signup")} />} />
+           <Route path="/signup" element={<SignupScreen onSignupSuccess={handleAuth} onGoToLogin={() => navigate("/login")} />} />
         </Routes>
-      </div>
+     );
+  }
 
-      {authorized && <MobileNavBar />}
+  return (
+    <div className="min-h-screen bg-white font-sans text-[#333]">
+      <GoodreadsHeader user={user} onLogout={handleLogout} />
+      <div className="bg-[#f4f1ea] pb-10"> {/* Global Background */}
+         <div className="max-w-[1100px] mx-auto bg-white min-h-[calc(100vh-120px)] shadow-[0_0_10px_rgba(0,0,0,0.02)] border-x border-[#ebebeb]">
+            <Routes>
+              <Route path="/" element={<HomeScreen {...authProps} />} />
+              <Route path="/offer" element={<OfferScreen {...authProps} onBack={() => navigate("/")} onProfilePress={() => navigate("/profile")} onMapPress={() => navigate("/map")} onAddPress={() => navigate("/offer")} />} />
+              <Route path="/offer/:id" element={<OfferDetailScreen {...authProps} />} />
+              <Route path="/profile" element={<ProfileScreen {...authProps} />} />
+              <Route path="/map" element={<MapScreen {...authProps} />} />
+              <Route path="/chat" element={<ChatScreen {...authProps} />} />
+              <Route path="/chat/:chatId" element={<SingleChat {...authProps} />} />
+              <Route path="/my-library" element={<MyLibraryScreen {...authProps} onBack={() => navigate("/")} onAddPress={() => navigate("/offer")} onProfilePress={() => navigate("/profile")} onMapPress={() => navigate("/map")} />} />
+              <Route path="/community" element={<CommunityScreen />} />
+            </Routes>
+         </div>
+      </div>
     </div>
   );
 }
 
 export default function App() {
-  const [showSplash, setShowSplash] = useState(true);
-
   return (
     <BrowserRouter>
-      {showSplash ? <SplashScreen onFinish={() => setShowSplash(false)} /> : <AppContent />}
+      <AppContent />
     </BrowserRouter>
   );
 }

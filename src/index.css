@@ -1,104 +1,84 @@
 @import "tailwindcss";
 
-@theme {
-  --color-primary: #1e293b; /* Deep Midnight Blue */
-  --color-primary-light: #334155;
-  --color-secondary: #d97706; /* Elegant Gold/Amber */
-  --color-secondary-hover: #b45309;
-  --color-background: #f8fafc; /* Soft Cream/Off-white */
-  --color-surface: #ffffff;
-  --color-text-main: #0f172a;
-  --color-text-muted: #64748b;
-  
-  --font-serif: "Playfair Display", serif;
-  --font-sans: "Inter", sans-serif;
-}
-
 :root {
-  font-family: var(--font-sans);
-  line-height: 1.5;
-  font-weight: 400;
+  /* Goodreads Precise Theme Colors */
+  --color-gr-beige: #f4f1ea;
+  /* Main Background */
+  --color-gr-header: #f4f1ea;
+  /* Header Background */
+  --color-gr-text-dark: #382110;
+  /* Headings (Dark Brown) */
+  --color-gr-text-main: #333333;
+  /* Body Text */
+  --color-gr-text-meta: #555555;
+  /* Metadata/Subtitles */
+  --color-gr-green: #377458;
+  /* Accents */
+  --color-gr-button: #409d69;
+  /* 'Want to Read' Button */
+  --color-gr-button-hover: #358759;
+  --color-gr-link: #00635d;
+  /* Links */
+  --color-gr-border: #d8d8d8;
+  /* Borders */
 
-  color-scheme: light dark;
-  color: var(--color-text-main);
-  background-color: var(--color-background);
-
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  --font-serif: "Merriweather", "Georgia", serif;
+  --font-sans: "Lato", "Helvetica Neue", "Helvetica", Arial, sans-serif;
 }
 
-/* Scrollbar Styling */
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
+@theme {
+  --color-primary: var(--color-gr-beige);
+  --color-primary-dark: var(--color-gr-text-dark);
+  --color-secondary: var(--color-gr-green);
+  --color-button: var(--color-gr-button);
+  --color-button-hover: var(--color-gr-button-hover);
+  --color-link: var(--color-gr-link);
+  --color-border: var(--color-gr-border);
 
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
-  border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
+  --font-serif: var(--font-serif);
+  --font-sans: var(--font-sans);
 }
 
 body {
-  margin: 0;
-  min-width: 320px;
-  min-height: 100vh;
-  background-color: var(--color-background);
-  color: var(--color-text-main);
-  transition: background-color 0.3s ease, color 0.3s ease;
-}
-
-h1, h2, h3, h4, h5, h6 {
-  font-family: var(--font-serif);
-  font-weight: 700;
-  color: var(--color-primary);
-}
-
-button {
-  cursor: pointer;
-  border: none;
-  outline: none;
+  background-color: var(--color-primary);
+  color: var(--color-gr-text-main);
   font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
 }
 
-/* Leaflet Fixes */
-.leaflet-container {
-  width: 100%;
-  height: 100%;
-  z-index: 1;
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  color: var(--color-gr-text-dark);
+  font-family: var(--font-serif);
 }
 
-/* Animations Utility Classes */
-.fade-in {
-  animation: fadeIn 0.5s ease-in-out;
+a {
+  color: var(--color-link);
+  text-decoration: none;
 }
 
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+a:hover {
+  text-decoration: underline;
 }
 
-.glass-panel {
-  background: rgba(255, 255, 255, 0.7);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.3);
+/* Custom Scrollbar */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 8px;
 }
 
-.dark .glass-panel {
-  background: rgba(30, 41, 59, 0.7);
-  border: 1px solid rgba(255, 255, 255, 0.05);
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
 }
 
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background-color: #ccc;
+  border-radius: 4px;
+}
 
-
-
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: #999;
+}

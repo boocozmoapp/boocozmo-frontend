@@ -1,6 +1,7 @@
-import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
-import { FaEnvelope, FaLock, FaEye, FaEyeSlash, FaBookOpen } from "react-icons/fa";
+/* eslint-disable @typescript-eslint/no-explicit-any */
+// src/pages/LoginScreen.tsx - MINIMAL GOODREADS STYLE
+import React, { useState, useEffect } from "react";
+import { FaAmazon, FaApple, FaEnvelope } from "react-icons/fa";
 
 const API_BASE = "https://boocozmo-api.onrender.com";
 
@@ -12,10 +13,8 @@ type Props = {
 export default function LoginScreen({ onLoginSuccess, onGoToSignup }: Props) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [checkingSession, setCheckingSession] = useState(true);
 
   // Check for existing session
   useEffect(() => {
@@ -30,25 +29,18 @@ export default function LoginScreen({ onLoginSuccess, onGoToSignup }: Props) {
 
           if (response.ok) {
             onLoginSuccess(user);
-            return;
           }
         }
-      } catch {
-        console.log("No valid session");
-      } finally {
-        setCheckingSession(false);
+      } catch (e) {
+        console.error(e);
       }
     };
-
     checkExistingSession();
   }, [onLoginSuccess]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email.trim() || !password) {
-      setError("Please enter both email and password");
-      return;
-    }
+    if (!email.trim() || !password) return setError("Please enter email and password");
 
     setLoading(true);
     setError(null);
@@ -57,17 +49,11 @@ export default function LoginScreen({ onLoginSuccess, onGoToSignup }: Props) {
       const res = await fetch(`${API_BASE}/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          email: email.trim().toLowerCase(), 
-          password 
-        }),
+        body: JSON.stringify({ email: email.trim().toLowerCase(), password }),
       });
 
       const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error || "Login failed");
-      }
+      if (!res.ok) throw new Error(data.error || "Login failed");
 
       const user = {
         id: data.id.toString(),
@@ -79,131 +65,75 @@ export default function LoginScreen({ onLoginSuccess, onGoToSignup }: Props) {
       localStorage.setItem("user", JSON.stringify(user));
       onLoginSuccess(user);
     } catch (err: any) {
-      setError(err.message || "Network error. Please try again.");
+      setError(err.message || "Network error.");
     } finally {
       setLoading(false);
     }
   };
 
-  if (checkingSession) {
-    return (
-      <div className="min-h-screen bg-primary flex items-center justify-center">
-        <motion.div 
-          animate={{ opacity: [0.5, 1, 0.5] }} 
-          transition={{ duration: 1.5, repeat: Infinity }}
-          className="flex flex-col items-center"
-        >
-          <div className="text-secondary text-4xl mb-4">
-            <FaBookOpen />
-          </div>
-          <p className="text-text-muted text-sm tracking-wider uppercase">Authenticating...</p>
-        </motion.div>
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen w-full bg-primary flex items-center justify-center p-4 relative overflow-hidden">
-      {/* Background Decor */}
-      <div className="absolute top-[-20%] left-[-10%] w-[600px] h-[600px] bg-secondary/10 rounded-full blur-[120px] pointer-events-none" />
-      <div className="absolute bottom-[-20%] right-[-10%] w-[600px] h-[600px] bg-primary-light/20 rounded-full blur-[120px] pointer-events-none" />
-
-      <motion.div
-        initial={{ opacity: 0, y: 30 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6, ease: "easeOut" }}
-        className="glass-panel w-full max-w-md p-8 md:p-12 rounded-3xl shadow-2xl relative z-10 backdrop-blur-xl border border-white/10"
-      >
-        <div className="text-center mb-10">
-          <motion.div 
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            transition={{ type: "spring", delay: 0.2 }}
-            className="w-16 h-16 bg-secondary text-white rounded-2xl mx-auto flex items-center justify-center text-2xl shadow-lg mb-6 rotate-3"
-          >
-            <FaBookOpen />
-          </motion.div>
-          <h2 className="text-3xl font-serif font-bold text-white mb-2">Welcome Back</h2>
-          <p className="text-text-muted">Sign in to continue your literary journey.</p>
+    <div className="min-h-screen bg-white flex flex-col items-center pt-12 sm:pt-20 px-4">
+      <div className="w-full max-w-[350px] space-y-4">
+        {/* Logo */}
+        <div className="text-center mb-8">
+          <h1 className="text-4xl font-serif font-bold text-[#382110] tracking-tight">Boocozmo</h1>
         </div>
 
-        <form onSubmit={handleLogin} className="space-y-6">
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-text-muted ml-1">Email</label>
-            <div className="relative group">
-              <FaEnvelope className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted group-focus-within:text-secondary transition-colors" />
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full bg-primary-light/50 border border-white/10 rounded-xl px-12 py-3.5 text-white placeholder-white/20 focus:outline-none focus:border-secondary focus:ring-1 focus:ring-secondary transition-all"
-                placeholder="reader@example.com"
-                required
-              />
-            </div>
+        {/* Social Buttons (Mock) */}
+        <button className="w-full border border-[#d8d8d8] bg-[#fcd46e] hover:bg-[#fbc649] text-black font-medium py-2 rounded-[3px] flex items-center justify-center gap-2 shadow-sm transition-colors">
+          <FaAmazon /> Continue with Amazon
+        </button>
+        <button className="w-full border border-[#ccc] bg-white hover:bg-[#f4f1ea] text-black font-medium py-2 rounded-[3px] flex items-center justify-center gap-2 shadow-sm transition-colors">
+          <FaApple /> Continue with Apple
+        </button>
+
+        {/* Divider */}
+        <div className="relative flex items-center py-2">
+          <div className="flex-grow border-t border-[#d8d8d8]"></div>
+          <span className="flex-shrink-0 mx-4 text-gray-500 text-xs uppercase">OR</span>
+          <div className="flex-grow border-t border-[#d8d8d8]"></div>
+        </div>
+
+        {/* Email Form */}
+        <form onSubmit={handleLogin} className="space-y-3">
+          {error && <div className="text-red-600 text-xs text-center border border-red-200 bg-red-50 p-2 rounded">{error}</div>}
+          
+          <div>
+            <input
+              type="email"
+              placeholder="Email address"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full border border-[#d8d8d8] rounded-[3px] px-3 py-2 text-sm focus:border-[#382110] focus:ring-1 focus:ring-[#382110] outline-none text-[#333] placeholder-gray-500 bg-white"
+            />
           </div>
-
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-text-muted ml-1">Password</label>
-            <div className="relative group">
-              <FaLock className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted group-focus-within:text-secondary transition-colors" />
-              <input
-                type={showPassword ? "text" : "password"}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full bg-primary-light/50 border border-white/10 rounded-xl px-12 py-3.5 text-white placeholder-white/20 focus:outline-none focus:border-secondary focus:ring-1 focus:ring-secondary transition-all"
-                placeholder="••••••••"
-                required
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-text-muted hover:text-white transition-colors"
-              >
-                {showPassword ? <FaEyeSlash /> : <FaEye />}
-              </button>
-            </div>
-          </div>
-
-          {error && (
-            <motion.div 
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: "auto" }}
-              className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-200 text-sm text-center"
-            >
-              {error}
-            </motion.div>
-          )}
-
-          <div className="flex items-center justify-between text-sm">
-            <label className="flex items-center space-x-2 cursor-pointer group">
-              <input type="checkbox" className="w-4 h-4 rounded border-white/20 bg-white/5 text-secondary focus:ring-secondary" />
-              <span className="text-text-muted group-hover:text-white transition-colors">Remember me</span>
-            </label>
-            <button type="button" className="text-secondary hover:text-secondary-hover transition-colors font-medium">
-              Forgot password?
-            </button>
+          <div>
+            <input
+              type="password"
+              placeholder="Password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full border border-[#d8d8d8] rounded-[3px] px-3 py-2 text-sm focus:border-[#382110] focus:ring-1 focus:ring-[#382110] outline-none text-[#333] placeholder-gray-500 bg-white"
+            />
           </div>
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-secondary hover:bg-secondary-hover text-white font-semibold py-4 rounded-xl shadow-lg shadow-secondary/20 transition-all transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed"
+            className="w-full bg-[#382110] hover:bg-[#2a190c] text-white font-bold py-2 rounded-[3px] shadow-sm transition-colors disabled:opacity-70"
           >
-            {loading ? "Signing in..." : "Sign In"}
+            {loading ? "Signing in..." : "Sign in"}
           </button>
         </form>
 
-        <div className="mt-8 text-center text-text-muted text-sm">
-          Don't have an account?{" "}
-          <button 
-            onClick={onGoToSignup}
-            className="text-white hover:text-secondary font-semibold ml-1 transition-colors"
-          >
-            Create account
-          </button>
+        <div className="text-center text-xs text-[#555] mt-4">
+           By creating an account, you agree to the Boocozmo <a href="#" className="underline">Terms of Service</a> and <a href="#" className="underline">Privacy Policy</a>.
         </div>
-      </motion.div>
+
+        <div className="text-center text-sm mt-6 pt-4 border-t border-[#eee]">
+           Not a member? <button onClick={onGoToSignup} className="text-[#00635d] hover:underline">Sign up</button>
+        </div>
+      </div>
     </div>
   );
 }

@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-// src/pages/OfferDetailScreen.tsx - MEDIUM STYLE REFINEMENT
+// src/pages/OfferDetailScreen.tsx - GOODREADS THEME + MEDIUM STYLE
 import { useEffect, useState } from "react";
 import { 
-  FaArrowLeft, FaMapMarkerAlt, FaUser, FaComments, FaHeart, FaShare,
+  FaArrowLeft, FaMapMarkerAlt, FaComments, FaHeart, 
   FaBook, FaLeaf, FaClock, FaShieldAlt
 } from "react-icons/fa";
 import { useParams, useNavigate } from "react-router-dom";
@@ -40,7 +40,7 @@ export default function OfferDetailScreen({ currentUser }: Props) {
   const [loading, setLoading] = useState(true);
   const { scrollY } = useScroll();
   const heroOpacity = useTransform(scrollY, [0, 300], [1, 0]);
-  const heroScale = useTransform(scrollY, [0, 300], [1, 1.1]);
+  const heroScale = useTransform(scrollY, [0, 300], [1, 1.05]);
 
   useEffect(() => {
     const fetchOffer = async () => {
@@ -76,155 +76,150 @@ export default function OfferDetailScreen({ currentUser }: Props) {
   };
 
   if (loading) return (
-    <div className="h-screen bg-primary flex items-center justify-center">
+    <div className="h-screen bg-[#f4f1ea] flex items-center justify-center">
       <div className="animate-pulse flex flex-col items-center">
-        <div className="w-12 h-16 bg-white/10 rounded mb-4" />
-        <div className="w-32 h-2 bg-white/10 rounded" />
+        <div className="w-12 h-16 bg-[#ddd] rounded mb-4" />
+        <div className="w-32 h-2 bg-[#ddd] rounded" />
       </div>
     </div>
   );
   
-  if (!offer) return <div className="h-screen bg-primary flex items-center justify-center text-white">Offer not found <button onClick={() => navigate(-1)} className="ml-4 underline">Go Back</button></div>;
+  if (!offer) return (
+    <div className="h-screen bg-[#f4f1ea] flex items-center justify-center text-[#382110]">
+      Offer not found 
+      <button onClick={() => navigate(-1)} className="ml-4 underline text-[#00635d]">Go Back</button>
+    </div>
+  );
 
   return (
-    <div className="min-h-screen bg-primary text-text-main font-sans pb-24">
-      {/* Sticky Header */}
+    <div className="min-h-screen bg-[#f9f9f9] text-[#181818] font-sans pb-24">
+      {/* Sticky Header (Mobile) */}
       <motion.div 
         initial={{ y: -100 }} animate={{ y: 0 }}
-        className="fixed top-0 left-0 right-0 z-40 bg-primary/80 backdrop-blur-md border-b border-white/5 px-4 py-3 flex items-center justify-between md:hidden"
+        className="fixed top-0 left-0 right-0 z-40 bg-[#f4f1ea]/95 backdrop-blur-sm border-b border-[#d8d8d8] px-4 py-3 flex items-center justify-between md:hidden"
       >
-        <button onClick={() => navigate(-1)} className="p-2 text-white/70 hover:text-white">
+        <button onClick={() => navigate(-1)} className="p-2 text-[#382110] hover:bg-black/5 rounded-full">
           <FaArrowLeft />
         </button>
-        <span className="font-serif font-bold text-white truncate max-w-[200px]">{offer.bookTitle}</span>
-        <div className="w-8" /> {/* Spacer */}
+        <span className="font-serif font-bold text-[#382110] truncate max-w-[200px]">{offer.bookTitle}</span>
+        <div className="w-8" /> 
       </motion.div>
 
-      <button onClick={() => navigate(-1)} className="fixed top-6 left-6 z-50 p-4 bg-black/20 backdrop-blur-xl rounded-full text-white hover:bg-black/40 transition-all hidden md:flex items-center justify-center group pointer-events-auto">
-         <FaArrowLeft className="group-hover:-translate-x-1 transition-transform" />
-      </button>
-
       {/* Hero Section */}
-      <div className="relative h-[60vh] w-full overflow-hidden">
+      <div className="relative h-[50vh] w-full overflow-hidden bg-[#f4f1ea]">
          <motion.div style={{ opacity: heroOpacity, scale: heroScale }} className="absolute inset-0">
-            <img src={offer.imageUrl || "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=1200&q=80"} className="w-full h-full object-cover" />
-            <div className="absolute inset-0 bg-gradient-to-b from-primary/30 via-primary/60 to-primary" />
+            <img src={offer.imageUrl || "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=1200&q=80"} className="w-full h-full object-cover opacity-90" />
+            <div className="absolute inset-0 bg-gradient-to-t from-[#f9f9f9] via-transparent to-transparent " />
          </motion.div>
          
-         <div className="absolute bottom-0 left-0 right-0 p-6 md:p-12 pb-16 max-w-4xl mx-auto">
-            <motion.div initial={{ y: 30, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.2 }}>
-              <div className="flex gap-2 mb-4">
-                 <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-widest text-white border border-white/20
-                    ${offer.type === 'sell' ? 'bg-secondary/20' : offer.type === 'exchange' ? 'bg-blue-500/20' : 'bg-purple-500/20'}`}>
-                    {offer.type}
-                 </span>
-                 {offer.genre && (
-                   <span className="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-widest text-text-muted border border-white/10 bg-black/20">
-                     {offer.genre}
-                   </span>
-                 )}
-              </div>
-              <h1 className="text-4xl md:text-6xl font-serif font-bold text-white mb-4 leading-tight tracking-tight">
-                {offer.bookTitle}
-              </h1>
-              <p className="text-xl md:text-2xl text-gray-300 font-light flex items-center gap-2">
-                by <span className="text-white font-medium border-b border-secondary/50 pb-0.5">{offer.author}</span>
-              </p>
-            </motion.div>
-         </div>
+         {/* Desktop Back Button */}
+         <button onClick={() => navigate(-1)} className="absolute top-6 left-6 z-50 p-3 bg-white/80 backdrop-blur-sm rounded-full text-[#382110] shadow-md hover:bg-white transition-all hidden md:flex items-center justify-center group">
+            <FaArrowLeft className="group-hover:-translate-x-1 transition-transform" />
+         </button>
       </div>
 
       {/* Content Layout */}
-      <div className="max-w-4xl mx-auto px-6 grid grid-cols-1 md:grid-cols-[1fr_300px] gap-12 relative -mt-10 z-10">
+      <div className="max-w-[1000px] mx-auto px-6 grid grid-cols-1 md:grid-cols-[1fr_320px] gap-12 relative -mt-32 z-10">
          
-         {/* Main Column (Medium Style) */}
-         <div className="space-y-8">
-            <div className="flex items-center gap-4 text-sm text-text-muted border-b border-white/5 pb-8">
+         {/* Main Column */}
+         <div className="space-y-8 bg-white p-6 md:p-8 rounded shadow-sm border border-[#e8e8e8]">
+            <div>
+               <div className="flex gap-2 mb-3">
+                 <span className={`px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-white rounded-[2px]
+                    ${offer.type === 'sell' ? 'bg-[#d37e2f]' : offer.type === 'exchange' ? 'bg-[#00635d]' : 'bg-[#764d91]'}`}>
+                    {offer.type}
+                 </span>
+                 {offer.genre && (
+                   <span className="px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-[#555] bg-[#f4f1ea] rounded-[2px]">
+                     {offer.genre}
+                   </span>
+                 )}
+               </div>
+               
+               <h1 className="text-3xl md:text-5xl font-serif font-bold text-[#382110] mb-2 leading-tight">
+                 {offer.bookTitle}
+               </h1>
+               <p className="text-lg text-[#555] font-serif">
+                 by <span className="text-[#382110] font-bold border-b border-[#382110] pb-0.5 cursor-pointer hover:text-[#00635d] hover:border-[#00635d] transition-colors">{offer.author}</span>
+               </p>
+            </div>
+
+            <div className="flex items-center gap-4 text-sm text-[#777] border-y border-[#eee] py-4">
                <div className="flex items-center gap-2">
-                 <div className="w-8 h-8 rounded-full bg-gradient-to-br from-secondary to-orange-600 flex items-center justify-center text-white font-bold text-xs">
+                 <div className="w-8 h-8 rounded-full bg-[#f4f1ea] flex items-center justify-center text-[#382110] font-bold text-xs border border-[#ddd]">
                    {offer.ownerName?.charAt(0) || "U"}
                  </div>
-                 <span className="text-white">{offer.ownerName || "Seller"}</span>
+                 <span className="text-[#333] font-bold hover:underline cursor-pointer">{offer.ownerName || "Seller"}</span>
                </div>
                <span>•</span>
                <span>{new Date(offer.publishedAt || Date.now()).toLocaleDateString()}</span>
                <span>•</span>
-               <span className="flex items-center gap-1"><FaMapMarkerAlt size={10} /> {offer.distance || "Nearby"}</span>
+               <span className="flex items-center gap-1"><FaMapMarkerAlt /> {offer.distance || "Nearby"}</span>
             </div>
 
-            <article className="prose prose-invert prose-lg max-w-none">
-               <p className="font-serif text-xl leading-8 md:text-2xl md:leading-9 text-gray-200 first-letter:text-5xl first-letter:font-bold first-letter:text-secondary first-letter:mr-3 first-letter:float-left">
-                 {offer.description || "The owner has not provided a detailed description for this book yet. Please contact them for more information regarding the specific condition, edition, or any other details you might need before making a purchase or exchange."}
+            <article className="prose prose-stone prose-lg max-w-none text-[#181818]">
+               <p className="font-serif leading-8 text-[#333]">
+                 {offer.description || "The owner has not provided a detailed description for this book yet. Please contact them for more information regarding the specific condition, edition, or any other details you might need."}
                </p>
             </article>
 
             {/* Quick Stats Grid */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 py-8 border-t border-b border-white/5">
-               <div className="flex flex-col gap-1 p-4 rounded-2xl bg-white/5">
-                 <FaShieldAlt className="text-secondary mb-2" />
-                 <span className="text-xs text-text-muted uppercase tracking-wider">Condition</span>
-                 <span className="text-white font-semibold">{offer.condition || "Good"}</span>
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 pt-6">
+               <div className="flex flex-col gap-1 p-3 rounded bg-[#f9f9f9] border border-[#eee]">
+                 <FaShieldAlt className="text-[#d37e2f] mb-1" />
+                 <span className="text-[10px] text-[#777] uppercase tracking-wider">Condition</span>
+                 <span className="text-[#333] font-bold">{offer.condition || "Good"}</span>
                </div>
-               <div className="flex flex-col gap-1 p-4 rounded-2xl bg-white/5">
-                 <FaBook className="text-blue-400 mb-2" />
-                 <span className="text-xs text-text-muted uppercase tracking-wider">Format</span>
-                 <span className="text-white font-semibold">Hardcover</span>
+               <div className="flex flex-col gap-1 p-3 rounded bg-[#f9f9f9] border border-[#eee]">
+                 <FaBook className="text-[#00635d] mb-1" />
+                 <span className="text-[10px] text-[#777] uppercase tracking-wider">Format</span>
+                 <span className="text-[#333] font-bold">Hardcover</span>
                </div>
-               <div className="flex flex-col gap-1 p-4 rounded-2xl bg-white/5">
-                 <FaLeaf className="text-green-400 mb-2" />
-                 <span className="text-xs text-text-muted uppercase tracking-wider">Eco-Impact</span>
-                 <span className="text-white font-semibold">Saved</span>
+               <div className="flex flex-col gap-1 p-3 rounded bg-[#f9f9f9] border border-[#eee]">
+                 <FaLeaf className="text-[#409d69] mb-1" />
+                 <span className="text-[10px] text-[#777] uppercase tracking-wider">Eco-Impact</span>
+                 <span className="text-[#333] font-bold">Rescued</span>
                </div>
-               <div className="flex flex-col gap-1 p-4 rounded-2xl bg-white/5">
-                 <FaClock className="text-purple-400 mb-2" />
-                 <span className="text-xs text-text-muted uppercase tracking-wider">Posted</span>
-                 <span className="text-white font-semibold">2d ago</span>
+               <div className="flex flex-col gap-1 p-3 rounded bg-[#f9f9f9] border border-[#eee]">
+                 <FaClock className="text-[#764d91] mb-1" />
+                 <span className="text-[10px] text-[#777] uppercase tracking-wider">Posted</span>
+                 <span className="text-[#333] font-bold">2d ago</span>
                </div>
             </div>
          </div>
 
-         {/* Sidebar / Floating Actions */}
+         {/* Sidebar Actions */}
          <div className="relative">
-             <div className="sticky top-24 space-y-6">
-                <div className="p-6 rounded-3xl bg-primary-light/30 backdrop-blur-xl border border-white/10 shadow-xl">
-                   <div className="flex justify-between items-end mb-6">
+             <div className="sticky top-24 space-y-4">
+                <div className="p-6 rounded bg-white border border-[#d8d8d8] shadow-sm">
+                   <div className="flex justify-between items-end mb-6 border-b border-[#eee] pb-4">
                      <div>
-                       <span className="text-xs text-text-muted uppercase block mb-1">Asking Price</span>
-                       <span className="text-4xl font-serif font-bold text-white">
+                       <span className="text-[11px] text-[#777] uppercase block mb-1">Asking Price</span>
+                       <span className="text-3xl font-serif font-bold text-[#d37e2f]">
                          {offer.type === 'sell' ? `$${offer.price}` : 'Trade'}
                        </span>
                      </div>
-                     {offer.type === 'sell' && <span className="text-sm text-green-400 font-medium">Available</span>}
                    </div>
 
                    <button 
                      onClick={handleChat}
-                     className="w-full py-4 bg-secondary hover:bg-secondary-hover text-white rounded-xl font-bold text-lg shadow-lg shadow-secondary/20 transition-all flex items-center justify-center gap-3 mb-3 group"
+                     className="w-full py-3 bg-[#409d69] hover:bg-[#358759] text-white rounded-[3px] font-bold text-md shadow-sm transition-colors flex items-center justify-center gap-2 mb-3"
                    >
-                      <FaComments className="group-hover:scale-110 transition-transform" /> 
+                      <FaComments /> 
                       Message {offer.type === 'sell' ? 'Seller' : 'Owner'}
                    </button>
                    
-                   <button className="w-full py-3 bg-white/5 hover:bg-white/10 text-white rounded-xl font-medium transition-all flex items-center justify-center gap-2">
+                   <button className="w-full py-3 bg-[#f4f1ea] hover:bg-[#ebe6db] text-[#382110] rounded-[3px] font-bold border border-[#d8d8d8] transition-colors flex items-center justify-center gap-2">
                       <FaHeart /> Save for Later
                    </button>
                 </div>
 
-                <div className="p-6 rounded-3xl bg-primary-light/10 border border-white/5">
-                   <h3 className="text-white font-medium mb-4">Safety Tips</h3>
-                   <ul className="space-y-3 text-sm text-text-muted">
-                     <li className="flex items-start gap-2">
-                       <div className="w-1.5 h-1.5 rounded-full bg-secondary mt-1.5" />
-                       Meet in a public place.
-                     </li>
-                     <li className="flex items-start gap-2">
-                       <div className="w-1.5 h-1.5 rounded-full bg-secondary mt-1.5" />
-                       Check the book condition.
-                     </li>
-                     <li className="flex items-start gap-2">
-                       <div className="w-1.5 h-1.5 rounded-full bg-secondary mt-1.5" />
-                       Pay after you verify.
-                     </li>
+                <div className="p-4 rounded bg-[#f4f1ea] border border-[#d8d8d8]">
+                   <h3 className="text-[#382110] font-bold text-sm mb-2">Safety Tips</h3>
+                   <ul className="space-y-2 text-xs text-[#555]">
+                     <li className="flex items-start gap-2">• Meet in a public place.</li>
+                     <li className="flex items-start gap-2">• Check the book condition.</li>
+                     <li className="flex items-start gap-2">• Pay after you verify.</li>
                    </ul>
                 </div>
              </div>
@@ -232,14 +227,14 @@ export default function OfferDetailScreen({ currentUser }: Props) {
       </div>
 
        {/* Floating Mobile Action Bar */}
-       <div className="md:hidden fixed bottom-6 left-4 right-4 bg-primary-light/90 backdrop-blur-xl border border-white/10 p-2 rounded-2xl flex items-center gap-2 z-50 shadow-2xl">
-          <div className="pl-4 flex-1">
-             <span className="text-xs text-text-muted uppercase block">Price</span>
-             <span className="text-xl font-serif font-bold text-white">
+       <div className="md:hidden fixed bottom-16 left-0 right-0 bg-[#f4f1ea] border-t border-[#d8d8d8] p-3 flex items-center justify-between z-40 px-4">
+          <div>
+             <span className="text-xs text-[#777] block">Price</span>
+             <span className="text-xl font-serif font-bold text-[#d37e2f]">
                 {offer.type === 'sell' ? `$${offer.price}` : 'Trade'}
              </span>
           </div>
-          <button onClick={handleChat} className="px-6 py-3 bg-secondary text-white rounded-xl font-bold shadow-lg shadow-secondary/20">
+          <button onClick={handleChat} className="px-8 py-2.5 bg-[#409d69] text-white rounded-[3px] font-bold shadow-sm">
              Contact
           </button>
        </div>

@@ -1,11 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-// src/pages/OfferScreen.tsx - PREMIUM THEME
-import { useState, useEffect, useRef, useCallback } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+// src/pages/OfferScreen.tsx - BOOCOZMO LIGHT THEME
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   FaArrowLeft, FaCamera, FaMapMarkerAlt, FaDollarSign, FaExchangeAlt, 
-  FaPaperPlane, FaTimes, FaHome, FaMapMarkedAlt, FaPlus, FaComments, 
-  FaBell, FaBookmark, FaCompass, FaBookOpen, FaStar, FaUsers, FaBars
+  FaPaperPlane, FaTimes
 } from "react-icons/fa";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -17,13 +15,13 @@ const createCustomIcon = () => {
   return L.divIcon({
     className: "custom-offer-marker",
     html: `
-      <div style="width: 48px; height: 48px; border-radius: 50%; background: #d97706; border: 4px solid white; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.5); cursor: move;">
+      <div style="width: 40px; height: 40px; border-radius: 50%; background: #382110; border: 3px solid white; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 18px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); cursor: move;">
         📚
       </div>
     `,
-    iconSize: [48, 48],
-    iconAnchor: [24, 24],
-    popupAnchor: [0, -24],
+    iconSize: [40, 40],
+    iconAnchor: [20, 20],
+    popupAnchor: [0, -20],
   });
 };
 
@@ -35,7 +33,7 @@ type Props = {
   onAddPress?: () => void;
 };
 
-export default function OfferScreen({ onBack, currentUser, onProfilePress }: Props) {
+export default function OfferScreen({ onBack, currentUser }: Props) {
   const navigate = useNavigate();
   const [description, setDescription] = useState("");
   const [condition, setCondition] = useState<"Excellent" | "Very Good" | "Good" | "Fair">("Excellent");
@@ -47,7 +45,6 @@ export default function OfferScreen({ onBack, currentUser, onProfilePress }: Pro
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
   
   const [latitude, setLatitude] = useState<number | null>(null);
   const [longitude, setLongitude] = useState<number | null>(null);
@@ -69,7 +66,7 @@ export default function OfferScreen({ onBack, currentUser, onProfilePress }: Pro
     const map = L.map(mapRef.current, { center: [defaultLat, defaultLng], zoom: 15, zoomControl: false });
     mapInstance.current = map;
     
-    L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", { maxZoom: 20 }).addTo(map);
+    L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", { maxZoom: 20 }).addTo(map);
     
     const marker = L.marker([defaultLat, defaultLng], { icon: createCustomIcon(), draggable: true }).addTo(map);
     markerInstance.current = marker;
@@ -165,95 +162,88 @@ export default function OfferScreen({ onBack, currentUser, onProfilePress }: Pro
     finally { setLoading(false); }
   };
 
-  const navItems = [
-    { icon: FaHome, label: "Home", onClick: () => navigate("/") },
-    { icon: FaMapMarkedAlt, label: "Map", onClick: () => navigate("/map") },
-    { icon: FaBookOpen, label: "My Library", onClick: () => navigate("/my-library") },
-    { icon: FaCompass, label: "Discover", onClick: () => navigate("/discover") },
-    { icon: FaBookmark, label: "Saved", onClick: () => navigate("/saved") },
-    { icon: FaUsers, label: "Following", onClick: () => navigate("/following") },
-    { icon: FaComments, label: "Messages", onClick: () => navigate("/chat") },
-  ];
-
   return (
-    <div className="h-screen w-full bg-primary flex overflow-hidden font-sans text-text-main">
-      <AnimatePresence>
-        {sidebarOpen && <motion.div initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} onClick={() => setSidebarOpen(false)} className="fixed inset-0 bg-black/50 z-40 lg:hidden" />}
-      </AnimatePresence>
-      <motion.aside initial={false} animate={{ width: sidebarOpen ? 260 : 80 }} className="hidden md:flex flex-col bg-primary-light/80 backdrop-blur-xl border-r border-white/5 z-50 overflow-hidden">
-        <div className="p-6 flex items-center gap-3 mb-6"><div className="w-10 h-10 rounded-xl bg-secondary flex items-center justify-center text-white text-xl font-bold font-serif">B</div>{sidebarOpen && <span className="font-serif font-bold text-xl text-white">Boocozmo</span>}</div>
-        <nav className="flex-1 px-4 space-y-2">{navItems.map(item => (<button key={item.label} onClick={item.onClick} className="w-full flex items-center gap-4 p-3 rounded-xl hover:bg-white/5 text-gray-400 hover:text-white transition-all"><item.icon size={20} />{sidebarOpen && <span className="font-medium whitespace-nowrap">{item.label}</span>}</button>))}</nav>
-      </motion.aside>
+    <div className="min-h-screen bg-[#f4f1ea] font-sans text-[#333]">
+       <header className="px-4 py-3 border-b border-[#d8d8d8] bg-white sticky top-0 z-30 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+             <button onClick={onBack || (() => navigate(-1))} className="p-2 text-[#555] hover:bg-[#f4f1ea] rounded-full"><FaArrowLeft /></button>
+             <h1 className="text-xl font-serif font-bold text-[#382110]">Post a Listing</h1>
+          </div>
+       </header>
 
-      <div className="flex-1 flex flex-col h-full bg-gradient-to-br from-primary via-primary-light/20 to-primary relative overflow-hidden">
-         <header className="h-20 px-6 flex items-center justify-between border-b border-white/5 bg-primary/80 backdrop-blur-md sticky top-0 z-30">
-            <div className="flex items-center gap-4">
-               <button onClick={onBack || (() => navigate(-1))} className="p-2 text-white hover:text-secondary"><FaArrowLeft /></button>
-               <h1 className="text-2xl font-serif font-bold text-white">Share a Book</h1>
-            </div>
-            <button onClick={() => setSidebarOpen(!sidebarOpen)} className="md:hidden p-2 text-white"><FaBars /></button>
-         </header>
+       <main className="max-w-3xl mx-auto p-4 md:p-8">
+          <div className="bg-white rounded border border-[#d8d8d8] p-6 md:p-8 shadow-sm">
+             
+             {/* Photo Upload */}
+             <div onClick={() => fileInputRef.current?.click()} className="h-56 rounded bg-[#f9f9f9] border-2 border-dashed border-[#ccc] hover:border-[#382110] flex flex-col items-center justify-center cursor-pointer relative overflow-hidden group mb-6 transition-colors">
+                {imagePreview ? <img src={imagePreview} className="w-full h-full object-cover" /> : <>
+                   <FaCamera className="text-3xl text-[#999] mb-2 group-hover:text-[#382110] transition-colors" />
+                   <span className="text-xs text-[#777] font-bold uppercase">Upload Book Cover</span>
+                </>}
+                {imagePreview && <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-white font-bold">Change</div>}
+                <input type="file" ref={fileInputRef} hidden accept="image/*" onChange={handleImagePick} />
+             </div>
 
-         <main className="flex-1 overflow-y-auto p-4 md:p-8">
-            <div className="max-w-4xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-8">
-               {/* Left Column - Form */}
-               <div className="space-y-6">
-                  {/* Photo Upload */}
-                  <div onClick={() => fileInputRef.current?.click()} className="h-64 rounded-3xl border-2 border-dashed border-white/20 hover:border-secondary flex flex-col items-center justify-center bg-primary-light/30 cursor-pointer relative overflow-hidden group">
-                     {imagePreview ? <img src={imagePreview} className="w-full h-full object-cover" /> : <>
-                        <FaCamera className="text-4xl text-gray-400 mb-2 group-hover:text-secondary transition-colors" />
-                        <span className="text-sm text-gray-400">Tap to upload cover</span>
-                     </>}
-                     {imagePreview && <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-white font-bold">Change Photo</div>}
-                     <input type="file" ref={fileInputRef} hidden accept="image/*" onChange={handleImagePick} />
-                  </div>
+             {/* Form Fields */}
+             <div className="space-y-4">
+                <div>
+                   <label className="block text-xs font-bold uppercase text-[#555] mb-1">Book Title & Description</label>
+                   <textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="e.g. The Great Gatsby, decent condition..." className="w-full bg-white border border-[#d8d8d8] rounded p-3 text-[#333] placeholder-gray-400 focus:border-[#382110] focus:ring-1 focus:ring-[#382110] outline-none min-h-[100px]" />
+                </div>
 
-                  {/* Details Form */}
-                  <div className="bg-primary-light/30 backdrop-blur-md border border-white/10 rounded-3xl p-6">
-                     <h3 className="text-lg font-bold text-white mb-4">Book Details</h3>
-                     <textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Book Title & Description..." className="w-full bg-white/5 border border-white/10 rounded-xl p-4 text-white placeholder-gray-500 min-h-[100px] mb-4 focus:border-secondary outline-none" />
-                     
-                     <div className="grid grid-cols-2 gap-4 mb-4">
-                        {['Excellent', 'Very Good', 'Good', 'Fair'].map((c: any) => (
-                           <button key={c} onClick={() => setCondition(c)} className={`py-2 rounded-lg text-sm font-medium border ${condition === c ? 'bg-secondary border-secondary text-white' : 'border-white/10 text-gray-400 hover:border-white/30'}`}>{c}</button>
-                        ))}
-                     </div>
+                <div>
+                   <label className="block text-xs font-bold uppercase text-[#555] mb-1">Condition</label>
+                   <div className="flex flex-wrap gap-2">
+                      {['Excellent', 'Very Good', 'Good', 'Fair'].map((c: any) => (
+                         <button key={c} onClick={() => setCondition(c)} className={`px-4 py-2 rounded-[3px] text-sm font-bold border transition-all ${condition === c ? 'bg-[#382110] text-white border-[#382110]' : 'bg-white text-[#555] border-[#d8d8d8] hover:bg-[#f4f1ea]'}`}>{c}</button>
+                      ))}
+                   </div>
+                </div>
 
-                     <div className="flex gap-4 mb-4">
-                        <button onClick={() => setAction('sell')} className={`flex-1 py-3 rounded-xl flex items-center justify-center gap-2 font-bold ${action === 'sell' ? 'bg-secondary text-white' : 'bg-white/5 text-gray-400'}`}><FaDollarSign /> Sell</button>
-                        <button onClick={() => setAction('trade')} className={`flex-1 py-3 rounded-xl flex items-center justify-center gap-2 font-bold ${action === 'trade' ? 'bg-blue-600 text-white' : 'bg-white/5 text-gray-400'}`}><FaExchangeAlt /> Trade</button>
-                     </div>
+                <div>
+                    <label className="block text-xs font-bold uppercase text-[#555] mb-1">I want to</label>
+                    <div className="flex gap-4">
+                       <button onClick={() => setAction('sell')} className={`flex-1 py-3 rounded-[3px] flex items-center justify-center gap-2 font-bold border ${action === 'sell' ? 'bg-[#d37e2f] text-white border-[#d37e2f]' : 'bg-white text-[#555] border-[#d8d8d8]'}`}><FaDollarSign /> Sell</button>
+                       <button onClick={() => setAction('trade')} className={`flex-1 py-3 rounded-[3px] flex items-center justify-center gap-2 font-bold border ${action === 'trade' ? 'bg-[#00635d] text-white border-[#00635d]' : 'bg-white text-[#555] border-[#d8d8d8]'}`}><FaExchangeAlt /> Trade/Exchange</button>
+                    </div>
+                </div>
 
-                     {action === 'sell' ? (
-                        <input type="number" value={price} onChange={e => setPrice(e.target.value)} placeholder="Price ($)" className="w-full bg-white/5 border border-white/10 rounded-xl p-4 text-white focus:border-secondary outline-none" />
-                     ) : (
-                        <input value={exchangeBook} onChange={e => setExchangeBook(e.target.value)} placeholder="Trading for..." className="w-full bg-white/5 border border-white/10 rounded-xl p-4 text-white focus:border-secondary outline-none" />
-                     )}
-                  </div>
-               </div>
+                {action === 'sell' ? (
+                   <div>
+                      <label className="block text-xs font-bold uppercase text-[#555] mb-1">Price ($)</label>
+                      <input type="number" value={price} onChange={e => setPrice(e.target.value)} placeholder="0.00" className="w-full bg-white border border-[#d8d8d8] rounded p-3 text-[#333] placeholder-gray-400 focus:border-[#382110] focus:ring-1 focus:ring-[#382110] outline-none font-bold text-lg" />
+                   </div>
+                ) : (
+                   <div>
+                      <label className="block text-xs font-bold uppercase text-[#555] mb-1">Trading For</label>
+                      <input value={exchangeBook} onChange={e => setExchangeBook(e.target.value)} placeholder="What book do you want?" className="w-full bg-white border border-[#d8d8d8] rounded p-3 text-[#333] placeholder-gray-400 focus:border-[#382110] focus:ring-1 focus:ring-[#382110] outline-none" />
+                   </div>
+                )}
+             </div>
 
-               {/* Right Column - Map & Submit */}
-               <div className="flex flex-col h-full">
-                  <div className="flex-1 bg-white/5 rounded-3xl overflow-hidden relative border border-white/10 min-h-[300px] mb-6">
+             {/* Map Section */}
+             <div className="mt-8">
+                 <label className="block text-xs font-bold uppercase text-[#555] mb-1">Location</label>
+                 <div className="h-48 rounded bg-[#eee] relative border border-[#d8d8d8] overflow-hidden">
                      <div ref={mapRef} className="absolute inset-0 z-0" />
-                     <div className="absolute bottom-4 left-4 right-4 bg-primary/90 backdrop-blur-md p-3 rounded-xl border border-white/10 z-10">
-                        <div className="flex items-center gap-3 text-sm text-gray-300">
-                           <FaMapMarkerAlt className="text-secondary" />
-                           <span className="truncate">{currentAddress || "Tap map to set location"}</span>
-                        </div>
+                     <div className="absolute bottom-2 left-2 right-2 bg-white/90 backdrop-blur px-3 py-2 rounded border border-[#ccc] flex items-center gap-2 text-xs text-[#333] z-10">
+                        <FaMapMarkerAlt className="text-[#d37e2f]" />
+                        <span className="truncate">{currentAddress || "Tap map to set location"}</span>
                      </div>
-                  </div>
+                 </div>
+             </div>
 
-                  {error && <div className="p-4 bg-red-500/20 border border-red-500/50 rounded-xl text-red-200 text-sm mb-4 text-center">{error}</div>}
-                  {success && <div className="p-4 bg-green-500/20 border border-green-500/50 rounded-xl text-green-200 text-sm mb-4 text-center">Book posted successfully!</div>}
+             {/* Action Button */}
+             <div className="mt-8 pt-6 border-t border-[#eee]">
+                {error && <div className="p-3 bg-red-50 text-red-600 text-sm mb-4 border border-red-200 text-center">{error}</div>}
+                
+                <button onClick={handleSubmit} disabled={loading || success} className="w-full py-3 bg-[#409d69] hover:bg-[#358759] text-white rounded-[3px] font-bold text-lg shadow-sm transition-colors flex items-center justify-center gap-2 disabled:opacity-50">
+                   {loading ? "Posting..." : success ? "Posted!" : <><FaPaperPlane /> Post Listing</>}
+                </button>
+             </div>
 
-                  <button onClick={handleSubmit} disabled={loading || success} className="w-full py-4 bg-secondary text-white rounded-2xl font-bold text-lg shadow-lg shadow-secondary/20 hover:bg-secondary-hover transition-all disabled:opacity-50 flex items-center justify-center gap-3">
-                     {loading ? "Posting..." : <><FaPaperPlane /> Post Book</>}
-                  </button>
-               </div>
-            </div>
-         </main>
-      </div>
+          </div>
+       </main>
     </div>
   );
 }

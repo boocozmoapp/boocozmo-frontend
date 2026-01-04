@@ -1,13 +1,12 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-// src/pages/MapScreen.tsx - PREMIUM THEME
-import { useEffect, useRef, useState, useCallback, useMemo } from "react";
+// src/pages/MapScreen.tsx - PREMIUM THEME WITH MODAL
+import { useEffect, useRef, useState, useCallback } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { motion, AnimatePresence } from "framer-motion";
-import { 
-  FaTimes, FaSearch, FaMapMarkerAlt, FaDollarSign, FaExchangeAlt, 
-  FaTag, FaHeart, FaBookmark, FaHome, FaBookOpen, FaCompass, 
-  FaUsers, FaBell, FaBars, FaMapMarkedAlt, FaComments
+import {
+  FaTimes, FaSearch, FaMapMarkerAlt, FaHeart, FaHome, FaBookOpen, FaCompass, 
+  FaUsers, FaBars, FaMapMarkedAlt, FaComments, FaBookmark
 } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 
@@ -90,7 +89,7 @@ const createMarkerIcon = (() => {
   };
 })();
 
-export default function MapScreen({ currentUser, onProfilePress }: Props) {
+export default function MapScreen({ currentUser }: Props) {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstance = useRef<L.Map | null>(null);
   const markersRef = useRef<L.Marker[]>([]);
@@ -99,7 +98,7 @@ export default function MapScreen({ currentUser, onProfilePress }: Props) {
   const [offers, setOffers] = useState<Offer[]>([]);
   const [selectedOffer, setSelectedOffer] = useState<Offer | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [loading, setLoading] = useState(true);
+  const [, setLoading] = useState(true);
   const [, setUserLocation] = useState<{lat: number, lng: number} | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -128,7 +127,8 @@ export default function MapScreen({ currentUser, onProfilePress }: Props) {
           ...o,
           id: o.id, type: o.type, bookTitle: o.bookTitle, price: o.price, 
           latitude: parseFloat(o.latitude), longitude: parseFloat(o.longitude),
-          imageUrl: o.imageUrl || null
+          imageUrl: o.imageUrl || null,
+          distance: "Nearby"
         }));
       setOffers(processed);
     } catch (err) { console.error(err); } 
@@ -155,6 +155,23 @@ export default function MapScreen({ currentUser, onProfilePress }: Props) {
       mapInstance.current.setView([offer.latitude, offer.longitude], 15, { animate: true, duration: 0.5 });
     }
   }, []);
+
+  const handleContact = (offer: Offer) => {
+    if (!offer) return;
+    const mockChatId = Date.now();
+    navigate(`/chat/${mockChatId}`, {
+      state: {
+        chat: {
+          id: mockChatId,
+          user1: currentUser.email,
+          user2: offer.ownerEmail,
+          other_user_name: offer.ownerName || "Seller",
+          offer_title: offer.bookTitle,
+          offer_id: offer.id
+        }
+      }
+    });
+  };
 
   useEffect(() => {
     if (!mapRef.current) return;
@@ -190,11 +207,6 @@ export default function MapScreen({ currentUser, onProfilePress }: Props) {
     { icon: FaComments, label: "Messages", onClick: () => navigate("/chat") },
   ];
   
-  const getImageSource = (offer: Offer) => {
-    if (offer.imageUrl) return offer.imageUrl;
-    return "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=300&h=400&fit=crop&q=80";
-  };
-
   return (
     <div className="h-screen w-full bg-primary flex overflow-hidden font-sans">
       {/* Sidebar */}
@@ -205,15 +217,15 @@ export default function MapScreen({ currentUser, onProfilePress }: Props) {
       <motion.aside
         initial={false}
         animate={{ width: sidebarOpen ? 260 : 80 }}
-        className="hidden md:flex flex-col bg-primary-light/80 backdrop-blur-xl border-r border-white/5 z-50 overflow-hidden"
+        className="hidden md:flex flex-col bg-[#f4f1ea] border-r border-[#d8d8d8] z-50 overflow-hidden"
       >
         <div className="p-6 flex items-center gap-3 mb-6">
-           <div className="w-10 h-10 rounded-xl bg-secondary flex items-center justify-center text-white text-xl font-bold font-serif">B</div>
-           {sidebarOpen && <span className="font-serif font-bold text-xl text-white">Boocozmo</span>}
+           <div className="w-10 h-10 rounded-xl bg-[#382110] flex items-center justify-center text-white text-xl font-bold font-serif">B</div>
+           {sidebarOpen && <span className="font-serif font-bold text-xl text-[#382110]">Boocozmo</span>}
         </div>
         <nav className="flex-1 px-4 space-y-2">
           {navItems.map(item => (
-            <button key={item.label} onClick={item.onClick} className={`w-full flex items-center gap-4 p-3 rounded-xl transition-all ${item.active ? 'bg-secondary/20 text-secondary' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}>
+            <button key={item.label} onClick={item.onClick} className={`w-full flex items-center gap-4 p-3 rounded-xl transition-all ${item.active ? 'bg-[#382110]/10 text-[#382110]' : 'text-gray-500 hover:bg-[#382110]/5 hover:text-[#382110]'}`}>
               <item.icon size={20} />
               {sidebarOpen && <span className="font-medium whitespace-nowrap">{item.label}</span>}
             </button>
@@ -223,7 +235,7 @@ export default function MapScreen({ currentUser, onProfilePress }: Props) {
 
       {/* Main Map Area */}
       <div className="flex-1 relative">
-         <div className="absolute top-4 left-4 right-4 z-[1000] flex gap-2 max-w-xl mx-auto md:max-w-2xl">
+         <div className="absolute top-4 left-4 right-4 z-[900] flex gap-2 max-w-xl mx-auto md:max-w-2xl">
             <button onClick={() => setSidebarOpen(!sidebarOpen)} className="md:hidden p-3 bg-white text-primary rounded-xl shadow-lg">
                <FaBars />
             </button>
@@ -240,35 +252,88 @@ export default function MapScreen({ currentUser, onProfilePress }: Props) {
 
          <div ref={mapRef} className="w-full h-full z-0" />
 
-         {/* Selected Book Card */}
+         {/* Full Screen/Large Modal for Offer Details (HomeScreen Style) */}
          <AnimatePresence>
-            {selectedOffer && (
-               <motion.div
-                  initial={{ y: 100, opacity: 0 }}
-                  animate={{ y: 0, opacity: 1 }}
-                  exit={{ y: 100, opacity: 0 }}
-                  className="absolute bottom-4 left-4 right-4 md:left-auto md:right-4 md:w-96 bg-white/90 backdrop-blur-xl rounded-2xl shadow-2xl p-4 z-[1000] border border-white/20"
+           {selectedOffer && (
+             <motion.div 
+               initial={{ opacity: 0 }} 
+               animate={{ opacity: 1 }} 
+               exit={{ opacity: 0 }}
+               onClick={() => setSelectedOffer(null)}
+               className="fixed inset-0 z-[1000] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto"
+             >
+               <motion.div 
+                 initial={{ scale: 0.95, opacity: 0, y: 20 }}
+                 animate={{ scale: 1, opacity: 1, y: 0 }}
+                 exit={{ scale: 0.95, opacity: 0, y: 20 }}
+                 onClick={(e) => e.stopPropagation()}
+                 className="bg-[#fff] w-full max-w-4xl rounded-[4px] shadow-2xl overflow-hidden flex flex-col md:flex-row max-h-[90vh] md:max-h-[600px] relative"
                >
-                  <button onClick={() => setSelectedOffer(null)} className="absolute top-2 right-2 p-2 text-gray-400 hover:text-primary"><FaTimes /></button>
-                  <div className="flex gap-4">
-                     <img src={getImageSource(selectedOffer)} className="w-20 h-28 object-cover rounded-lg shadow-md" />
-                     <div className="flex-1 min-w-0">
-                        <h3 className="font-bold text-primary truncate text-lg font-serif">{selectedOffer.bookTitle}</h3>
-                        <p className="text-gray-500 text-xs italic mb-2">{selectedOffer.author || "Unknown"}</p>
-                        <div className="flex items-center gap-2 mb-3">
-                           <span className={`px-2 py-0.5 rounded text-xs font-bold text-white ${selectedOffer.type === 'sell' ? 'bg-secondary' : 'bg-blue-500'}`}>
-                              {selectedOffer.type.toUpperCase()}
-                           </span>
-                           {selectedOffer.price && <span className="font-bold text-primary">${selectedOffer.price}</span>}
+                  <button onClick={() => setSelectedOffer(null)} className="absolute top-4 right-4 z-10 text-white md:text-[#333] bg-black/20 md:bg-gray-100 p-2 rounded-full hover:bg-black/40 md:hover:bg-gray-200 transition-colors">
+                     <FaTimes size={16} />
+                  </button>
+
+                  {/* Left: Image Hero */}
+                  <div className="w-full md:w-1/2 bg-[#f4f1ea] relative flex items-center justify-center p-8">
+                     <img 
+                       src={selectedOffer.imageUrl || "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=600&q=80"} 
+                       className="max-h-full max-w-full shadow-lg object-contain" 
+                     />
+                     <div className="absolute bottom-4 left-4 bg-white/90 px-3 py-1 rounded text-xs font-bold text-[#382110] shadow-sm uppercase tracking-wide">
+                        {selectedOffer.type}
+                     </div>
+                  </div>
+
+                  {/* Right: Details */}
+                  <div className="w-full md:w-1/2 p-8 flex flex-col bg-white overflow-y-auto">
+                     <div className="mb-6">
+                        <h2 className="font-serif font-bold text-3xl text-[#382110] mb-2 leading-tight">{selectedOffer.bookTitle}</h2>
+                        <p className="text-lg text-[#555]">by <span className="font-bold underline decoration-[#382110]">{selectedOffer.author || "Unknown"}</span></p>
+                     </div>
+
+                     <div className="flex gap-4 mb-6 text-sm text-[#555] border-y border-[#eee] py-4">
+                        <div className="flex items-center gap-2">
+                           <div className="w-8 h-8 bg-[#382110] text-white rounded-full flex items-center justify-center font-bold text-xs">U</div>
+                           <span className="font-bold">{selectedOffer.ownerName || "User"}</span>
                         </div>
-                        <div className="flex gap-2">
-                           <button className="flex-1 bg-primary text-white py-2 rounded-lg text-sm font-bold hover:bg-primary-light transition-colors">Details</button>
-                           <button className="p-2 border border-gray-200 rounded-lg text-gray-400 hover:text-red-500"><FaHeart /></button>
+                        <div className="border-l border-[#eee] pl-4 flex items-center gap-2">
+                           <FaMapMarkerAlt className="text-[#999]" />
+                           {selectedOffer.distance}
+                        </div>
+                     </div>
+
+                     <div className="prose prose-sm prose-stone flex-1 mb-6">
+                        <p className="font-serif leading-relaxed text-[#333]">
+                           {selectedOffer.description || "No description provided. Contact the seller for details."}
+                        </p>
+                        <div className="mt-4 flex gap-2">
+                           {selectedOffer.condition && <span className="px-2 py-1 bg-[#f4f1ea] text-[#382110] text-xs font-bold rounded">{selectedOffer.condition}</span>}
+                        </div>
+                     </div>
+
+                     <div className="mt-auto pt-6 border-t border-[#eee]">
+                        <div className="flex items-end justify-between mb-4">
+                           <span className="text-xs uppercase text-[#777] font-bold">Price</span>
+                           <span className="text-3xl font-serif font-bold text-[#d37e2f]">
+                              {selectedOffer.price ? `$${selectedOffer.price}` : selectedOffer.type === 'exchange' ? 'Trade' : 'ISO'}
+                           </span>
+                        </div>
+                        <div className="flex gap-3">
+                           <button 
+                              onClick={() => handleContact(selectedOffer)}
+                              className="flex-1 bg-[#409d69] hover:bg-[#358759] text-white font-bold py-3 rounded-[3px] shadow-sm flex items-center justify-center gap-2 transition-transform active:scale-[0.99]"
+                           >
+                              <FaComments /> Contact Seller
+                           </button>
+                           <button className="p-3 border border-[#d8d8d8] rounded-[3px] text-[#999] hover:text-red-500 hover:border-red-500 transition-colors">
+                              <FaHeart />
+                           </button>
                         </div>
                      </div>
                   </div>
                </motion.div>
-            )}
+             </motion.div>
+           )}
          </AnimatePresence>
       </div>
     </div>
