@@ -401,22 +401,22 @@ export default function MyLibraryScreen({
                               <div className="aspect-[2/3] relative">
                                  <img src={getImageSource(offer)} className="w-full h-full object-cover" />
                                  <div className="absolute top-2 right-2">
-                                     <span className={`w-3 h-3 block rounded-full shadow-sm ${offer.visibility === 'public' ? 'bg-green-500' : 'bg-white/20'}`} />
+                                     <span className={`w-3 h-3 block rounded-full shadow-sm ${offer.visibility === 'public' ? 'bg-green-500' : 'bg-red-500/80'}`} />
                                  </div>
-                                 <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-4">
+                                 <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-3 flex items-center justify-center gap-3">
                                     <button 
                                       onClick={() => handlePublishToggle(offer)}
-                                      className="p-3 bg-white text-[#382110] rounded-full hover:scale-110 transition-transform shadow-lg"
+                                      className="p-2.5 bg-white text-[#382110] rounded-full hover:scale-110 transition-transform shadow-lg"
                                       title={offer.visibility === 'public' ? "Unpublish" : "Publish"}
                                     >
-                                       {offer.visibility === 'public' ? <FaEyeSlash size={18} /> : <FaEye size={18} />}
+                                       {offer.visibility === 'public' ? <FaEyeSlash size={16} /> : <FaEye size={16} />}
                                     </button>
                                     <button 
                                       onClick={() => handleRemove(offer.id)}
-                                      className="p-3 bg-red-500 text-white rounded-full hover:scale-110 transition-transform shadow-lg"
+                                      className="p-2.5 bg-red-500 text-white rounded-full hover:scale-110 transition-transform shadow-lg"
                                       title="Remove from Library"
                                     >
-                                       <FaTrash size={18} />
+                                       <FaTrash size={16} />
                                     </button>
                                  </div>
                               </div>

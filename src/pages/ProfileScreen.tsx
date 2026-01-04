@@ -391,21 +391,31 @@ export default function ProfileScreen({ currentUser, onAddPress, onMapPress }: P
                            {filteredOffers.map(offer => (
                               <div key={offer.id} className="bg-primary-light/10 border border-white/5 rounded-2xl p-4 hover:border-white/20 transition-all group">
                                  <div className="flex gap-4">
-                                    <div className="w-20 h-28 flex-shrink-0 bg-black rounded-lg overflow-hidden">
+                                    <div className="w-20 h-28 flex-shrink-0 bg-black rounded-lg overflow-hidden relative">
                                        <img src={getImageSource(offer)} className="w-full h-full object-cover" />
+                                       <div className="absolute top-1 right-1">
+                                          <span className={`w-2.5 h-2.5 block rounded-full shadow-sm ${offer.visibility === 'public' ? 'bg-green-500' : 'bg-red-500'}`} />
+                                       </div>
                                     </div>
                                     <div className="flex-1 min-w-0">
-                                       <div className="flex justify-between items-start">
+                                       <div className="flex justify-between items-start mb-1">
                                           <h3 className="font-bold text-white truncate pr-2">{offer.bookTitle}</h3>
-                                          <span className={`w-2 h-2 rounded-full ${offer.visibility === 'public' ? 'bg-green-500' : 'bg-red-500'}`} />
                                        </div>
-                                       <p className="text-xs text-gray-500 mb-2">{offer.author}</p>
-                                       <div className="flex gap-2 mt-auto pt-4">
-                                          <button onClick={() => handlePublishToggle(offer)} className="p-2 rounded bg-white/5 hover:bg-white/10 text-xs text-white hover:text-secondary-hover">
-                                             {offer.visibility === 'public' ? <FaEyeSlash /> : <FaEye />}
+                                       <p className="text-xs text-gray-500 mb-3">{offer.author}</p>
+                                       <div className="flex gap-2 mt-auto">
+                                          <button 
+                                             onClick={() => handlePublishToggle(offer)} 
+                                             className="p-2 rounded-full bg-white text-[#382110] hover:scale-110 transition-transform shadow-md"
+                                             title={offer.visibility === 'public' ? "Unpublish" : "Publish"}
+                                          >
+                                             {offer.visibility === 'public' ? <FaEyeSlash size={14} /> : <FaEye size={14} />}
                                           </button>
-                                          <button onClick={() => handleDeleteOffer(offer.id)} className="p-2 rounded bg-red-500/10 hover:bg-red-500/20 text-red-500 text-xs">
-                                             <FaTrash />
+                                          <button 
+                                             onClick={() => handleDeleteOffer(offer.id)} 
+                                             className="p-2 rounded-full bg-red-500 text-white hover:scale-110 transition-transform shadow-md"
+                                             title="Delete Offer"
+                                          >
+                                             <FaTrash size={14} />
                                           </button>
                                        </div>
                                     </div>

@@ -323,12 +323,19 @@ export default function HomeScreen({ currentUser }: Props) {
                             {selectedOffer.price ? `$${selectedOffer.price}` : selectedOffer.type === 'exchange' ? 'Trade' : 'ISO'}
                          </span>
                       </div>
-                      <button 
-                         onClick={() => handleContact(selectedOffer)}
-                         className="w-full bg-[#409d69] hover:bg-[#358759] text-white font-bold py-3 rounded-[3px] shadow-sm flex items-center justify-center gap-2 transition-transform active:scale-[0.99]"
-                      >
-                         <FaComments /> Contact Seller
-                      </button>
+                      {selectedOffer.ownerEmail === currentUser.email ? (
+                         <div className="w-full bg-[#f4f1ea] border border-[#d8d8d8] text-[#382110] font-bold py-3 px-4 rounded-[3px] text-center">
+                            <p className="text-sm">📚 This is your offer</p>
+                            <p className="text-xs opacity-70 mt-1">Manage it from your Profile or Library</p>
+                         </div>
+                      ) : (
+                         <button 
+                            onClick={() => handleContact(selectedOffer)}
+                            className="w-full bg-[#409d69] hover:bg-[#358759] text-white font-bold py-3 rounded-[3px] shadow-sm flex items-center justify-center gap-2 transition-transform active:scale-[0.99]"
+                         >
+                            <FaComments /> Contact Seller
+                         </button>
+                      )}
                    </div>
                 </div>
              </motion.div>
