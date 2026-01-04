@@ -33,6 +33,7 @@ type Offer = {
   condition?: string;
   ownerName?: string;
   ownerEmail?: string;
+  ownerPhoto?: string;
   publishedAt?: string;
   distance?: string;
   latitude?: number;
@@ -438,7 +439,7 @@ export default function HomeScreen({ currentUser }: Props) {
           {loading ? (
              <div className="flex justify-center p-12 text-[#999]">Loading community...</div>
           ) : (
-             <div className="flex flex-wrap gap-x-4 md:gap-x-6 gap-y-8 md:gap-y-10 justify-between md:justify-start">
+             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6">
                 {offers.length > 0 ? offers.map(offer => (
                    <div key={offer.id} className="flex flex-col gap-2 group">
                       <div 
