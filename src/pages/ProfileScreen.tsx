@@ -325,7 +325,7 @@ export default function ProfileScreen({ currentUser, onAddPress, onMapPress }: P
                                        </div>
                                        <p className="text-xs text-gray-500 mb-2">{offer.author}</p>
                                        <div className="flex gap-2 mt-auto pt-4">
-                                          <button onClick={() => handlePublishToggle(offer)} className="p-2 rounded bg-white/5 hover:bg-white/10 text-xs text-white">
+                                          <button onClick={() => handlePublishToggle(offer)} className="p-2 rounded bg-white/5 hover:bg-white/10 text-xs text-white hover:text-secondary-hover">
                                              {offer.visibility === 'public' ? <FaEyeSlash /> : <FaEye />}
                                           </button>
                                           <button onClick={() => handleDeleteOffer(offer.id)} className="p-2 rounded bg-red-500/10 hover:bg-red-500/20 text-red-500 text-xs">

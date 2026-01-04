@@ -156,18 +156,36 @@ export default function MapScreen({ currentUser }: Props) {
     }
   }, []);
 
-  const handleContact = (offer: Offer) => {
+  const handleContact = async (offer: Offer) => {
     if (!offer) return;
-    const mockChatId = Date.now();
-    navigate(`/chat/${mockChatId}`, {
+    try {
+       const resp = await fetch(`${API_BASE}/chats?user=${encodeURIComponent(currentUser.email)}`, {
+          headers: { "Authorization": `Bearer ${currentUser.token}` }
+       });
+       if (resp.ok) {
+          const chats: any[] = await resp.json();
+          const existingChat = chats.find((c: any) => 
+             (c.user1 === offer.ownerEmail || c.user2 === offer.ownerEmail) && 
+             (c.offer_id === offer.id)
+          );
+
+          if (existingChat) {
+             navigate(`/chat/${existingChat.id}`, { state: { chat: existingChat } });
+             return;
+          }
+       }
+    } catch (e) { console.error(e); }
+
+    navigate(`/chat/new`, {
       state: {
         chat: {
-          id: mockChatId,
+          id: 0,
           user1: currentUser.email,
           user2: offer.ownerEmail,
           other_user_name: offer.ownerName || "Seller",
           offer_title: offer.bookTitle,
-          offer_id: offer.id
+          offer_id: offer.id,
+          ownerEmail: offer.ownerEmail
         }
       }
     });

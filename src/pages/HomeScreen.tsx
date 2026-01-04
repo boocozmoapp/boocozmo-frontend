@@ -66,18 +66,50 @@ export default function HomeScreen({ currentUser }: Props) {
     fetchOffers();
   }, [fetchOffers]);
 
-  const handleContact = (offer: Offer) => {
+  /* 
+    Updated handleContact:
+    1. Check if chat exists with this user for this offer (or just user).
+    2. If yes, navigate to that chat.
+    3. If no, navigate to 'new' chat with params to create one on first message.
+  */
+  const handleContact = async (offer: Offer) => {
     if (!offer) return;
-    const mockChatId = Date.now();
-    navigate(`/chat/${mockChatId}`, {
+    
+    // Optimistic checking? No, let's fetch real chats to be sure
+    try {
+       const resp = await fetch(`${API_BASE}/chats?user=${encodeURIComponent(currentUser.email)}`, {
+          headers: { "Authorization": `Bearer ${currentUser.token}` }
+       });
+       if (resp.ok) {
+          const chats: any[] = await resp.json();
+          // Find existing chat with this owner // AND offer? Optional.
+          // For now, let's match by offer_id if possible, or just user.
+          // The backend might create separate chats per offer or one per user pair.
+          // Let's look for match on offer_id first, then user.
+          
+          const existingChat = chats.find((c: any) => 
+             (c.user1 === offer.ownerEmail || c.user2 === offer.ownerEmail) && 
+             (c.offer_id === offer.id)
+          );
+
+          if (existingChat) {
+             navigate(`/chat/${existingChat.id}`, { state: { chat: existingChat } });
+             return;
+          }
+       }
+    } catch (e) { console.error("Error checking chats", e); }
+
+    // If no existing chat found, go to new
+    navigate(`/chat/new`, {
       state: {
         chat: {
-          id: mockChatId,
+          id: 0, // 0 signifies new
           user1: currentUser.email,
-          user2: offer.ownerEmail,
+          user2: offer.ownerEmail || offer.ownerEmail, // Fallback
           other_user_name: offer.ownerName || "Seller",
           offer_title: offer.bookTitle,
-          offer_id: offer.id
+          offer_id: offer.id,
+          ownerEmail: offer.ownerEmail // redundant but safe
         }
       }
     });

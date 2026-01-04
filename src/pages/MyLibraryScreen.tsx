@@ -277,6 +277,25 @@ export default function MyLibraryScreen({
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden">
+         {/* Artistic Guide Poster (Responsive) */}
+         <div className="p-6 pb-2">
+            <div className="w-full bg-gradient-to-r from-[#382110] to-[#5a3a20] rounded-2xl p-6 relative overflow-hidden shadow-lg flex flex-col md:flex-row items-center justify-between gap-6">
+                <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none" />
+                <div className="z-10 text-center md:text-left">
+                   <h2 className="text-2xl font-serif font-bold text-white mb-2">Build Your Community Library</h2>
+                   <p className="text-white/80 text-sm max-w-lg leading-relaxed">
+                      Transform your personal collection into a public treasure. Publish books to the marketplace to sell or exchange with neighbors. 
+                      Every book you share strengthens the Boocozmo network.
+                   </p>
+                </div>
+                <div className="z-10 flex-shrink-0">
+                    <button onClick={() => setShowAddBookModal(true)} className="px-6 py-3 bg-white text-[#382110] rounded-xl font-bold shadow-md hover:bg-gray-100 transition-colors flex items-center gap-2">
+                       <FaPlus /> Add a Book
+                    </button>
+                </div>
+            </div>
+         </div>
+
          {/* Libraries List */}
          <div className="p-6 bg-primary-light/10 border-b border-white/5">
             <div className="flex overflow-x-auto gap-4 pb-2 custom-scrollbar">
@@ -397,48 +416,65 @@ export default function MyLibraryScreen({
                                  reader.readAsDataURL(file);
                               }
                            }} 
-                        />
-                        {newBookForm.imagePreview ? <img src={newBookForm.imagePreview} className="h-32 mx-auto rounded-lg object-contain" /> : <div className="text-text-muted"><FaImage className="mx-auto text-2xl mb-1"/>Upload Cover</div>}
-                     </div>
-                  </div>
-                  <div className="flex justify-end gap-3 mt-6">
-                     <button onClick={() => setShowAddBookModal(false)} className="text-text-muted hover:text-white">Cancel</button>
-                     <button onClick={handleAddBook} disabled={addingBook} className="px-4 py-2 bg-secondary text-white rounded-xl font-medium">
-                        {addingBook ? "Adding..." : "Add"}
-                     </button>
-                  </div>
-               </motion.div>
+                         />
+                         {newBookForm.imagePreview ? <img src={newBookForm.imagePreview} className="h-32 mx-auto rounded-lg object-contain" /> : <div className="text-text-muted"><FaImage className="mx-auto text-2xl mb-1"/>Upload Cover</div>}
+                      </div>
+                   </div>
+                   <div className="flex justify-end gap-3 mt-6">
+                      <button onClick={() => setShowAddBookModal(false)} className="text-text-muted hover:text-white">Cancel</button>
+                      <button onClick={handleAddBook} disabled={addingBook} className="px-4 py-2 bg-secondary text-white rounded-xl font-medium">
+                         {addingBook ? "Adding..." : "Add"}
+                      </button>
+                   </div>
+                </motion.div>
             </motion.div>
          )}
 
          {showPublishModal && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
                <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} className="bg-primary border border-white/10 rounded-2xl p-6 w-full max-w-md">
-                  <h3 className="text-xl font-bold text-white mb-2">Publish "{bookToPublish?.bookTitle}"</h3>
-                  <p className="text-text-muted text-sm mb-4">Make this book available to the community.</p>
-                  
-                  <div className="flex gap-4 mb-4">
-                     <button onClick={() => setPublishForm({...publishForm, type: "sell"})} className={`flex-1 py-2 rounded-lg border ${publishForm.type === "sell" ? "bg-secondary border-secondary text-white" : "border-white/10 text-text-muted"}`}>Sell</button>
-                     <button onClick={() => setPublishForm({...publishForm, type: "exchange"})} className={`flex-1 py-2 rounded-lg border ${publishForm.type === "exchange" ? "bg-secondary border-secondary text-white" : "border-white/10 text-text-muted"}`}>Exchange</button>
-                  </div>
+                   <h3 className="text-xl font-bold text-white mb-2">Publish "{bookToPublish?.bookTitle}"</h3>
+                   <p className="text-text-muted text-sm mb-4">Make this book available to the community.</p>
+                   
+                   <div className="bg-primary-light/20 p-3 rounded-lg mb-4 text-xs text-text-muted flex items-start gap-2">
+                       <FaGlobe className="mt-0.5 text-secondary" />
+                       <p>Publishing will reveal the approximate location of this book on the map so buyers can find it.</p>
+                   </div>
 
-                  {publishForm.type === "sell" && (
-                     <input type="number" value={publishForm.price} onChange={e => setPublishForm({...publishForm, price: e.target.value})} placeholder="Price ($)" className="w-full bg-primary-light/50 border border-white/10 rounded-xl p-3 text-white mb-3" />
-                  )}
-                  {publishForm.type === "exchange" && (
-                     <input value={publishForm.exchangeBook} onChange={e => setPublishForm({...publishForm, exchangeBook: e.target.value})} placeholder="Trading for (e.g. Sci-Fi books)" className="w-full bg-primary-light/50 border border-white/10 rounded-xl p-3 text-white mb-3" />
-                  )}
+                   <div className="flex gap-4 mb-4">
+                      <button onClick={() => setPublishForm({...publishForm, type: "sell"})} className={`flex-1 py-2 rounded-lg border ${publishForm.type === "sell" ? "bg-secondary border-secondary text-white" : "border-white/10 text-text-muted"}`}>Sell</button>
+                      <button onClick={() => setPublishForm({...publishForm, type: "exchange"})} className={`flex-1 py-2 rounded-lg border ${publishForm.type === "exchange" ? "bg-secondary border-secondary text-white" : "border-white/10 text-text-muted"}`}>Exchange</button>
+                   </div>
 
-                  <div className="flex justify-end gap-3 mt-4">
-                     <button onClick={() => setShowPublishModal(false)} className="text-text-muted hover:text-white">Cancel</button>
-                     <button onClick={handlePublish} disabled={publishing} className="px-4 py-2 bg-secondary text-white rounded-xl font-medium">
-                        {publishing ? "Publishing..." : "Publish Now"}
-                     </button>
-                  </div>
-               </motion.div>
-            </motion.div>
-         )}
-      </AnimatePresence>
+                   {publishForm.type === "sell" && (
+                      <input type="number" value={publishForm.price} onChange={e => setPublishForm({...publishForm, price: e.target.value})} placeholder="Price ($)" className="w-full bg-primary-light/50 border border-white/10 rounded-xl p-3 text-white mb-3" />
+                   )}
+                   {publishForm.type === "exchange" && (
+                      <input value={publishForm.exchangeBook} onChange={e => setPublishForm({...publishForm, exchangeBook: e.target.value})} placeholder="Trading for (e.g. Sci-Fi books)" className="w-full bg-primary-light/50 border border-white/10 rounded-xl p-3 text-white mb-3" />
+                   )}
+
+                   <div className="mb-4">
+                       <label className="block text-xs font-bold uppercase text-text-muted mb-1">Confirm Location</label>
+                       <div className="h-32 bg-gray-700 rounded-lg flex items-center justify-center text-sm text-gray-400 relative overflow-hidden group">
+                           {/* Placeholder for map - could be actual map if needed, but for now just visual cue */}
+                           <div className="absolute inset-0 bg-cover bg-center opacity-50" style={{ backgroundImage: 'url(https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png)' }}></div>
+                           <span className="relative z-10 flex items-center gap-2 bg-black/50 px-3 py-1 rounded"><FaMapMarkerAlt /> {publishForm.latitude.toFixed(4)}, {publishForm.longitude.toFixed(4)}</span>
+                           <button onClick={onMapPress} className="absolute inset-0 z-20 flex items-center justify-center bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity text-white font-bold">
+                               Change on Map
+                           </button>
+                       </div>
+                   </div>
+
+                   <div className="flex justify-end gap-3 mt-4">
+                      <button onClick={() => setShowPublishModal(false)} className="text-text-muted hover:text-white">Cancel</button>
+                      <button onClick={handlePublish} disabled={publishing} className="px-4 py-2 bg-secondary text-white rounded-xl font-medium">
+                         {publishing ? "Publishing..." : "Publish Now"}
+                      </button>
+                   </div>
+                </motion.div>
+             </motion.div>
+          )}
+       </AnimatePresence>
     </div>
   );
 }
