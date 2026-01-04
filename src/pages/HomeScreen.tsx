@@ -440,7 +440,7 @@ export default function HomeScreen({ currentUser }: Props) {
           ) : (
              <div className="flex flex-wrap gap-x-4 md:gap-x-6 gap-y-8 md:gap-y-10 justify-between md:justify-start">
                 {offers.length > 0 ? offers.map(offer => (
-                   <div key={offer.id} className="w-[48%] md:w-[155px] flex flex-col gap-2 group">
+                   <div key={offer.id} className="flex flex-col gap-2 group">
                       <div 
                         onClick={() => setSelectedOffer(offer)}
                         className="w-full h-[200px] md:h-[230px] relative shadow-md cursor-pointer overflow-hidden border border-[#eee]"
