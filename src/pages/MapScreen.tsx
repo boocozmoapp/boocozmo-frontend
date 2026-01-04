@@ -198,7 +198,7 @@ export default function MapScreen({ currentUser, onProfilePress }: Props) {
     try {
       let endpoint = `${API_BASE}/offers`;
       if (searchQuery.trim()) {
-        endpoint = `${API_BASE}/search-offers?query=${encodeURIComponent(searchQuery)}&`;
+        endpoint = `${API_BASE}/search-offers?query=${encodeURIComponent(searchQuery)}`;
       } else {
         endpoint += "?";
       }
