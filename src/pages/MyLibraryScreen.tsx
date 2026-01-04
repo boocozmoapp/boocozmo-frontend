@@ -6,9 +6,31 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   FaBook, FaPlus, FaFolder, FaTrash, FaSearch, FaArrowLeft, 
   FaGlobe, FaImage, FaMapMarkerAlt, FaHome, FaMapMarkedAlt, 
-  FaComments, FaBookmark, FaTimes, FaBars
+  FaComments, FaBookmark, FaTimes, FaBars, FaEye, FaEyeSlash
 } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
+import { MapContainer, TileLayer, Marker, useMapEvents } from "react-leaflet";
+import "leaflet/dist/leaflet.css";
+import L from "leaflet";
+import type { LeafletMouseEvent } from "leaflet";
+import icon from "leaflet/dist/images/marker-icon.png";
+import iconShadow from "leaflet/dist/images/marker-shadow.png";
+
+const DefaultIcon = L.icon({ iconUrl: icon, shadowUrl: iconShadow, iconSize: [25, 41], iconAnchor: [12, 41] });
+L.Marker.prototype.options.icon = DefaultIcon;
+
+function LocationMarker({ position, setPosition }: { position: { lat: number; lng: number } | null, setPosition: (pos: { lat: number; lng: number }) => void }) {
+  const map = useMapEvents({
+    click(e: LeafletMouseEvent) {
+      setPosition(e.latlng);
+      map.flyTo(e.latlng, map.getZoom());
+    },
+  });
+  useEffect(() => {
+     if(position) map.flyTo(position, map.getZoom());
+  }, [position, map]);
+  return position ? <Marker position={position} /> : null;
+}
 
 const API_BASE = "https://boocozmo-api.onrender.com";
 
@@ -29,6 +51,7 @@ type Offer = {
   author?: string;
   lastUpdated?: string;
   state?: "open" | "draft" | "private";
+  visibility?: "public" | "private";
 };
 
 type Store = {
@@ -105,6 +128,14 @@ export default function MyLibraryScreen({
   const [publishing, setPublishing] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
+  const handleAutoDetect = () => {
+     if ("geolocation" in navigator) {
+        navigator.geolocation.getCurrentPosition((pos) => {
+           setPublishForm(prev => ({ ...prev, latitude: pos.coords.latitude, longitude: pos.coords.longitude }));
+        });
+     } else { alert("Geolocation not supported"); }
+  };
+
   const abortControllerRef = useRef<AbortController | null>(null);
 
   const fetchStores = useCallback(async () => {
@@ -162,9 +193,31 @@ export default function MyLibraryScreen({
     }
   }, [currentUser.token]);
 
-  // Handlers (Create Store, Add Book, Publish, Remove)
-  // ... (Logic remains mostly same, simplified for brevity in styling context)
-  
+  // Handlers
+  const handlePublishToggle = async (offer: Offer) => {
+     const isPublic = offer.visibility === 'public';
+     if (isPublic) {
+        if(!confirm("Unpublish this book from the marketplace?")) return;
+        try {
+           await fetchWithTimeout(`${API_BASE}/unpublish-offer/${offer.id}`, {
+              method: 'POST', headers: { 'Authorization': `Bearer ${currentUser.token}`, 'Content-Type': 'application/json' },
+              body: JSON.stringify({})
+           });
+           if(selectedStore) await fetchStoreOffers(selectedStore);
+        } catch (e) { alert("Failed to unpublish"); }
+     } else {
+        setBookToPublish(offer);
+        setPublishForm({
+           type: (offer.type as any) || "sell",
+           price: offer.price?.toString() || "",
+           exchangeBook: offer.exchangeBook || "",
+           latitude: offer.latitude || 40.7128,
+           longitude: offer.longitude || -74.0060
+        });
+        setShowPublishModal(true);
+     }
+  };
+
   const handleCreateStore = async () => {
     if (!newStoreName.trim()) return;
     setCreatingStore(true);
@@ -347,18 +400,23 @@ export default function MyLibraryScreen({
                            <div key={offer.id} className="group relative rounded-xl overflow-hidden bg-primary-light/20 border border-white/5 hover:border-secondary/50 transition-all">
                               <div className="aspect-[2/3] relative">
                                  <img src={getImageSource(offer)} className="w-full h-full object-cover" />
-                                 <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-3">
+                                 <div className="absolute top-2 right-2">
+                                     <span className={`w-3 h-3 block rounded-full shadow-sm ${offer.visibility === 'public' ? 'bg-green-500' : 'bg-white/20'}`} />
+                                 </div>
+                                 <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-4">
                                     <button 
-                                      onClick={() => { setBookToPublish(offer); setShowPublishModal(true); }}
-                                      className="px-4 py-2 bg-secondary text-white rounded-full text-xs font-bold hover:scale-105 transition-transform"
+                                      onClick={() => handlePublishToggle(offer)}
+                                      className="p-3 bg-white text-[#382110] rounded-full hover:scale-110 transition-transform shadow-lg"
+                                      title={offer.visibility === 'public' ? "Unpublish" : "Publish"}
                                     >
-                                       Publish
+                                       {offer.visibility === 'public' ? <FaEyeSlash size={18} /> : <FaEye size={18} />}
                                     </button>
                                     <button 
                                       onClick={() => handleRemove(offer.id)}
-                                      className="px-4 py-2 bg-red-500/80 text-white rounded-full text-xs font-bold hover:scale-105 transition-transform"
+                                      className="p-3 bg-red-500 text-white rounded-full hover:scale-110 transition-transform shadow-lg"
+                                      title="Remove from Library"
                                     >
-                                       Remove
+                                       <FaTrash size={18} />
                                     </button>
                                  </div>
                               </div>
@@ -454,15 +512,20 @@ export default function MyLibraryScreen({
                    )}
 
                    <div className="mb-4">
-                       <label className="block text-xs font-bold uppercase text-text-muted mb-1">Confirm Location</label>
-                       <div className="h-32 bg-gray-700 rounded-lg flex items-center justify-center text-sm text-gray-400 relative overflow-hidden group">
-                           {/* Placeholder for map - could be actual map if needed, but for now just visual cue */}
-                           <div className="absolute inset-0 bg-cover bg-center opacity-50" style={{ backgroundImage: 'url(https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png)' }}></div>
-                           <span className="relative z-10 flex items-center gap-2 bg-black/50 px-3 py-1 rounded"><FaMapMarkerAlt /> {publishForm.latitude.toFixed(4)}, {publishForm.longitude.toFixed(4)}</span>
-                           <button onClick={onMapPress} className="absolute inset-0 z-20 flex items-center justify-center bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity text-white font-bold">
-                               Change on Map
-                           </button>
+                       <div className="flex justify-between items-center mb-1">
+                          <label className="block text-xs font-bold uppercase text-text-muted">Confirm Location</label>
+                          <button onClick={handleAutoDetect} className="text-xs text-secondary hover:underline">Auto Detect</button>
                        </div>
+                       <div className="h-48 border border-white/10 rounded-xl overflow-hidden relative z-0">
+                            <MapContainer center={[publishForm.latitude, publishForm.longitude]} zoom={13} style={{ height: "100%", width: "100%" }}>
+                               <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                               <LocationMarker 
+                                  position={{ lat: publishForm.latitude, lng: publishForm.longitude }} 
+                                  setPosition={(pos) => setPublishForm({...publishForm, latitude: pos.lat, longitude: pos.lng})} 
+                               />
+                            </MapContainer>
+                       </div>
+                       <p className="text-[10px] text-text-muted mt-1">Tap map to pinpoint exact location.</p>
                    </div>
 
                    <div className="flex justify-end gap-3 mt-4">

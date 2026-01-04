@@ -12,6 +12,28 @@ import {
   FaEyeSlash
 } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
+import { MapContainer, TileLayer, Marker, useMapEvents } from "react-leaflet";
+import "leaflet/dist/leaflet.css";
+import L from "leaflet";
+import type { LeafletMouseEvent } from "leaflet";
+import icon from "leaflet/dist/images/marker-icon.png";
+import iconShadow from "leaflet/dist/images/marker-shadow.png";
+
+const DefaultIcon = L.icon({ iconUrl: icon, shadowUrl: iconShadow, iconSize: [25, 41], iconAnchor: [12, 41] });
+L.Marker.prototype.options.icon = DefaultIcon;
+
+function LocationMarker({ position, setPosition }: { position: { lat: number; lng: number } | null, setPosition: (pos: { lat: number; lng: number }) => void }) {
+  const map = useMapEvents({
+    click(e: LeafletMouseEvent) {
+      setPosition(e.latlng);
+      map.flyTo(e.latlng, map.getZoom());
+    },
+  });
+  useEffect(() => {
+     if(position) map.flyTo(position, map.getZoom());
+  }, [position, map]);
+  return position ? <Marker position={position} /> : null;
+}
 
 const API_BASE = "https://boocozmo-api.onrender.com";
 
@@ -98,6 +120,26 @@ export default function ProfileScreen({ currentUser, onAddPress, onMapPress }: P
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const photoInputRef = useRef<HTMLInputElement>(null);
 
+  // Publish Modal State
+  const [showPublishModal, setShowPublishModal] = useState(false);
+  const [bookToPublish, setBookToPublish] = useState<Offer | null>(null);
+  const [publishForm, setPublishForm] = useState({
+    type: "sell" as "sell" | "exchange",
+    price: "",
+    exchangeBook: "",
+    latitude: 40.7128,
+    longitude: -74.0060,
+  });
+  const [publishing, setPublishing] = useState(false);
+
+  const handleAutoDetect = () => {
+     if ("geolocation" in navigator) {
+        navigator.geolocation.getCurrentPosition((pos) => {
+           setPublishForm(prev => ({ ...prev, latitude: pos.coords.latitude, longitude: pos.coords.longitude }));
+        });
+     } else { alert("Geolocation not supported"); }
+  };
+
   const fetchProfile = useCallback(async () => {
     setLoadingProfile(true);
     try {
@@ -158,17 +200,51 @@ export default function ProfileScreen({ currentUser, onAddPress, onMapPress }: P
   };
 
   const handlePublishToggle = async (offer: Offer) => {
+     const isPublic = offer.visibility === 'public';
+     if (isPublic) {
+        if(!confirm("Unpublish this offer?")) return;
+        try {
+           await fetchWithTimeout(`${API_BASE}/unpublish-offer/${offer.id}`, {
+              method: 'POST', headers: { 'Authorization': `Bearer ${currentUser.token}`, 'Content-Type': 'application/json' },
+              body: JSON.stringify({})
+           });
+           await fetchMyOffers();
+        } catch (e) { alert("Failed to unpublish"); }
+     } else {
+        // Open Modal to Publish
+        setBookToPublish(offer);
+        setPublishForm({
+           type: (offer.type as any) || "sell",
+           price: offer.price?.toString() || "",
+           exchangeBook: offer.exchangeBook || "",
+           latitude: offer.latitude || 40.7128,
+           longitude: offer.longitude || -74.0060
+        });
+        setShowPublishModal(true);
+     }
+  };
+
+  const handlePublishConfirm = async () => {
+     if (!bookToPublish) return;
+     setPublishing(true);
      try {
-        const isPublic = offer.visibility === 'public';
-        const endpoint = isPublic ? `${API_BASE}/unpublish-offer/${offer.id}` : `${API_BASE}/publish-offer/${offer.id}`;
-        const body = isPublic ? {} : { type: offer.type, price: offer.price, exchangeBook: offer.exchangeBook, latitude: offer.latitude || 40.7128, longitude: offer.longitude || -74.0060 };
+        const body = {
+           type: publishForm.type,
+           price: publishForm.type === 'sell' ? Number(publishForm.price) : null,
+           exchangeBook: publishForm.type === 'exchange' ? publishForm.exchangeBook : null,
+           latitude: publishForm.latitude, 
+           longitude: publishForm.longitude
+        };
         
-        await fetchWithTimeout(endpoint, {
+        await fetchWithTimeout(`${API_BASE}/publish-offer/${bookToPublish.id}`, {
            method: 'POST', headers: { 'Authorization': `Bearer ${currentUser.token}`, 'Content-Type': 'application/json' },
            body: JSON.stringify(body)
         });
         await fetchMyOffers();
-     } catch (e) { alert("Failed to change visibility"); }
+        setShowPublishModal(false);
+        setBookToPublish(null);
+     } catch (e) { alert("Failed to publish"); }
+     finally { setPublishing(false); }
   };
 
   const handleDeleteOffer = async (id: number) => {
@@ -387,6 +463,53 @@ export default function ProfileScreen({ currentUser, onAddPress, onMapPress }: P
                </motion.div>
             </motion.div>
          )}
+      </AnimatePresence>
+      {/* Publish Modal */}
+      <AnimatePresence>
+          {showPublishModal && (
+             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
+                <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} className="bg-primary border border-white/10 rounded-2xl p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
+                    <h3 className="text-xl font-bold text-white mb-2">Publish "{bookToPublish?.bookTitle}"</h3>
+                    <p className="text-text-muted text-sm mb-4">Set visibility details and location.</p>
+
+                    <div className="flex gap-4 mb-4">
+                       <button onClick={() => setPublishForm({...publishForm, type: "sell"})} className={`flex-1 py-2 rounded-lg border ${publishForm.type === "sell" ? "bg-secondary border-secondary text-white" : "border-white/10 text-text-muted"}`}>Sell</button>
+                       <button onClick={() => setPublishForm({...publishForm, type: "exchange"})} className={`flex-1 py-2 rounded-lg border ${publishForm.type === "exchange" ? "bg-secondary border-secondary text-white" : "border-white/10 text-text-muted"}`}>Exchange</button>
+                    </div>
+
+                    {publishForm.type === "sell" && (
+                       <input type="number" value={publishForm.price} onChange={e => setPublishForm({...publishForm, price: e.target.value})} placeholder="Price ($)" className="w-full bg-primary-light/50 border border-white/10 rounded-xl p-3 text-white mb-3" />
+                    )}
+                    {publishForm.type === "exchange" && (
+                       <input value={publishForm.exchangeBook} onChange={e => setPublishForm({...publishForm, exchangeBook: e.target.value})} placeholder="Trading for (e.g. Sci-Fi)" className="w-full bg-primary-light/50 border border-white/10 rounded-xl p-3 text-white mb-3" />
+                    )}
+
+                    <div className="mb-4">
+                        <div className="flex justify-between items-center mb-2">
+                           <label className="text-xs font-bold uppercase text-text-muted">Confirm Location</label>
+                           <button onClick={handleAutoDetect} className="text-xs text-secondary hover:underline">Auto Detect</button>
+                        </div>
+                        <div className="h-48 border border-white/10 rounded-xl overflow-hidden relative z-0">
+                             <MapContainer center={[publishForm.latitude, publishForm.longitude]} zoom={13} style={{ height: "100%", width: "100%" }}>
+                                <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                                <LocationMarker 
+                                   position={{ lat: publishForm.latitude, lng: publishForm.longitude }} 
+                                   setPosition={(pos) => setPublishForm({...publishForm, latitude: pos.lat, longitude: pos.lng})} 
+                                />
+                             </MapContainer>
+                        </div>
+                        <p className="text-[10px] text-text-muted mt-1">Tap map to pinpoint exact location.</p>
+                    </div>
+
+                    <div className="flex justify-end gap-3 mt-4">
+                       <button onClick={() => setShowPublishModal(false)} className="text-text-muted hover:text-white">Cancel</button>
+                       <button onClick={handlePublishConfirm} disabled={publishing} className="px-4 py-2 bg-secondary text-white rounded-xl font-medium">
+                          {publishing ? "Publishing..." : "Publish Now"}
+                       </button>
+                    </div>
+                 </motion.div>
+              </motion.div>
+          )}
       </AnimatePresence>
     </div>
   );
