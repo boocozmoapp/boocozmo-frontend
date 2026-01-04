@@ -1,12 +1,11 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-// src/pages/MyLibraryScreen.tsx - FINAL VERSION WITH WORKING PUBLISH FEATURE
+// src/pages/MyLibraryScreen.tsx - REDESIGNED LAYOUT
 import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   FaBook,
   FaPlus,
   FaFolder,
-  FaFolderOpen,
   FaTrash,
   FaSearch,
   FaDollarSign,
@@ -15,10 +14,20 @@ import {
   FaEllipsisV,
   FaGlobe,
   FaEyeSlash,
-  FaChevronRight,
-  FaChevronLeft,
   FaImage,
   FaMapMarkerAlt,
+  FaHome,
+  FaMapMarkedAlt,
+  FaComments,
+  FaBell,
+  FaBookmark,
+  FaCog,
+  FaBookOpen as FaBookOpenIcon,
+  FaUsers,
+  FaCompass,
+  FaStar,
+  FaTimes,
+  FaBars,
 } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 
@@ -79,6 +88,9 @@ type Props = {
     token: string;
   };
   onBack?: () => void;
+  onAddPress?: () => void;
+  onMapPress?: () => void;
+  onProfilePress?: () => void;
 };
 
 const fetchWithTimeout = async (url: string, options: RequestInit = {}, timeout = 10000) => {
@@ -95,7 +107,13 @@ const fetchWithTimeout = async (url: string, options: RequestInit = {}, timeout 
   }
 };
 
-export default function MyLibraryScreen({ currentUser, onBack }: Props) {
+export default function MyLibraryScreen({ 
+  currentUser, 
+  onBack,
+  onAddPress,
+  onMapPress,
+  onProfilePress 
+}: Props) {
   const navigate = useNavigate();
 
   const [stores, setStores] = useState<Store[]>([]);
@@ -134,9 +152,22 @@ export default function MyLibraryScreen({ currentUser, onBack }: Props) {
 
   const [showBookMenu, setShowBookMenu] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const abortControllerRef = useRef<AbortController | null>(null);
+
+  // Navigation items
+  const navItems = [
+    { icon: FaHome, label: "Home", onClick: () => navigate("/") },
+    { icon: FaMapMarkedAlt, label: "Map", onClick: onMapPress || (() => navigate("/map")) },
+    { icon: FaBookOpenIcon, label: "My Library", active: true, onClick: () => navigate("/my-library") },
+    { icon: FaCompass, label: "Discover", onClick: () => navigate("/discover") },
+    { icon: FaBookmark, label: "Saved", onClick: () => navigate("/saved") },
+    { icon: FaUsers, label: "Following", onClick: () => navigate("/following") },
+    { icon: FaComments, label: "Messages", onClick: () => navigate("/chat") },
+    { icon: FaBell, label: "Notifications", onClick: () => navigate("/notifications") },
+    { icon: FaStar, label: "Top Picks", onClick: () => navigate("/top-picks") },
+  ];
 
   // Fetch user's private libraries (stores)
   const fetchStores = useCallback(async () => {
@@ -320,8 +351,6 @@ export default function MyLibraryScreen({ currentUser, onBack }: Props) {
       alert("Book published successfully! It's now visible to others.");
       setShowPublishModal(false);
       setBookToPublish(null);
-      // Optional: refresh to show changes if needed
-      // await fetchStoreOffers(selectedStore!);
     } catch (err: any) {
       alert(err.message || "Failed to publish");
     } finally {
@@ -380,224 +409,798 @@ export default function MyLibraryScreen({ currentUser, onBack }: Props) {
 
   return (
     <div style={{ height: "100vh", width: "100vw", background: PINTEREST.bg, display: "flex", overflow: "hidden", fontFamily: "'Inter', sans-serif" }}>
-      {/* Sidebar */}
-      <motion.div animate={{ width: sidebarCollapsed ? "60px" : "280px" }} style={{ background: PINTEREST.sidebarBg, borderRight: `1px solid ${PINTEREST.border}`, display: "flex", flexDirection: "column" }}>
-        <button onClick={() => setSidebarCollapsed(!sidebarCollapsed)} style={{ position: "absolute", top: 20, right: -12, width: 24, height: 24, borderRadius: "50%", background: "white", border: `1px solid ${PINTEREST.border}`, display: "flex", alignItems: "center", justifyContent: "center", zIndex: 10 }}>
-          {sidebarCollapsed ? <FaChevronRight /> : <FaChevronLeft />}
-        </button>
-
-        <div style={{ padding: "20px 16px", borderBottom: `1px solid ${PINTEREST.border}` }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-            <button onClick={onBack || (() => navigate(-1))} style={{ width: 36, height: 36, borderRadius: 10, background: "white", border: `1px solid ${PINTEREST.border}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <FaArrowLeft />
-            </button>
-            {!sidebarCollapsed && (
-              <div>
-                <h1 style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>My Libraries</h1>
-                <p style={{ fontSize: 11, color: PINTEREST.textLight, margin: "4px 0 0" }}>{stores.length} collections</p>
-              </div>
-            )}
-          </div>
-        </div>
-
-        <div style={{ flex: 1, overflowY: "auto", padding: "0 12px 12px" }}>
-          {loading ? (
-            <div style={{ textAlign: "center", padding: 20 }}>Loading...</div>
-          ) : stores.length === 0 ? (
-            <div style={{ textAlign: "center", padding: 40 }}>
-              <FaFolder size={40} style={{ color: PINTEREST.textLight, opacity: 0.5, marginBottom: 16 }} />
-              <p>No libraries yet</p>
-              <motion.button whileHover={{ scale: 1.05 }} onClick={() => setShowCreateStoreModal(true)} style={{ marginTop: 16, padding: "12px 24px", background: PINTEREST.primary, color: "white", border: "none", borderRadius: 8 }}>
-                Create First Library
-              </motion.button>
-            </div>
-          ) : (
-            stores.map(store => (
-              <motion.div
-                key={store.id}
-                whileHover={{ backgroundColor: PINTEREST.hoverBg }}
-                onClick={() => setSelectedStore(store)}
-                style={{
-                  padding: 12,
-                  borderRadius: 10,
-                  background: selectedStore?.id === store.id ? PINTEREST.redLight : "transparent",
-                  border: `1px solid ${selectedStore?.id === store.id ? PINTEREST.primary : PINTEREST.border}`,
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 10,
-                }}
-              >
-                {selectedStore?.id === store.id ? <FaFolderOpen color={PINTEREST.primary} /> : <FaFolder color={PINTEREST.textLight} />}
-                {!sidebarCollapsed && (
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: 600 }}>{store.name}</div>
-                    <div style={{ fontSize: 11, color: PINTEREST.textLight }}>{store.offerIds?.length || 0} books</div>
-                  </div>
-                )}
-              </motion.div>
-            ))
-          )}
-        </div>
-
-        <div style={{ padding: 12, borderTop: `1px solid ${PINTEREST.border}` }}>
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            onClick={() => setShowCreateStoreModal(true)}
-            style={{
-              width: "100%",
-              padding: "12px",
-              background: stores.length === 0 ? PINTEREST.primary : "transparent",
-              color: stores.length === 0 ? "white" : PINTEREST.primary,
-              border: stores.length === 0 ? "none" : `2px dashed ${PINTEREST.primary}`,
-              borderRadius: 10,
+      {/* Sidebar Navigation */}
+      <motion.aside
+        initial={{ x: -300 }}
+        animate={{ x: sidebarOpen ? 0 : -300 }}
+        transition={{ type: "spring", damping: 25 }}
+        style={{
+          width: "240px",
+          background: PINTEREST.sidebarBg,
+          borderRight: `1px solid ${PINTEREST.border}`,
+          position: "fixed",
+          top: 0,
+          left: 0,
+          bottom: 0,
+          zIndex: 1000,
+          padding: "20px 16px",
+          overflowY: "auto",
+        }}
+      >
+        {/* Logo */}
+        <div style={{ marginBottom: "24px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            <div style={{
+              width: "32px",
+              height: "32px",
+              borderRadius: "50%",
+              background: `linear-gradient(135deg, ${PINTEREST.primary}, ${PINTEREST.dark})`,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              gap: 8,
-            }}
-          >
-            <FaPlus />
-            {!sidebarCollapsed && "New Library"}
-          </motion.button>
-
-          <div style={{ marginTop: 12, display: "flex", alignItems: "center", gap: 8 }}>
-            <div style={{ width: 32, height: 32, borderRadius: 8, background: PINTEREST.primary, color: "white", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 600 }}>
-              {currentUser.name[0].toUpperCase()}
+              color: "white",
+              fontWeight: "700",
+              fontSize: "14px",
+            }}>
+              B
             </div>
-            {!sidebarCollapsed && <div style={{ fontWeight: 600 }}>{currentUser.name.split(" ")[0]}</div>}
+            <span style={{ 
+              fontSize: "20px", 
+              fontWeight: "800", 
+              color: PINTEREST.textDark,
+              letterSpacing: "-0.5px",
+            }}>
+              boocozmo
+            </span>
           </div>
         </div>
-      </motion.div>
+
+        {/* User Profile */}
+        <motion.div
+          whileHover={{ scale: 1.02 }}
+          onClick={onProfilePress || (() => navigate("/profile"))}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "12px",
+            padding: "12px",
+            borderRadius: "12px",
+            background: PINTEREST.hoverBg,
+            marginBottom: "24px",
+            cursor: "pointer",
+          }}
+        >
+          <div style={{
+            width: "40px",
+            height: "40px",
+            borderRadius: "50%",
+            background: `linear-gradient(135deg, ${PINTEREST.primary}, ${PINTEREST.dark})`,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            color: "white",
+            fontWeight: "600",
+            fontSize: "16px",
+          }}>
+            {currentUser.name.charAt(0).toUpperCase()}
+          </div>
+          <div>
+            <div style={{ fontSize: "14px", fontWeight: "600", color: PINTEREST.textDark }}>
+              {currentUser.name.split(" ")[0]}
+            </div>
+            <div style={{ fontSize: "12px", color: PINTEREST.textLight }}>View profile</div>
+          </div>
+        </motion.div>
+
+        {/* Navigation */}
+        <nav style={{ flex: 1 }}>
+          {navItems.map((item) => (
+            <motion.button
+              key={item.label}
+              whileHover={{ x: 4 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => {
+                item.onClick();
+                setSidebarOpen(false);
+              }}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "12px",
+                width: "100%",
+                padding: "12px",
+                background: item.active ? PINTEREST.redLight : "transparent",
+                border: "none",
+                color: item.active ? PINTEREST.primary : PINTEREST.textDark,
+                fontSize: "14px",
+                fontWeight: item.active ? "600" : "500",
+                cursor: "pointer",
+                borderRadius: "12px",
+                marginBottom: "4px",
+                textAlign: "left",
+              }}
+            >
+              <item.icon size={18} />
+              {item.label}
+            </motion.button>
+          ))}
+        </nav>
+
+        {/* Create Button */}
+        {onAddPress && (
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => {
+              onAddPress();
+              setSidebarOpen(false);
+            }}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "12px",
+              padding: "14px",
+              background: PINTEREST.primary,
+              color: "white",
+              border: "none",
+              borderRadius: "24px",
+              fontSize: "14px",
+              fontWeight: "600",
+              cursor: "pointer",
+              width: "100%",
+              justifyContent: "center",
+              marginTop: "20px",
+              boxShadow: "0 4px 20px rgba(230, 0, 35, 0.3)",
+            }}
+          >
+            <FaPlus /> Share a Book
+          </motion.button>
+        )}
+
+        {/* Settings */}
+        <motion.button
+          whileHover={{ x: 4 }}
+          onClick={() => navigate("/settings")}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "12px",
+            width: "100%",
+            padding: "12px",
+            background: "transparent",
+            border: "none",
+            color: PINTEREST.textLight,
+            fontSize: "14px",
+            fontWeight: "500",
+            cursor: "pointer",
+            borderRadius: "12px",
+            marginTop: "12px",
+            textAlign: "left",
+          }}
+        >
+          <FaCog size={18} />
+          Settings
+        </motion.button>
+      </motion.aside>
 
       {/* Main Content */}
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
-        {selectedStore ? (
-          <>
-            <div style={{ padding: "20px 24px", background: "white", borderBottom: `1px solid ${PINTEREST.border}` }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-                <div>
-                  <h2 style={{ fontSize: 22, fontWeight: 700, margin: "0 0 4px" }}>{selectedStore.name}</h2>
-                  <div style={{ display: "flex", gap: 12, fontSize: 13, color: PINTEREST.textLight }}>
-                    <span><FaBook /> {storeOffers.length} books</span>
-                    <span><FaEyeSlash /> Private</span>
-                  </div>
-                </div>
-                <motion.button whileHover={{ scale: 1.05 }} onClick={() => setShowAddBookModal(true)} style={{ padding: "10px 20px", background: PINTEREST.primary, color: "white", border: "none", borderRadius: 8, display: "flex", alignItems: "center", gap: 6 }}>
-                  <FaPlus /> Add Book
-                </motion.button>
+      <div style={{ 
+        flex: 1, 
+        marginLeft: sidebarOpen ? "240px" : "0", 
+        transition: "margin-left 0.3s ease",
+        display: "flex",
+        flexDirection: "column",
+        overflow: "hidden",
+      }}>
+        {/* Header */}
+        <header style={{
+          padding: "12px 20px",
+          background: "white",
+          borderBottom: `1px solid ${PINTEREST.border}`,
+          flexShrink: 0,
+          zIndex: 100,
+        }}>
+          <div style={{ 
+            display: "flex", 
+            alignItems: "center", 
+            justifyContent: "space-between",
+            marginBottom: "12px",
+          }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "12px", flex: 1 }}>
+              {/* Menu Button */}
+              <div
+                onClick={() => setSidebarOpen(!sidebarOpen)}
+                style={{
+                  width: "36px",
+                  height: "36px",
+                  borderRadius: "8px",
+                  background: PINTEREST.hoverBg,
+                  border: `1px solid ${PINTEREST.border}`,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  cursor: "pointer",
+                  flexShrink: 0,
+                }}
+              >
+                {sidebarOpen ? (
+                  <FaTimes 
+                    size={16} 
+                    color={PINTEREST.textDark}
+                    style={{ display: 'block' }}
+                  />
+                ) : (
+                  <FaBars 
+                    size={16} 
+                    color={PINTEREST.textDark}
+                    style={{ display: 'block' }}
+                  />
+                )}
               </div>
 
-              <div style={{ position: "relative" }}>
-                <FaSearch style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: PINTEREST.icon }} />
+              {/* Back Button */}
+              <button
+                onClick={onBack || (() => navigate(-1))}
+                style={{
+                  width: "36px",
+                  height: "36px",
+                  borderRadius: "8px",
+                  background: PINTEREST.hoverBg,
+                  border: `1px solid ${PINTEREST.border}`,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  cursor: "pointer",
+                  flexShrink: 0,
+                }}
+              >
+                <FaArrowLeft size={16} color={PINTEREST.textDark} />
+              </button>
+
+              {/* Search */}
+              <div style={{ position: "relative", flex: 1 }}>
+                <FaSearch
+                  size={12}
+                  style={{
+                    position: "absolute",
+                    left: "12px",
+                    top: "50%",
+                    transform: "translateY(-50%)",
+                    color: PINTEREST.icon,
+                    zIndex: 1,
+                  }}
+                />
                 <input
                   type="text"
-                  placeholder="Search books..."
+                  placeholder="Search books in library..."
                   value={searchQuery}
-                  onChange={e => setSearchQuery(e.target.value)}
-                  style={{ width: "100%", padding: "10px 10px 10px 36px", borderRadius: 8, border: `1px solid ${PINTEREST.border}`, background: PINTEREST.grayLight }}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  style={{
+                    width: "100%",
+                    padding: "10px 10px 10px 36px",
+                    borderRadius: "20px",
+                    border: `1px solid ${PINTEREST.border}`,
+                    fontSize: "14px",
+                    background: PINTEREST.grayLight,
+                    color: PINTEREST.textDark,
+                    outline: "none",
+                    fontFamily: "inherit",
+                  }}
                 />
               </div>
             </div>
 
-            <div style={{ flex: 1, overflowY: "auto", padding: 24, display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 20 }}>
-              {loadingOffers ? (
-                <div style={{ gridColumn: "1 / -1", textAlign: "center", padding: 60 }}>Loading books...</div>
-              ) : filteredOffers.length === 0 ? (
-                <div style={{ gridColumn: "1 / -1", textAlign: "center", padding: 60 }}>
-                  <FaBook size={40} style={{ color: PINTEREST.textLight, opacity: 0.5, marginBottom: 16 }} />
-                  <h3>Empty library</h3>
-                  <p>Add your first book to get started</p>
-                  <motion.button whileHover={{ scale: 1.05 }} onClick={() => setShowAddBookModal(true)} style={{ marginTop: 16, padding: "12px 24px", background: PINTEREST.primary, color: "white", border: "none", borderRadius: 8 }}>
-                    Add First Book
+            {/* Add Book Button */}
+            <motion.button 
+              whileHover={{ scale: 1.05 }} 
+              onClick={() => setShowAddBookModal(true)}
+              style={{ 
+                padding: "10px 20px", 
+                background: PINTEREST.primary, 
+                color: "white", 
+                border: "none", 
+                borderRadius: 8, 
+                display: "flex", 
+                alignItems: "center", 
+                gap: 6,
+                fontWeight: 600,
+              }}
+            >
+              <FaPlus /> Add Book
+            </motion.button>
+          </div>
+        </header>
+
+        {/* Main Content Area */}
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+          {/* Libraries Row - Horizontal Scroll */}
+          <div style={{
+            padding: "20px 24px",
+            background: "white",
+            borderBottom: `1px solid ${PINTEREST.border}`,
+            flexShrink: 0,
+          }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
+              <h2 style={{ fontSize: "20px", fontWeight: "700", margin: 0 }}>My Libraries</h2>
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                onClick={() => setShowCreateStoreModal(true)}
+                style={{
+                  padding: "8px 16px",
+                  background: PINTEREST.primary,
+                  color: "white",
+                  border: "none",
+                  borderRadius: "8px",
+                  fontSize: "14px",
+                  fontWeight: "600",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "6px",
+                }}
+              >
+                <FaPlus size={14} /> New Library
+              </motion.button>
+            </div>
+
+            {/* Libraries Cards Row */}
+            <div style={{ 
+              display: "flex", 
+              gap: "16px", 
+              overflowX: "auto",
+              paddingBottom: "8px",
+              scrollbarWidth: "thin",
+            }}>
+              {loading ? (
+                <div style={{ padding: "40px 20px", textAlign: "center", width: "100%" }}>
+                  Loading libraries...
+                </div>
+              ) : stores.length === 0 ? (
+                <div style={{ 
+                  padding: "40px 20px", 
+                  textAlign: "center", 
+                  width: "100%",
+                  border: `2px dashed ${PINTEREST.border}`,
+                  borderRadius: "12px",
+                }}>
+                  <FaFolder size={40} style={{ color: PINTEREST.textLight, opacity: 0.5, marginBottom: "16px" }} />
+                  <p style={{ marginBottom: "16px", color: PINTEREST.textLight }}>No libraries yet</p>
+                  <motion.button 
+                    whileHover={{ scale: 1.05 }} 
+                    onClick={() => setShowCreateStoreModal(true)}
+                    style={{ 
+                      padding: "10px 20px", 
+                      background: PINTEREST.primary, 
+                      color: "white", 
+                      border: "none", 
+                      borderRadius: "8px",
+                      fontSize: "14px",
+                      fontWeight: "600",
+                    }}
+                  >
+                    Create First Library
                   </motion.button>
                 </div>
               ) : (
-                <AnimatePresence>
-                  {filteredOffers.map(offer => (
+                <>
+                  {stores.map(store => (
                     <motion.div
-                      key={offer.id}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0 }}
+                      key={store.id}
                       whileHover={{ y: -4 }}
-                      style={{ position: "relative", borderRadius: 12, overflow: "hidden", background: "white", boxShadow: PINTEREST.cardShadow, border: `1px solid ${PINTEREST.border}` }}
+                      onClick={() => setSelectedStore(store)}
+                      style={{
+                        flexShrink: 0,
+                        width: "180px",
+                        height: "140px",
+                        borderRadius: "12px",
+                        background: selectedStore?.id === store.id ? PINTEREST.redLight : "white",
+                        border: `2px solid ${selectedStore?.id === store.id ? PINTEREST.primary : PINTEREST.border}`,
+                        padding: "16px",
+                        cursor: "pointer",
+                        display: "flex",
+                        flexDirection: "column",
+                        justifyContent: "space-between",
+                        boxShadow: PINTEREST.cardShadow,
+                      }}
                     >
-                      <button
-                        onClick={(e) => { e.stopPropagation(); setShowBookMenu(showBookMenu === offer.id ? null : offer.id); }}
-                        style={{ position: "absolute", top: 8, right: 8, width: 28, height: 28, borderRadius: 6, background: "rgba(255,255,255,0.9)", border: `1px solid ${PINTEREST.border}`, zIndex: 10 }}
-                      >
-                        <FaEllipsisV />
-                      </button>
-
-                      {showBookMenu === offer.id && (
-                        <motion.div
-                          initial={{ opacity: 0, scale: 0.95 }}
-                          animate={{ opacity: 1, scale: 1 }}
-                          style={{ position: "absolute", top: 40, right: 8, background: "white", borderRadius: 8, boxShadow: PINTEREST.cardShadowHover, border: `1px solid ${PINTEREST.border}`, zIndex: 20, minWidth: 160 }}
-                          onClick={e => e.stopPropagation()}
-                        >
-                          <button
-                            onClick={() => {
-                              setBookToPublish(offer);
-                              setPublishForm({
-                                type: "sell",
-                                price: "",
-                                exchangeBook: "",
-                                latitude: offer.latitude || 40.7128,
-                                longitude: offer.longitude || -74.0060,
-                              });
-                              setShowPublishModal(true);
-                              setShowBookMenu(null);
-                            }}
-                            style={{ width: "100%", padding: "10px 12px", textAlign: "left", borderBottom: `1px solid ${PINTEREST.border}` }}
-                          >
-                            <FaGlobe style={{ marginRight: 8 }} /> Publish as Offer
-                          </button>
-                          <button
-                            onClick={() => { handleRemove(offer.id); setShowBookMenu(null); }}
-                            style={{ width: "100%", padding: "10px 12px", textAlign: "left", color: PINTEREST.primary }}
-                          >
-                            <FaTrash style={{ marginRight: 8 }} /> Remove from Library
-                          </button>
-                        </motion.div>
-                      )}
-
-                      <div style={{ height: "55%", overflow: "hidden" }}>
-                        <img src={getImageSource(offer)} alt={offer.bookTitle} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                        <div style={{ position: "absolute", top: 8, left: 8, background: PINTEREST.primary, color: "white", padding: "4px 8px", borderRadius: 6, fontSize: 10 }}>
-                          Private
+                      <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                        <div style={{
+                          width: "48px",
+                          height: "48px",
+                          borderRadius: "10px",
+                          background: selectedStore?.id === store.id ? PINTEREST.primary : PINTEREST.grayLight,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          color: selectedStore?.id === store.id ? "white" : PINTEREST.primary,
+                          fontSize: "20px",
+                        }}>
+                          <FaFolder />
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <h3 style={{
+                            fontSize: "16px",
+                            fontWeight: "600",
+                            margin: 0,
+                            color: PINTEREST.textDark,
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap",
+                          }}>
+                            {store.name}
+                          </h3>
+                          <p style={{
+                            fontSize: "12px",
+                            color: PINTEREST.textLight,
+                            margin: "4px 0 0",
+                          }}>
+                            {store.offerIds?.length || 0} books
+                          </p>
                         </div>
                       </div>
-
-                      <div style={{ padding: 16 }}>
-                        <h3 style={{ fontSize: 14, fontWeight: 600, margin: "0 0 6px", lineHeight: 1.3, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>
-                          {offer.bookTitle}
-                        </h3>
-                        {offer.author && <p style={{ fontSize: 12, color: PINTEREST.textLight, fontStyle: "italic", margin: "0 0 8px" }}>{offer.author}</p>}
-                        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: PINTEREST.textLight }}>
-                          <span style={{ background: PINTEREST.grayLight, padding: "4px 8px", borderRadius: 6 }}>{offer.genre || "Fiction"}</span>
-                          <span>{offer.condition || "Good"}</span>
-                        </div>
+                      <div style={{
+                        fontSize: "11px",
+                        color: PINTEREST.textMuted,
+                        paddingTop: "8px",
+                        borderTop: `1px solid ${PINTEREST.border}`,
+                      }}>
+                        Private • {new Date(store.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                       </div>
                     </motion.div>
                   ))}
-                </AnimatePresence>
+                  
+                  {/* Add New Library Card */}
+                  <motion.div
+                    whileHover={{ y: -4, backgroundColor: PINTEREST.hoverBg }}
+                    onClick={() => setShowCreateStoreModal(true)}
+                    style={{
+                      flexShrink: 0,
+                      width: "180px",
+                      height: "140px",
+                      borderRadius: "12px",
+                      border: `2px dashed ${PINTEREST.primary}`,
+                      padding: "16px",
+                      cursor: "pointer",
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      color: PINTEREST.primary,
+                      background: "transparent",
+                    }}
+                  >
+                    <FaPlus size={24} style={{ marginBottom: "12px" }} />
+                    <div style={{ fontSize: "14px", fontWeight: "600", textAlign: "center" }}>
+                      Add New Library
+                    </div>
+                  </motion.div>
+                </>
               )}
             </div>
-          </>
-        ) : (
-          <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <div style={{ textAlign: "center" }}>
-              <FaFolder size={60} style={{ color: PINTEREST.textLight, opacity: 0.5, marginBottom: 24 }} />
-              <h2>Select a Library</h2>
-              <p style={{ color: PINTEREST.textLight }}>Choose from the sidebar to view your private books</p>
-            </div>
           </div>
-        )}
+
+          {/* Selected Library Content */}
+          <div style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column" }}>
+            {selectedStore ? (
+              <>
+                {/* Selected Library Header */}
+                <div style={{
+                  padding: "16px 24px",
+                  background: "white",
+                  borderBottom: `1px solid ${PINTEREST.border}`,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                }}>
+                  <div>
+                    <h3 style={{ fontSize: "18px", fontWeight: "700", margin: "0 0 4px" }}>
+                      {selectedStore.name}
+                    </h3>
+                    <div style={{ display: "flex", gap: "12px", fontSize: "13px", color: PINTEREST.textLight }}>
+                      <span><FaBook size={12} /> {storeOffers.length} books</span>
+                      <span><FaEyeSlash size={12} /> Private Collection</span>
+                    </div>
+                  </div>
+                  
+                  <div style={{ display: "flex", gap: "12px" }}>
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      onClick={() => {
+                        setShowAddBookModal(true);
+                      }}
+                      style={{
+                        padding: "10px 20px",
+                        background: PINTEREST.primary,
+                        color: "white",
+                        border: "none",
+                        borderRadius: "8px",
+                        fontSize: "14px",
+                        fontWeight: "600",
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "6px",
+                      }}
+                    >
+                      <FaPlus /> Add Book
+                    </motion.button>
+                  </div>
+                </div>
+
+                {/* Books Grid */}
+                <div style={{ 
+                  flex: 1, 
+                  overflowY: "auto", 
+                  padding: "24px",
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",
+                  gap: "20px",
+                  alignContent: "start",
+                }}>
+                  {loadingOffers ? (
+                    <div style={{ gridColumn: "1 / -1", textAlign: "center", padding: "60px 20px" }}>
+                      <div style={{
+                        width: "40px",
+                        height: "40px",
+                        border: `3px solid ${PINTEREST.primary}20`,
+                        borderTopColor: PINTEREST.primary,
+                        borderRadius: "50%",
+                        margin: "0 auto",
+                        animation: "spin 1s linear infinite",
+                      }} />
+                      <p style={{ marginTop: "16px", color: PINTEREST.textLight }}>Loading books...</p>
+                    </div>
+                  ) : filteredOffers.length === 0 ? (
+                    <div style={{ 
+                      gridColumn: "1 / -1", 
+                      textAlign: "center", 
+                      padding: "60px 20px",
+                      background: "white",
+                      borderRadius: "16px",
+                      border: `2px dashed ${PINTEREST.border}`,
+                    }}>
+                      <FaBook size={60} style={{ color: PINTEREST.textLight, opacity: 0.5, marginBottom: "20px" }} />
+                      <h3 style={{ fontSize: "20px", fontWeight: "600", color: PINTEREST.textDark, marginBottom: "8px" }}>
+                        Empty Library
+                      </h3>
+                      <p style={{ color: PINTEREST.textLight, fontSize: "15px", marginBottom: "24px" }}>
+                        No books in this library yet
+                      </p>
+                      <motion.button
+                        whileHover={{ scale: 1.05 }}
+                        onClick={() => setShowAddBookModal(true)}
+                        style={{
+                          padding: "12px 28px",
+                          background: PINTEREST.primary,
+                          color: "white",
+                          border: "none",
+                          borderRadius: "8px",
+                          fontSize: "15px",
+                          fontWeight: "600",
+                          cursor: "pointer",
+                        }}
+                      >
+                        Add First Book
+                      </motion.button>
+                    </div>
+                  ) : (
+                    <AnimatePresence>
+                      {filteredOffers.map(offer => (
+                        <motion.div
+                          key={offer.id}
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0 }}
+                          whileHover={{ y: -4 }}
+                          style={{
+                            position: "relative",
+                            borderRadius: "12px",
+                            overflow: "hidden",
+                            background: "white",
+                            boxShadow: PINTEREST.cardShadow,
+                            border: `1px solid ${PINTEREST.border}`,
+                          }}
+                        >
+                          <button
+                            onClick={(e) => { 
+                              e.stopPropagation(); 
+                              setShowBookMenu(showBookMenu === offer.id ? null : offer.id); 
+                            }}
+                            style={{
+                              position: "absolute",
+                              top: "8px",
+                              right: "8px",
+                              width: "28px",
+                              height: "28px",
+                              borderRadius: "6px",
+                              background: "rgba(255, 255, 255, 0.9)",
+                              border: `1px solid ${PINTEREST.border}`,
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              cursor: "pointer",
+                              zIndex: 10,
+                            }}
+                          >
+                            <FaEllipsisV size={14} />
+                          </button>
+
+                          {showBookMenu === offer.id && (
+                            <motion.div
+                              initial={{ opacity: 0, scale: 0.95 }}
+                              animate={{ opacity: 1, scale: 1 }}
+                              style={{
+                                position: "absolute",
+                                top: "40px",
+                                right: "8px",
+                                background: "white",
+                                borderRadius: "8px",
+                                boxShadow: PINTEREST.cardShadowHover,
+                                border: `1px solid ${PINTEREST.border}`,
+                                zIndex: 20,
+                                minWidth: "180px",
+                                overflow: "hidden",
+                              }}
+                              onClick={e => e.stopPropagation()}
+                            >
+                              <button
+                                onClick={() => {
+                                  setBookToPublish(offer);
+                                  setPublishForm({
+                                    type: "sell",
+                                    price: "",
+                                    exchangeBook: "",
+                                    latitude: offer.latitude || 40.7128,
+                                    longitude: offer.longitude || -74.0060,
+                                  });
+                                  setShowPublishModal(true);
+                                  setShowBookMenu(null);
+                                }}
+                                style={{
+                                  width: "100%",
+                                  padding: "12px 16px",
+                                  background: "transparent",
+                                  border: "none",
+                                  borderBottom: `1px solid ${PINTEREST.border}`,
+                                  color: PINTEREST.textDark,
+                                  fontSize: "14px",
+                                  fontWeight: "500",
+                                  cursor: "pointer",
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: "10px",
+                                  textAlign: "left",
+                                }}
+                              >
+                                <FaGlobe size={14} /> Publish as Offer
+                              </button>
+                              <button
+                                onClick={() => { 
+                                  handleRemove(offer.id); 
+                                  setShowBookMenu(null); 
+                                }}
+                                style={{
+                                  width: "100%",
+                                  padding: "12px 16px",
+                                  background: "transparent",
+                                  border: "none",
+                                  color: PINTEREST.primary,
+                                  fontSize: "14px",
+                                  fontWeight: "500",
+                                  cursor: "pointer",
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: "10px",
+                                  textAlign: "left",
+                                }}
+                              >
+                                <FaTrash size={14} /> Remove from Library
+                              </button>
+                            </motion.div>
+                          )}
+
+                          <div style={{ height: "140px", overflow: "hidden" }}>
+                            <img
+                              src={getImageSource(offer)}
+                              alt={offer.bookTitle}
+                              style={{
+                                width: "100%",
+                                height: "100%",
+                                objectFit: "cover",
+                              }}
+                            />
+                            <div style={{
+                              position: "absolute",
+                              top: "8px",
+                              left: "8px",
+                              background: PINTEREST.primary,
+                              color: "white",
+                              padding: "4px 8px",
+                              borderRadius: "6px",
+                              fontSize: "10px",
+                              fontWeight: "600",
+                            }}>
+                              Private
+                            </div>
+                          </div>
+
+                          <div style={{ padding: "16px" }}>
+                            <h4 style={{
+                              fontSize: "14px",
+                              fontWeight: "600",
+                              margin: "0 0 6px",
+                              color: PINTEREST.textDark,
+                              lineHeight: 1.3,
+                              overflow: "hidden",
+                              display: "-webkit-box",
+                              WebkitLineClamp: 2,
+                              WebkitBoxOrient: "vertical",
+                            }}>
+                              {offer.bookTitle}
+                            </h4>
+                            {offer.author && (
+                              <p style={{
+                                fontSize: "12px",
+                                color: PINTEREST.textLight,
+                                fontStyle: "italic",
+                                margin: "0 0 8px",
+                                overflow: "hidden",
+                                textOverflow: "ellipsis",
+                                whiteSpace: "nowrap",
+                              }}>
+                                {offer.author}
+                              </p>
+                            )}
+                            <div style={{
+                              display: "flex",
+                              justifyContent: "space-between",
+                              alignItems: "center",
+                              fontSize: "12px",
+                              color: PINTEREST.textLight,
+                            }}>
+                              <span style={{
+                                background: PINTEREST.grayLight,
+                                padding: "4px 8px",
+                                borderRadius: "6px",
+                              }}>
+                                {offer.genre || "Fiction"}
+                              </span>
+                              <span>{offer.condition || "Good"}</span>
+                            </div>
+                          </div>
+                        </motion.div>
+                      ))}
+                    </AnimatePresence>
+                  )}
+                </div>
+              </>
+            ) : (
+              <div style={{ 
+                flex: 1, 
+                display: "flex", 
+                alignItems: "center", 
+                justifyContent: "center",
+                padding: "40px",
+              }}>
+                <div style={{ textAlign: "center", maxWidth: "400px" }}>
+                  <FaFolder size={80} style={{ color: PINTEREST.textLight, opacity: 0.5, marginBottom: "24px" }} />
+                  <h3 style={{ fontSize: "22px", fontWeight: "600", color: PINTEREST.textDark, marginBottom: "12px" }}>
+                    Select a Library
+                  </h3>
+                  <p style={{ color: PINTEREST.textLight, fontSize: "16px", lineHeight: 1.5 }}>
+                    Choose a library from the row above to view and manage your private books
+                  </p>
+                  <p style={{ color: PINTEREST.textMuted, fontSize: "14px", marginTop: "16px" }}>
+                    Or create a new library to get started
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
 
-      {/* Create Library Modal */}
+      {/* Modals (same as before) */}
       <AnimatePresence>
         {showCreateStoreModal && (
           <>
@@ -618,7 +1221,6 @@ export default function MyLibraryScreen({ currentUser, onBack }: Props) {
         )}
       </AnimatePresence>
 
-      {/* Add Book Modal */}
       <AnimatePresence>
         {showAddBookModal && selectedStore && (
           <>
@@ -699,7 +1301,6 @@ export default function MyLibraryScreen({ currentUser, onBack }: Props) {
         )}
       </AnimatePresence>
 
-      {/* Publish Modal - Fully functional with /submit-offer */}
       <AnimatePresence>
         {showPublishModal && bookToPublish && (
           <>
@@ -786,6 +1387,40 @@ export default function MyLibraryScreen({ currentUser, onBack }: Props) {
           </>
         )}
       </AnimatePresence>
+
+      <style>{`
+        @keyframes spin {
+          to { transform: rotate(360deg); }
+        }
+        
+        ::-webkit-scrollbar {
+          width: 8px;
+          height: 8px;
+        }
+        
+        ::-webkit-scrollbar-track {
+          background: ${PINTEREST.grayLight};
+        }
+        
+        ::-webkit-scrollbar-thumb {
+          background: ${PINTEREST.border};
+          border-radius: 4px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+          background: ${PINTEREST.textLight};
+        }
+        
+        input:focus, select:focus, textarea:focus {
+          outline: none;
+          border-color: ${PINTEREST.primary} !important;
+          box-shadow: 0 0 0 3px rgba(230, 0, 35, 0.1);
+        }
+        
+        * {
+          -webkit-tap-highlight-color: transparent;
+        }
+      `}</style>
     </div>
   );
 }
