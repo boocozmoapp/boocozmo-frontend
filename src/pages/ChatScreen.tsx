@@ -1,40 +1,15 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-// src/pages/ChatScreen.tsx - GREEN ENERGY THEME: Calm, Sustainable, Professional
+// src/pages/ChatScreen.tsx - PREMIUM THEME
 import { useEffect, useState } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { 
-  FaHome, 
-  FaMapMarkedAlt, 
-  FaPlus, 
-  FaComments, 
-  FaBell,
-  FaBookmark,
-  FaCompass,
-  FaBookOpen as FaBookOpenIcon,
-  FaStar,
-  FaCog,
-  FaBars,
-  FaTimes,
-  FaUsers
+  FaHome, FaMapMarkedAlt, FaPlus, FaComments, FaBell,
+  FaBookmark, FaCompass, FaBookOpen, FaStar, FaUsers, 
+  FaCog, FaBars, FaTimes, FaSearch
 } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 
 const API_BASE = "https://boocozmo-api.onrender.com";
-
-const GREEN = {
-  dark: "#0F2415",
-  medium: "#1A3A2A",
-  accent: "#4A7C59",
-  accentLight: "#6BA87A",
-  textPrimary: "#E8F0E8",
-  textSecondary: "#A8B8A8",
-  textMuted: "#80A080",
-  border: "rgba(74, 124, 89, 0.3)",
-  grayLight: "#2A4A3A",
-  hoverBg: "#255035",
-  icon: "#80A080",
-  success: "#6BA87A",
-};
 
 type Conversation = {
   id: number;
@@ -50,589 +25,119 @@ type Conversation = {
   offer_id?: number;
 };
 
-type ChatScreenProps = {
+type Props = {
   currentUser: { email: string; name: string; id: string; token: string };
   onProfilePress?: () => void;
   onMapPress?: () => void;
   onAddPress?: () => void;
 };
 
-export default function ChatScreen({ 
-  currentUser, 
-  onProfilePress,
-  onMapPress,
-  onAddPress 
-}: ChatScreenProps) {
+export default function ChatScreen({ currentUser, onProfilePress }: Props) {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   const navigate = useNavigate();
 
   useEffect(() => {
     const fetchChats = async () => {
       setLoading(true);
-      setError(null);
-
       try {
         const resp = await fetch(`${API_BASE}/chats?user=${encodeURIComponent(currentUser.email)}`, {
-          headers: {
-            "Authorization": `Bearer ${currentUser.token}`,
-            "Content-Type": "application/json",
-          },
+          headers: { "Authorization": `Bearer ${currentUser.token}` },
         });
-
-        if (!resp.ok) {
-          const errData = await resp.json().catch(() => ({}));
-          throw new Error(errData.error || "Failed to load messages");
-        }
-
-        const data: Conversation[] = await resp.json();
-        setConversations(data);
+        if (!resp.ok) throw new Error();
+        setConversations(await resp.json());
       } catch (err: any) {
-        console.error("Chat fetch error:", err);
-        setError("Failed to load messages. Using demo data.");
-        setConversations(getMockConversations());
-      } finally {
-        setLoading(false);
-      }
+        // Fallback or error handling
+        setError("Could not load chats");
+        // Use mock data for demo
+        setConversations([
+           { id: 1, other_user_name: "John Doe", offer_title: "Great Gatsby", last_message_at: new Date().toISOString(), created_at: new Date().toISOString(), user1: currentUser.email, user2: "john@example.com", offer_id: 1, unread_user2: true },
+           { id: 2, other_user_name: "Jane Smith", offer_title: "1984", last_message_at: new Date(Date.now()-3600000).toISOString(), created_at: new Date().toISOString(), user1: "jane@example.com", user2: currentUser.email, offer_id: 2, unread_user1: true }
+        ]);
+      } finally { setLoading(false); }
     };
-
     fetchChats();
-
-    const interval = setInterval(fetchChats, 30000);
-    return () => clearInterval(interval);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentUser.email, currentUser.token]);
-
-  const getMockConversations = (): Conversation[] => [
-    {
-      id: 1,
-      other_user_name: "John Doe",
-      offer_title: "The Great Gatsby",
-      last_message_at: new Date(Date.now() - 300000).toISOString(),
-      created_at: new Date(Date.now() - 86400000).toISOString(),
-      unread_user1: false,
-      unread_user2: true,
-      user1: currentUser.email,
-      user2: "john@example.com",
-      offer_id: 1
-    },
-    {
-      id: 2,
-      other_user_name: "Jane Smith",
-      offer_title: "To Kill a Mockingbird",
-      last_message_at: new Date(Date.now() - 3600000).toISOString(),
-      created_at: new Date(Date.now() - 172800000).toISOString(),
-      unread_user1: true,
-      unread_user2: false,
-      user1: "jane@example.com",
-      user2: currentUser.email,
-      offer_id: 2
-    },
-    {
-      id: 3,
-      other_user_name: "Alex Johnson",
-      offer_title: "Atomic Habits",
-      last_message_at: new Date(Date.now() - 86400000).toISOString(),
-      created_at: new Date(Date.now() - 259200000).toISOString(),
-      unread_user1: false,
-      unread_user2: false,
-      user1: currentUser.email,
-      user2: "alex@example.com",
-      offer_id: 3
-    }
-  ];
-
-  const formatTime = (dateStr: string | null) => {
-    if (!dateStr) return "Never";
-    const now = new Date();
-    const date = new Date(dateStr);
-    const diff = now.getTime() - date.getTime();
-    const mins = Math.floor(diff / 60000);
-    const hours = Math.floor(mins / 60);
-    const days = Math.floor(hours / 24);
-
-    if (mins < 1) return "Just now";
-    if (mins < 60) return `${mins}m ago`;
-    if (hours < 24) return `${hours}h ago`;
-    if (days < 7) return `${days}d ago`;
-    return date.toLocaleDateString();
-  };
-
-  const isUnread = (conv: Conversation) => {
-    return conv.user1 === currentUser.email ? conv.unread_user1 : conv.unread_user2;
-  };
-
-  const getOtherUserInitial = (name: string | null) => {
-    return (name || "?")[0].toUpperCase();
-  };
+  }, [currentUser]);
 
   const handleChatClick = (conv: Conversation) => {
-    navigate(`/chat/${conv.id}`, {
-      state: { 
-        chat: {
-          id: conv.id,
-          user1: conv.user1,
-          user2: conv.user2,
-          other_user_name: conv.other_user_name,
-          offer_title: conv.offer_title,
-          offer_id: conv.offer_id
-        }
-      }
-    });
+    navigate(`/chat/${conv.id}`, { state: { chat: conv } });
   };
 
   const navItems = [
     { icon: FaHome, label: "Home", onClick: () => navigate("/") },
-    { icon: FaMapMarkedAlt, label: "Map", onClick: onMapPress || (() => navigate("/map")) },
-    { icon: FaBookOpenIcon, label: "My Library", onClick: () => navigate("/my-library") },
-    { icon: FaCompass, label: "Discover", onClick: () => {} },
+    { icon: FaMapMarkedAlt, label: "Map", onClick: () => navigate("/map") },
+    { icon: FaBookOpen, label: "My Library", onClick: () => navigate("/my-library") },
+    { icon: FaCompass, label: "Discover", onClick: () => navigate("/discover") },
     { icon: FaBookmark, label: "Saved", onClick: () => navigate("/saved") },
-    { icon: FaUsers, label: "Following", onClick: () => {} },
+    { icon: FaUsers, label: "Community", onClick: () => navigate("/community") },
     { icon: FaComments, label: "Messages", active: true, onClick: () => navigate("/chat") },
-    { icon: FaBell, label: "Notifications", onClick: () => {} },
-    { icon: FaStar, label: "Top Picks", onClick: () => {} },
   ];
 
+  const filtered = conversations.filter(c => 
+    (c.other_user_name || "").toLowerCase().includes(searchQuery.toLowerCase()) || 
+    (c.offer_title || "").toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   return (
-    <div style={{
-      height: "100vh",
-      width: "100vw",
-      background: GREEN.dark,
-      display: "flex",
-      fontFamily: "'Inter', -apple-system, sans-serif",
-      overflow: "hidden",
-    }}>
-      {/* Sidebar */}
-      <motion.aside
-        initial={{ x: -300 }}
-        animate={{ x: sidebarOpen ? 0 : -300 }}
-        transition={{ type: "spring", damping: 25 }}
-        style={{
-          width: "240px",
-          background: GREEN.medium,
-          borderRight: `1px solid ${GREEN.border}`,
-          position: "fixed",
-          top: 0,
-          left: 0,
-          bottom: 0,
-          zIndex: 100,
-          padding: "20px 16px",
-          overflowY: "auto",
-          display: "flex",
-          flexDirection: "column",
-        }}
-      >
-        <div style={{ marginBottom: "24px" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-            <div style={{
-              width: "32px",
-              height: "32px",
-              borderRadius: "50%",
-              background: GREEN.accent,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              color: "white",
-              fontWeight: "700",
-              fontSize: "14px",
-            }}>
-              B
-            </div>
-            <span style={{
-              fontSize: "20px",
-              fontWeight: "800",
-              color: GREEN.textPrimary,
-            }}>
-              Boocozmo
-            </span>
-          </div>
-        </div>
+    <div className="h-screen w-full bg-primary text-text-main flex overflow-hidden font-sans">
+      <AnimatePresence>
+        {sidebarOpen && <motion.div initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} onClick={() => setSidebarOpen(false)} className="fixed inset-0 bg-black/50 z-40 lg:hidden" />}
+      </AnimatePresence>
 
-        <motion.div
-          whileHover={{ scale: 1.02 }}
-          onClick={onProfilePress || (() => navigate("/profile"))}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "12px",
-            padding: "12px",
-            borderRadius: "12px",
-            background: GREEN.hoverBg,
-            marginBottom: "24px",
-            cursor: "pointer",
-          }}
-        >
-          <div style={{
-            width: "40px",
-            height: "40px",
-            borderRadius: "50%",
-            background: GREEN.accent,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            color: "white",
-            fontWeight: "600",
-            fontSize: "16px",
-          }}>
-            {currentUser.name.charAt(0).toUpperCase()}
-          </div>
-          <div>
-            <div style={{ fontSize: "14px", fontWeight: "600", color: GREEN.textPrimary }}>
-              {currentUser.name.split(' ')[0]}
-            </div>
-            <div style={{ fontSize: "12px", color: GREEN.textSecondary }}>
-              View profile
-            </div>
-          </div>
-        </motion.div>
-
-        <nav style={{ flex: 1 }}>
-          {navItems.map((item) => (
-            <motion.button
-              key={item.label}
-              whileHover={{ x: 4 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={item.onClick}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "12px",
-                width: "100%",
-                padding: "12px",
-                background: item.active ? GREEN.hoverBg : "transparent",
-                border: "none",
-                color: item.active ? GREEN.accentLight : GREEN.textPrimary,
-                fontSize: "14px",
-                fontWeight: item.active ? "600" : "500",
-                cursor: "pointer",
-                borderRadius: "12px",
-                marginBottom: "4px",
-                textAlign: "left",
-              }}
-            >
-              <item.icon size={18} />
-              {item.label}
-            </motion.button>
-          ))}
-        </nav>
-
-        {onAddPress && (
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={onAddPress}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "12px",
-              padding: "14px",
-              background: GREEN.accent,
-              color: "white",
-              border: "none",
-              borderRadius: "24px",
-              fontSize: "14px",
-              fontWeight: "600",
-              cursor: "pointer",
-              width: "100%",
-              justifyContent: "center",
-              marginTop: "20px",
-              boxShadow: "0 4px 20px rgba(74, 124, 89, 0.4)",
-            }}
-          >
-            <FaPlus /> Share a Book
-          </motion.button>
-        )}
-
-        <motion.button
-          whileHover={{ x: 4 }}
-          onClick={() => navigate("/settings")}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "12px",
-            width: "100%",
-            padding: "12px",
-            background: "transparent",
-            border: "none",
-            color: GREEN.textSecondary,
-            fontSize: "14px",
-            fontWeight: "500",
-            cursor: "pointer",
-            borderRadius: "12px",
-            marginTop: "12px",
-            textAlign: "left",
-          }}
-        >
-          <FaCog size={18} />
-          Settings
-        </motion.button>
+      <motion.aside initial={false} animate={{ width: sidebarOpen ? 260 : 80 }} className="hidden md:flex flex-col bg-primary-light/80 backdrop-blur-xl border-r border-white/5 z-50 overflow-hidden">
+        <div className="p-6 flex items-center gap-3 mb-6"><div className="w-10 h-10 rounded-xl bg-secondary flex items-center justify-center text-white text-xl font-bold font-serif">B</div>{sidebarOpen && <span className="font-serif font-bold text-xl text-white">Boocozmo</span>}</div>
+        <nav className="flex-1 px-4 space-y-2">{navItems.map(item => (<button key={item.label} onClick={item.onClick} className={`w-full flex items-center gap-4 p-3 rounded-xl transition-all ${item.active ? 'bg-secondary/20 text-secondary' : 'bg-transparent text-gray-400 hover:bg-white/5 hover:text-white'}`}><item.icon size={20} />{sidebarOpen && <span className="font-medium whitespace-nowrap">{item.label}</span>}</button>))}</nav>
       </motion.aside>
 
-      {/* Main Content */}
-      <div style={{ 
-        flex: 1, 
-        marginLeft: sidebarOpen ? "240px" : "0",
-        transition: "margin-left 0.3s ease",
-        display: "flex",
-        flexDirection: "column",
-      }}>
-        <header style={{
-          padding: "12px 20px",
-          background: GREEN.medium,
-          position: "sticky",
-          top: 0,
-          zIndex: 50,
-          borderBottom: `1px solid ${GREEN.border}`,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-        }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "16px", flex: 1 }}>
-            <motion.button
-              whileTap={{ scale: 0.9 }}
-              onClick={() => setSidebarOpen(!sidebarOpen)}
-              style={{
-                width: "56px",
-                height: "56px",
-                borderRadius: "50%",
-                background: GREEN.grayLight,
-                border: "none",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                color: GREEN.textPrimary,
-                cursor: "pointer",
-              }}
-            >
-              {sidebarOpen ? <FaTimes size={28} /> : <FaBars size={16} />}
-            </motion.button>
+      <div className="flex-1 flex flex-col h-full bg-gradient-to-br from-primary via-primary-light/20 to-primary relative overflow-hidden">
+         <div className="absolute top-0 right-0 w-96 h-96 bg-secondary/10 rounded-full blur-3xl pointer-events-none" />
+         
+         <header className="h-20 px-6 flex items-center justify-between border-b border-white/5 bg-primary/80 backdrop-blur-md sticky top-0 z-30">
+            <h1 className="text-2xl font-serif font-bold text-white flex items-center gap-2">Messages</h1>
+            <button onClick={() => setSidebarOpen(!sidebarOpen)} className="md:hidden p-2 text-white"><FaBars /></button>
+         </header>
 
-            <h1 style={{
-              fontSize: "24px",
-              fontWeight: "700",
-              color: GREEN.textPrimary,
-              margin: 0,
-            }}>
-              Messages
-            </h1>
-          </div>
+         <div className="p-6 pb-2">
+            <div className="relative">
+               <FaSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+               <input value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Search messages..." className="w-full bg-primary-light/50 border border-white/10 rounded-xl py-3 pl-10 pr-4 text-white placeholder-gray-500 focus:border-secondary outline-none transition-colors" />
+            </div>
+         </div>
 
-          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-            <motion.button
-              whileTap={{ scale: 0.9 }}
-              onClick={() => navigate("/notifications")}
-              style={{
-                width: "56px",
-                height: "56px",
-                borderRadius: "50%",
-                background: GREEN.grayLight,
-                border: "none",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                color: GREEN.textPrimary,
-                cursor: "pointer",
-                position: "relative",
-              }}
-            >
-              <FaBell size={28} />
-              <div style={{
-                position: "absolute",
-                top: "6px",
-                right: "6px",
-                width: "10px",
-                height: "10px",
-                borderRadius: "50%",
-                background: GREEN.accent,
-              }} />
-            </motion.button>
-          </div>
-        </header>
-
-        <main style={{
-          flex: 1,
-          overflowY: "auto",
-          padding: "20px",
-          background: GREEN.dark,
-        }}>
-          {loading ? (
-            <div style={{ textAlign: "center", padding: "60px 20px" }}>
-              <div style={{
-                width: "48px",
-                height: "48px",
-                border: `4px solid ${GREEN.grayLight}`,
-                borderTopColor: GREEN.accent,
-                borderRadius: "50%",
-                margin: "0 auto 20px",
-                animation: "spin 1s linear infinite",
-              }} />
-              <p style={{ color: GREEN.textSecondary, fontSize: "16px" }}>
-                Loading messages...
-              </p>
-            </div>
-          ) : error ? (
-            <div style={{ textAlign: "center", padding: "60px 20px" }}>
-              <div style={{ fontSize: "64px", marginBottom: "20px", opacity: 0.5 }}>Messages</div>
-              <p style={{ color: GREEN.textSecondary, fontSize: "16px", marginBottom: "20px" }}>
-                {error}
-              </p>
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => window.location.reload()}
-                style={{
-                  padding: "12px 28px",
-                  background: GREEN.accent,
-                  color: "white",
-                  border: "none",
-                  borderRadius: "24px",
-                  fontSize: "15px",
-                  fontWeight: "600",
-                  cursor: "pointer",
-                }}
-              >
-                Retry
-              </motion.button>
-            </div>
-          ) : conversations.length === 0 ? (
-            <div style={{ textAlign: "center", padding: "60px 20px" }}>
-              <div style={{
-                width: "100px",
-                height: "100px",
-                borderRadius: "50%",
-                background: GREEN.grayLight,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                margin: "0 auto 24px",
-                color: GREEN.accentLight,
-              }}>
-                <FaComments size={40} />
-              </div>
-              <h3 style={{ fontSize: "20px", fontWeight: "600", color: GREEN.textPrimary, marginBottom: "8px" }}>
-                No messages yet
-              </h3>
-              <p style={{ color: GREEN.textSecondary, fontSize: "15px", maxWidth: "300px", margin: "0 auto 32px" }}>
-                Start chatting from any book offer
-              </p>
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => navigate("/")}
-                style={{
-                  padding: "14px 32px",
-                  background: GREEN.accent,
-                  color: "white",
-                  border: "none",
-                  borderRadius: "24px",
-                  fontSize: "15px",
-                  fontWeight: "600",
-                  cursor: "pointer",
-                }}
-              >
-                Browse Books
-              </motion.button>
-            </div>
-          ) : (
-            <div>
-              {conversations.map((conv) => (
-                <motion.button
-                  key={conv.id}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() => handleChatClick(conv)}
-                  style={{
-                    width: "100%",
-                    background: GREEN.medium,
-                    border: "none",
-                    borderRadius: "16px",
-                    padding: "16px",
-                    marginBottom: "12px",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "16px",
-                    textAlign: "left",
-                    cursor: "pointer",
-                    boxShadow: "0 4px 12px rgba(0,0,0,0.2)",
-                    transition: "all 0.2s ease",
-                  }}
-                  whileHover={{ y: -4, boxShadow: "0 12px 24px rgba(0,0,0,0.4)" }}
-                >
-                  <div style={{
-                    width: "56px",
-                    height: "56px",
-                    borderRadius: "50%",
-                    background: GREEN.accent,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    color: "white",
-                    fontSize: "20px",
-                    fontWeight: "bold",
-                    flexShrink: 0,
-                  }}>
-                    {getOtherUserInitial(conv.other_user_name)}
-                  </div>
-
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                      <div>
-                        <h3 style={{
-                          fontSize: "16px",
-                          fontWeight: "600",
-                          margin: "0 0 4px",
-                          color: GREEN.textPrimary,
-                        }}>
-                          {conv.other_user_name || "Unknown User"}
-                        </h3>
-                        <p style={{
-                          fontSize: "14px",
-                          color: GREEN.textSecondary,
-                          margin: 0,
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                          whiteSpace: "nowrap",
-                        }}>
-                          {conv.offer_title || conv.title || "General chat"}
-                        </p>
-                      </div>
-                      <div style={{ textAlign: "right" }}>
-                        <span style={{
-                          fontSize: "12px",
-                          color: GREEN.textMuted,
-                        }}>
-                          {formatTime(conv.last_message_at || conv.created_at)}
-                        </span>
-                        {isUnread(conv) && (
-                          <div style={{
-                            width: "10px",
-                            height: "10px",
-                            borderRadius: "50%",
-                            background: GREEN.accentLight,
-                            margin: "8px auto 0",
-                          }} />
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </motion.button>
-              ))}
-            </div>
-          )}
-        </main>
+         <main className="flex-1 overflow-y-auto p-4 md:p-6 pb-20 space-y-3">
+            {filtered.length === 0 ? (
+               <div className="text-center py-20 text-gray-400">No messages found.</div>
+            ) : (
+               filtered.map((conv, i) => (
+                  <motion.div 
+                     key={conv.id}
+                     initial={{ opacity: 0, y: 10 }}
+                     animate={{ opacity: 1, y: 0 }}
+                     transition={{ delay: i * 0.05 }}
+                     onClick={() => handleChatClick(conv)}
+                     className="bg-primary-light/30 backdrop-blur-md border border-white/5 rounded-2xl p-4 flex items-center gap-4 hover:bg-white/5 cursor-pointer transition-colors group relative overflow-hidden"
+                  >
+                     <div className="w-12 h-12 rounded-full bg-gradient-to-br from-secondary to-secondary-hover flex items-center justify-center text-white font-bold text-lg">
+                        {conv.other_user_name ? conv.other_user_name.charAt(0) : '?'}
+                     </div>
+                     <div className="flex-1 min-w-0">
+                        <div className="flex justify-between items-start mb-1">
+                           <h3 className="font-bold text-white truncate">{conv.other_user_name || "Unknown"}</h3>
+                           <span className="text-xs text-gray-500 whitespace-nowrap">{new Date(conv.last_message_at || conv.created_at).toLocaleDateString()}</span>
+                        </div>
+                        <p className="text-sm text-gray-400 truncate">{conv.offer_title || "Book Inquiry"}</p>
+                     </div>
+                     {((conv.user1 === currentUser.email && conv.unread_user1) || (conv.user2 === currentUser.email && conv.unread_user2)) && (
+                        <div className="w-3 h-3 rounded-full bg-secondary shadow-lg shadow-secondary/50" />
+                     )}
+                  </motion.div>
+               ))
+            )}
+         </main>
       </div>
-
-      <style>{`
-        @keyframes spin {
-          to { transform: rotate(360deg); }
-        }
-        * { -webkit-tap-highlight-color: transparent; }
-        ::-webkit-scrollbar { width: 8px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: ${GREEN.border}; border-radius: 10px; }
-        ::-webkit-scrollbar-thumb:hover { background: ${GREEN.textMuted}; }
-      `}</style>
     </div>
   );
 }

@@ -1,7 +1,12 @@
-// src/pages/OfferDetailScreen.tsx
+/* eslint-disable @typescript-eslint/no-explicit-any */
+// src/pages/OfferDetailScreen.tsx - MEDIUM STYLE REFINEMENT
 import { useEffect, useState } from "react";
-import { FaArrowLeft, FaDollarSign, FaExchangeAlt, FaTag, FaMapMarkerAlt, FaUser, FaComments } from "react-icons/fa";
+import { 
+  FaArrowLeft, FaMapMarkerAlt, FaUser, FaComments, FaHeart, FaShare,
+  FaBook, FaLeaf, FaClock, FaShieldAlt
+} from "react-icons/fa";
 import { useParams, useNavigate } from "react-router-dom";
+import { motion, useScroll, useTransform } from "framer-motion";
 
 const API_BASE = "https://boocozmo-api.onrender.com";
 
@@ -21,85 +26,40 @@ type Offer = {
   description?: string;
   genre?: string;
   author?: string;
+  publishedAt?: string;
 };
 
-type OfferDetailScreenProps = {
+type Props = {
   currentUser: { email: string; name: string; id: string };
 };
 
-export default function OfferDetailScreen({ currentUser }: OfferDetailScreenProps) {
+export default function OfferDetailScreen({ currentUser }: Props) {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [offer, setOffer] = useState<Offer | null>(null);
   const [loading, setLoading] = useState(true);
+  const { scrollY } = useScroll();
+  const heroOpacity = useTransform(scrollY, [0, 300], [1, 0]);
+  const heroScale = useTransform(scrollY, [0, 300], [1, 1.1]);
 
   useEffect(() => {
     const fetchOffer = async () => {
       try {
-        // Try to fetch from backend
         const response = await fetch(`${API_BASE}/offers/${id}`);
         if (response.ok) {
           const data = await response.json();
           setOffer(data);
         } else {
-          // Fallback to mock data
-          setOffer(getMockOffer(parseInt(id || "1")));
+           throw new Error("Not found"); 
         }
-      } catch (err) {
-        console.error("Error fetching offer:", err);
-        setOffer(getMockOffer(parseInt(id || "1")));
-      } finally {
-        setLoading(false);
-      }
+      } catch (err) { console.error(err); } 
+      finally { setLoading(false); }
     };
-
     fetchOffer();
   }, [id]);
 
-  const getMockOffer = (offerId: number): Offer => {
-  const mockOffers: Offer[] = [  // Add type annotation here
-    {
-      id: 1,
-      type: "sell" as const,  // Add "as const"
-      bookTitle: "The Great Gatsby",
-      exchangeBook: null,
-      price: 12.99,
-      condition: "Excellent",
-      ownerEmail: "john@example.com",
-      imageUrl: "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60",
-      latitude: 40.7128,
-      longitude: -74.0060,
-      ownerName: "John Doe",
-      distance: "1.2km",
-      description: "Classic novel in perfect condition. Hardcover edition.",
-      genre: "Fiction, Classic",
-      author: "F. Scott Fitzgerald"
-    },
-    {
-      id: 2,
-      type: "exchange" as const,  // Add "as const"
-      bookTitle: "To Kill a Mockingbird",
-      exchangeBook: "1984 by George Orwell",
-      price: null,
-      condition: "Good",
-      ownerEmail: "jane@example.com",
-      imageUrl: "https://images.unsplash.com/photo-1512820790803-83ca734da794?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60",
-      latitude: 40.7580,
-      longitude: -73.9855,
-      ownerName: "Jane Smith",
-      distance: "2.5km",
-      description: "Looking to exchange for dystopian novels.",
-      genre: "Fiction, Classic",
-      author: "Harper Lee"
-    },
-  ];
-  return mockOffers.find(o => o.id === offerId) || mockOffers[0];
-};
-
   const handleChat = () => {
     if (!offer) return;
-    
-    // Navigate to chat with offer info
     const mockChatId = Date.now();
     navigate(`/chat/${mockChatId}`, {
       state: {
@@ -115,262 +75,174 @@ export default function OfferDetailScreen({ currentUser }: OfferDetailScreenProp
     });
   };
 
-  if (loading) {
-    return (
-      <div style={{ 
-        height: "100vh", 
-        display: "flex", 
-        alignItems: "center", 
-        justifyContent: "center",
-        background: "#f5f0e6"
-      }}>
-        <div style={{ textAlign: "center" }}>
-          <div style={{
-            width: "50px",
-            height: "50px",
-            border: "3px solid #CD7F32",
-            borderTopColor: "transparent",
-            borderRadius: "50%",
-            margin: "0 auto 20px",
-            animation: "spin 1s linear infinite",
-          }} />
-          <p style={{ color: "#CD7F32" }}>Loading offer details...</p>
-        </div>
+  if (loading) return (
+    <div className="h-screen bg-primary flex items-center justify-center">
+      <div className="animate-pulse flex flex-col items-center">
+        <div className="w-12 h-16 bg-white/10 rounded mb-4" />
+        <div className="w-32 h-2 bg-white/10 rounded" />
       </div>
-    );
-  }
-
-  if (!offer) {
-    return (
-      <div style={{ 
-        height: "100vh", 
-        display: "flex", 
-        alignItems: "center", 
-        justifyContent: "center",
-        background: "#f5f0e6"
-      }}>
-        <div style={{ textAlign: "center", padding: "20px" }}>
-          <p style={{ color: "#d32f2f", marginBottom: "20px" }}>Offer not found</p>
-          <button
-            onClick={() => navigate(-1)}
-            style={{
-              padding: "12px 24px",
-              background: "#CD7F32",
-              color: "white",
-              border: "none",
-              borderRadius: "8px",
-              cursor: "pointer",
-            }}
-          >
-            Go Back
-          </button>
-        </div>
-      </div>
-    );
-  }
+    </div>
+  );
+  
+  if (!offer) return <div className="h-screen bg-primary flex items-center justify-center text-white">Offer not found <button onClick={() => navigate(-1)} className="ml-4 underline">Go Back</button></div>;
 
   return (
-    <div style={{ 
-      minHeight: "100vh", 
-      background: "#f5f0e6",
-      fontFamily: "'Georgia', 'Times New Roman', serif" 
-    }}>
-      {/* Header */}
-      <header style={{
-        background: "white",
-        padding: "16px",
-        borderBottom: "1px solid #e0e0e0",
-        display: "flex",
-        alignItems: "center",
-        gap: "12px",
-        position: "sticky",
-        top: 0,
-        zIndex: 100,
-      }}>
-        <button
-          onClick={() => navigate(-1)}
-          style={{
-            background: "none",
-            border: "none",
-            fontSize: "20px",
-            color: "#CD7F32",
-            cursor: "pointer",
-          }}
-        >
+    <div className="min-h-screen bg-primary text-text-main font-sans pb-24">
+      {/* Sticky Header */}
+      <motion.div 
+        initial={{ y: -100 }} animate={{ y: 0 }}
+        className="fixed top-0 left-0 right-0 z-40 bg-primary/80 backdrop-blur-md border-b border-white/5 px-4 py-3 flex items-center justify-between md:hidden"
+      >
+        <button onClick={() => navigate(-1)} className="p-2 text-white/70 hover:text-white">
           <FaArrowLeft />
         </button>
-        <h1 style={{ fontSize: "18px", fontWeight: "bold", margin: 0, flex: 1 }}>
-          Book Details
-        </h1>
-      </header>
+        <span className="font-serif font-bold text-white truncate max-w-[200px]">{offer.bookTitle}</span>
+        <div className="w-8" /> {/* Spacer */}
+      </motion.div>
 
-      {/* Content */}
-      <main style={{ padding: "20px" }}>
-        {/* Book Image */}
-        <div style={{
-          height: "300px",
-          background: `url(${offer.imageUrl || "https://images.unsplash.com/photo-1541963463532-d68292c34b19?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60"})`,
-          backgroundSize: "cover",
-          backgroundPosition: "center",
-          borderRadius: "12px",
-          marginBottom: "20px",
-          position: "relative",
-        }}>
-          <div style={{
-            position: "absolute",
-            bottom: "16px",
-            left: "16px",
-            background: "rgba(255,255,255,0.9)",
-            padding: "8px 16px",
-            borderRadius: "20px",
-            display: "flex",
-            alignItems: "center",
-            gap: "8px",
-            fontWeight: "bold",
-            color: offer.type === "sell" ? "#CD7F32" : 
-                  offer.type === "exchange" ? "#B87333" : "#E6B17E"
-          }}>
-            {offer.type === "sell" && <FaDollarSign />}
-            {offer.type === "exchange" && <FaExchangeAlt />}
-            {offer.type === "buy" && <FaTag />}
-            {offer.type.charAt(0).toUpperCase() + offer.type.slice(1)}
-            {offer.type === "sell" && offer.price && ` • $${offer.price.toFixed(2)}`}
-          </div>
-        </div>
+      <button onClick={() => navigate(-1)} className="fixed top-6 left-6 z-50 p-4 bg-black/20 backdrop-blur-xl rounded-full text-white hover:bg-black/40 transition-all hidden md:flex items-center justify-center group pointer-events-auto">
+         <FaArrowLeft className="group-hover:-translate-x-1 transition-transform" />
+      </button>
 
-        {/* Book Info */}
-        <div style={{ 
-          background: "white", 
-          borderRadius: "12px", 
-          padding: "20px",
-          marginBottom: "16px",
-          boxShadow: "0 2px 8px rgba(205, 127, 50, 0.1)"
-        }}>
-          <h1 style={{ fontSize: "24px", fontWeight: "bold", margin: "0 0 8px", color: "#1a1a1a" }}>
-            {offer.bookTitle}
-          </h1>
-          
-          {offer.author && (
-            <p style={{ fontSize: "16px", color: "#666", margin: "0 0 16px" }}>
-              by {offer.author}
-            </p>
-          )}
-
-          {offer.description && (
-            <div style={{ marginTop: "16px" }}>
-              <h3 style={{ fontSize: "16px", fontWeight: "600", margin: "0 0 8px", color: "#1a1a1a" }}>
-                Description
-              </h3>
-              <p style={{ fontSize: "15px", color: "#666", lineHeight: 1.6 }}>
-                {offer.description}
+      {/* Hero Section */}
+      <div className="relative h-[60vh] w-full overflow-hidden">
+         <motion.div style={{ opacity: heroOpacity, scale: heroScale }} className="absolute inset-0">
+            <img src={offer.imageUrl || "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=1200&q=80"} className="w-full h-full object-cover" />
+            <div className="absolute inset-0 bg-gradient-to-b from-primary/30 via-primary/60 to-primary" />
+         </motion.div>
+         
+         <div className="absolute bottom-0 left-0 right-0 p-6 md:p-12 pb-16 max-w-4xl mx-auto">
+            <motion.div initial={{ y: 30, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.2 }}>
+              <div className="flex gap-2 mb-4">
+                 <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-widest text-white border border-white/20
+                    ${offer.type === 'sell' ? 'bg-secondary/20' : offer.type === 'exchange' ? 'bg-blue-500/20' : 'bg-purple-500/20'}`}>
+                    {offer.type}
+                 </span>
+                 {offer.genre && (
+                   <span className="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-widest text-text-muted border border-white/10 bg-black/20">
+                     {offer.genre}
+                   </span>
+                 )}
+              </div>
+              <h1 className="text-4xl md:text-6xl font-serif font-bold text-white mb-4 leading-tight tracking-tight">
+                {offer.bookTitle}
+              </h1>
+              <p className="text-xl md:text-2xl text-gray-300 font-light flex items-center gap-2">
+                by <span className="text-white font-medium border-b border-secondary/50 pb-0.5">{offer.author}</span>
               </p>
-            </div>
-          )}
-
-          {offer.condition && (
-            <div style={{ marginTop: "16px" }}>
-              <h3 style={{ fontSize: "16px", fontWeight: "600", margin: "0 0 8px", color: "#1a1a1a" }}>
-                Condition
-              </h3>
-              <p style={{ fontSize: "15px", color: "#CD7F32" }}>
-                {offer.condition}
-              </p>
-            </div>
-          )}
-
-          {offer.type === "exchange" && offer.exchangeBook && (
-            <div style={{ marginTop: "16px" }}>
-              <h3 style={{ fontSize: "16px", fontWeight: "600", margin: "0 0 8px", color: "#1a1a1a" }}>
-                Looking to exchange for
-              </h3>
-              <p style={{ fontSize: "15px", color: "#B87333", fontWeight: "600" }}>
-                {offer.exchangeBook}
-              </p>
-            </div>
-          )}
-        </div>
-
-        {/* Seller Info */}
-        <div style={{ 
-          background: "white", 
-          borderRadius: "12px", 
-          padding: "20px",
-          marginBottom: "16px",
-          boxShadow: "0 2px 8px rgba(205, 127, 50, 0.1)"
-        }}>
-          <h3 style={{ fontSize: "16px", fontWeight: "600", margin: "0 0 16px", color: "#1a1a1a" }}>
-            Seller Information
-          </h3>
-          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-            <div style={{
-              width: "50px",
-              height: "50px",
-              borderRadius: "50%",
-              background: "#CD7F32",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              color: "white",
-              fontWeight: "bold",
-              fontSize: "18px",
-            }}>
-              <FaUser />
-            </div>
-            <div style={{ flex: 1 }}>
-              <p style={{ fontSize: "16px", fontWeight: "600", margin: "0 0 4px", color: "#1a1a1a" }}>
-                {offer.ownerName || "Unknown User"}
-              </p>
-              {offer.distance && (
-                <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "14px", color: "#666" }}>
-                  <FaMapMarkerAlt size={12} />
-                  {offer.distance} away
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </main>
-
-      {/* Action Button */}
-      <div style={{
-        position: "fixed",
-        bottom: 0,
-        left: 0,
-        right: 0,
-        background: "white",
-        padding: "16px 20px",
-        borderTop: "1px solid #e0e0e0",
-        boxShadow: "0 -2px 8px rgba(0,0,0,0.1)",
-      }}>
-        <button
-          onClick={handleChat}
-          style={{
-            width: "100%",
-            padding: "16px",
-            background: "linear-gradient(135deg, #CD7F32, #B87333)",
-            color: "white",
-            border: "none",
-            borderRadius: "12px",
-            fontSize: "16px",
-            fontWeight: "600",
-            cursor: "pointer",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: "8px",
-            boxShadow: "0 4px 12px rgba(205, 127, 50, 0.3)",
-          }}
-        >
-          <FaComments />
-          Chat with Seller
-        </button>
+            </motion.div>
+         </div>
       </div>
 
-      <style>{`
-        @keyframes spin {
-          to { transform: rotate(360deg); }
-        }
-      `}</style>
+      {/* Content Layout */}
+      <div className="max-w-4xl mx-auto px-6 grid grid-cols-1 md:grid-cols-[1fr_300px] gap-12 relative -mt-10 z-10">
+         
+         {/* Main Column (Medium Style) */}
+         <div className="space-y-8">
+            <div className="flex items-center gap-4 text-sm text-text-muted border-b border-white/5 pb-8">
+               <div className="flex items-center gap-2">
+                 <div className="w-8 h-8 rounded-full bg-gradient-to-br from-secondary to-orange-600 flex items-center justify-center text-white font-bold text-xs">
+                   {offer.ownerName?.charAt(0) || "U"}
+                 </div>
+                 <span className="text-white">{offer.ownerName || "Seller"}</span>
+               </div>
+               <span>•</span>
+               <span>{new Date(offer.publishedAt || Date.now()).toLocaleDateString()}</span>
+               <span>•</span>
+               <span className="flex items-center gap-1"><FaMapMarkerAlt size={10} /> {offer.distance || "Nearby"}</span>
+            </div>
+
+            <article className="prose prose-invert prose-lg max-w-none">
+               <p className="font-serif text-xl leading-8 md:text-2xl md:leading-9 text-gray-200 first-letter:text-5xl first-letter:font-bold first-letter:text-secondary first-letter:mr-3 first-letter:float-left">
+                 {offer.description || "The owner has not provided a detailed description for this book yet. Please contact them for more information regarding the specific condition, edition, or any other details you might need before making a purchase or exchange."}
+               </p>
+            </article>
+
+            {/* Quick Stats Grid */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 py-8 border-t border-b border-white/5">
+               <div className="flex flex-col gap-1 p-4 rounded-2xl bg-white/5">
+                 <FaShieldAlt className="text-secondary mb-2" />
+                 <span className="text-xs text-text-muted uppercase tracking-wider">Condition</span>
+                 <span className="text-white font-semibold">{offer.condition || "Good"}</span>
+               </div>
+               <div className="flex flex-col gap-1 p-4 rounded-2xl bg-white/5">
+                 <FaBook className="text-blue-400 mb-2" />
+                 <span className="text-xs text-text-muted uppercase tracking-wider">Format</span>
+                 <span className="text-white font-semibold">Hardcover</span>
+               </div>
+               <div className="flex flex-col gap-1 p-4 rounded-2xl bg-white/5">
+                 <FaLeaf className="text-green-400 mb-2" />
+                 <span className="text-xs text-text-muted uppercase tracking-wider">Eco-Impact</span>
+                 <span className="text-white font-semibold">Saved</span>
+               </div>
+               <div className="flex flex-col gap-1 p-4 rounded-2xl bg-white/5">
+                 <FaClock className="text-purple-400 mb-2" />
+                 <span className="text-xs text-text-muted uppercase tracking-wider">Posted</span>
+                 <span className="text-white font-semibold">2d ago</span>
+               </div>
+            </div>
+         </div>
+
+         {/* Sidebar / Floating Actions */}
+         <div className="relative">
+             <div className="sticky top-24 space-y-6">
+                <div className="p-6 rounded-3xl bg-primary-light/30 backdrop-blur-xl border border-white/10 shadow-xl">
+                   <div className="flex justify-between items-end mb-6">
+                     <div>
+                       <span className="text-xs text-text-muted uppercase block mb-1">Asking Price</span>
+                       <span className="text-4xl font-serif font-bold text-white">
+                         {offer.type === 'sell' ? `$${offer.price}` : 'Trade'}
+                       </span>
+                     </div>
+                     {offer.type === 'sell' && <span className="text-sm text-green-400 font-medium">Available</span>}
+                   </div>
+
+                   <button 
+                     onClick={handleChat}
+                     className="w-full py-4 bg-secondary hover:bg-secondary-hover text-white rounded-xl font-bold text-lg shadow-lg shadow-secondary/20 transition-all flex items-center justify-center gap-3 mb-3 group"
+                   >
+                      <FaComments className="group-hover:scale-110 transition-transform" /> 
+                      Message {offer.type === 'sell' ? 'Seller' : 'Owner'}
+                   </button>
+                   
+                   <button className="w-full py-3 bg-white/5 hover:bg-white/10 text-white rounded-xl font-medium transition-all flex items-center justify-center gap-2">
+                      <FaHeart /> Save for Later
+                   </button>
+                </div>
+
+                <div className="p-6 rounded-3xl bg-primary-light/10 border border-white/5">
+                   <h3 className="text-white font-medium mb-4">Safety Tips</h3>
+                   <ul className="space-y-3 text-sm text-text-muted">
+                     <li className="flex items-start gap-2">
+                       <div className="w-1.5 h-1.5 rounded-full bg-secondary mt-1.5" />
+                       Meet in a public place.
+                     </li>
+                     <li className="flex items-start gap-2">
+                       <div className="w-1.5 h-1.5 rounded-full bg-secondary mt-1.5" />
+                       Check the book condition.
+                     </li>
+                     <li className="flex items-start gap-2">
+                       <div className="w-1.5 h-1.5 rounded-full bg-secondary mt-1.5" />
+                       Pay after you verify.
+                     </li>
+                   </ul>
+                </div>
+             </div>
+         </div>
+      </div>
+
+       {/* Floating Mobile Action Bar */}
+       <div className="md:hidden fixed bottom-6 left-4 right-4 bg-primary-light/90 backdrop-blur-xl border border-white/10 p-2 rounded-2xl flex items-center gap-2 z-50 shadow-2xl">
+          <div className="pl-4 flex-1">
+             <span className="text-xs text-text-muted uppercase block">Price</span>
+             <span className="text-xl font-serif font-bold text-white">
+                {offer.type === 'sell' ? `$${offer.price}` : 'Trade'}
+             </span>
+          </div>
+          <button onClick={handleChat} className="px-6 py-3 bg-secondary text-white rounded-xl font-bold shadow-lg shadow-secondary/20">
+             Contact
+          </button>
+       </div>
     </div>
   );
 }

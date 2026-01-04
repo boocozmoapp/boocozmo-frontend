@@ -1,28 +1,12 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-// src/pages/SignupScreen.tsx - GREEN ENERGY THEME: Calm, Sustainable, Professional
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { FaEnvelope, FaLock, FaUser, FaEye, FaEyeSlash, FaCheck } from "react-icons/fa";
+import { FaEnvelope, FaLock, FaUser, FaEye, FaEyeSlash, FaCheck, FaBookOpen } from "react-icons/fa";
 
 const API_BASE = "https://boocozmo-api.onrender.com";
 
 type Props = {
   onSignupSuccess: (user: { email: string; name: string; id: string; token: string }) => void;
   onGoToLogin: () => void;
-};
-
-const GREEN = {
-  dark: "#0F2415",           // Deep forest green background
-  medium: "#1A3A2A",         // Card background
-  accent: "#4A7C59",         // Soft sage green for accents
-  accentLight: "#6BA87A",
-  textPrimary: "#E8F0E8",    // Soft off-white
-  textSecondary: "#A8B8A8",  // Muted green
-  textMuted: "#80A080",
-  border: "rgba(74, 124, 89, 0.3)",
-  grayLight: "#2A4A3A",
-  error: "#FF6B6B",
-  successBg: "rgba(74, 124, 89, 0.15)",
 };
 
 export default function SignupScreen({ onSignupSuccess, onGoToLogin }: Props) {
@@ -68,14 +52,7 @@ export default function SignupScreen({ onSignupSuccess, onGoToLogin }: Props) {
       const data = await res.json();
 
       if (!res.ok) {
-        if (res.status === 400) throw new Error(data.error || "All fields required");
-        if (res.status === 409) throw new Error("Email already registered. Please login instead.");
-        if (res.status === 429) throw new Error("Too many attempts. Try again later.");
         throw new Error(data.error || "Signup failed");
-      }
-
-      if (!data.id || !data.email || !data.name || !data.token) {
-        throw new Error("Invalid response from server");
       }
 
       const user = {
@@ -91,380 +68,182 @@ export default function SignupScreen({ onSignupSuccess, onGoToLogin }: Props) {
       setTimeout(() => {
         onSignupSuccess(user);
       }, 1500);
-
-      setName("");
-      setEmail("");
-      setPassword("");
-      setConfirmPassword("");
+      
     } catch (err: any) {
       setError(err.message || "Network error. Please try again.");
-      setPassword("");
-      setConfirmPassword("");
     } finally {
       setLoading(false);
     }
   };
 
-  // Password strength indicator
+  // Password strength logic
   const getPasswordStrength = (pass: string) => {
-    if (pass.length === 0) return { strength: 0, label: "", color: GREEN.textMuted };
-    if (pass.length < 6) return { strength: 33, label: "Weak", color: GREEN.error };
-    if (pass.length < 10) return { strength: 66, label: "Medium", color: "#FFA500" };
-    return { strength: 100, label: "Strong", color: GREEN.accent };
+    if (pass.length === 0) return { width: "0%", color: "bg-gray-600", label: "" };
+    if (pass.length < 6) return { width: "33%", color: "bg-red-500", label: "Weak" };
+    if (pass.length < 10) return { width: "66%", color: "bg-yellow-500", label: "Medium" };
+    return { width: "100%", color: "bg-green-500", label: "Strong" };
   };
 
-  const passwordStrength = getPasswordStrength(password);
+  const strength = getPasswordStrength(password);
 
   return (
-    <div style={{
-      minHeight: "100vh",
-      background: `linear-gradient(to bottom, ${GREEN.dark} 0%, #0A1C10 100%)`,
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      padding: "24px",
-      fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-    }}>
-      {/* Signup Card */}
+    <div className="min-h-screen w-full bg-primary flex items-center justify-center p-4 relative overflow-hidden">
+       {/* Background Decor */}
+       <div className="absolute top-[-20%] left-[-10%] w-[600px] h-[600px] bg-secondary/10 rounded-full blur-[120px] pointer-events-none" />
+       <div className="absolute bottom-[-20%] right-[-10%] w-[600px] h-[600px] bg-primary-light/20 rounded-full blur-[120px] pointer-events-none" />
+
       <motion.div
-        initial={{ opacity: 0, y: 40 }}
+        initial={{ opacity: 0, y: 30 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.8 }}
-        style={{
-          width: "100%",
-          maxWidth: "420px",
-          background: GREEN.medium,
-          borderRadius: "24px",
-          padding: "48px 32px",
-          boxShadow: "0 16px 40px rgba(0, 0, 0, 0.3)",
-          border: `1px solid ${GREEN.border}`,
-        }}
+        transition={{ duration: 0.6, ease: "easeOut" }}
+        className="glass-panel w-full max-w-md p-8 md:p-10 rounded-3xl shadow-2xl relative z-10 backdrop-blur-xl border border-white/10"
       >
-        {/* Success Overlay */}
         <AnimatePresence>
           {success && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              style={{
-                position: "absolute",
-                inset: 0,
-                background: GREEN.medium,
-                borderRadius: "24px",
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                justifyContent: "center",
-                zIndex: 20,
-              }}
-            >
-              <motion.div
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                transition={{ type: "spring", stiffness: 200 }}
-                style={{
-                  width: "80px",
-                  height: "80px",
-                  borderRadius: "50%",
-                  background: GREEN.accent,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  marginBottom: "24px",
-                }}
-              >
-                <FaCheck size={36} color="white" />
-              </motion.div>
-              <h3 style={{ fontSize: "1.8rem", fontWeight: 700, color: GREEN.textPrimary, marginBottom: "12px" }}>
-                Welcome to Boocozmo!
-              </h3>
-              <p style={{ color: GREEN.textSecondary, textAlign: "center", maxWidth: "300px" }}>
-                Your account has been created. Redirecting...
-              </p>
-            </motion.div>
+             <motion.div
+             initial={{ opacity: 0 }}
+             animate={{ opacity: 1 }}
+             exit={{ opacity: 0 }}
+             className="absolute inset-0 bg-primary/95 backdrop-blur-md rounded-3xl flex flex-col items-center justify-center z-20"
+           >
+             <motion.div
+               initial={{ scale: 0 }}
+               animate={{ scale: 1 }}
+               transition={{ type: "spring", stiffness: 200 }}
+               className="w-20 h-20 rounded-full bg-secondary flex items-center justify-center mb-6 shadow-xl"
+             >
+               <FaCheck className="text-white text-4xl" />
+             </motion.div>
+             <h3 className="text-2xl font-bold text-white mb-2">Welcome Aboard!</h3>
+             <p className="text-text-muted text-center max-w-xs">Your account has been created. Preparing your library...</p>
+           </motion.div>
           )}
         </AnimatePresence>
 
-        {/* Logo */}
-        <div style={{ textAlign: "center", marginBottom: "32px" }}>
-          <div
-            style={{
-              width: "80px",
-              height: "80px",
-              borderRadius: "50%",
-              background: GREEN.accent,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              margin: "0 auto 16px",
-              boxShadow: "0 8px 24px rgba(74, 124, 89, 0.3)",
-            }}
-          >
-            <span style={{ fontSize: "36px", fontWeight: "800", color: "white" }}>B</span>
+        <div className="text-center mb-8">
+          <div className="w-16 h-16 bg-secondary text-white rounded-2xl mx-auto flex items-center justify-center text-2xl shadow-lg mb-4 -rotate-3">
+             <FaBookOpen />
           </div>
-          <h2 style={{ fontSize: "1.8rem", fontWeight: 700, color: GREEN.textPrimary }}>
-            Join Boocozmo
-          </h2>
-          <p style={{ fontSize: "0.95rem", color: GREEN.textSecondary, marginTop: "8px" }}>
-            Start your sustainable book journey
-          </p>
+          <h2 className="text-3xl font-serif font-bold text-white mb-2">Join Boocozmo</h2>
+          <p className="text-text-muted">Start your sustainable reading journey today.</p>
         </div>
 
-        <form onSubmit={handleSignup} style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
-          {/* Name */}
-          <div style={{ position: "relative" }}>
-            <FaUser style={{ position: "absolute", left: "16px", top: "50%", transform: "translateY(-50%)", color: GREEN.textMuted, fontSize: "18px" }} />
-            <input
-              type="text"
-              value={name}
-              onChange={(e) => { setName(e.target.value); setError(null); }}
-              placeholder="Full name"
-              required
-              disabled={loading || success}
-              style={{
-                width: "100%",
-                padding: "14px 14px 14px 48px",
-                borderRadius: "16px",
-                border: `1px solid ${error && !name.trim() ? GREEN.error : GREEN.border}`,
-                background: GREEN.grayLight,
-                color: GREEN.textPrimary,
-                fontSize: "15px",
-                outline: "none",
-              }}
-            />
-          </div>
+        <form onSubmit={handleSignup} className="space-y-5">
+           <div className="space-y-1">
+            <label className="text-sm font-medium text-text-muted ml-1">Full Name</label>
+            <div className="relative group">
+              <FaUser className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted group-focus-within:text-secondary transition-colors" />
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="w-full bg-primary-light/50 border border-white/10 rounded-xl px-12 py-3.5 text-white placeholder-white/20 focus:outline-none focus:border-secondary focus:ring-1 focus:ring-secondary transition-all"
+                placeholder="John Doe"
+              />
+            </div>
+           </div>
 
-          {/* Email */}
-          <div style={{ position: "relative" }}>
-            <FaEnvelope style={{ position: "absolute", left: "16px", top: "50%", transform: "translateY(-50%)", color: GREEN.textMuted, fontSize: "18px" }} />
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => { setEmail(e.target.value); setError(null); }}
-              placeholder="Email address"
-              required
-              disabled={loading || success}
-              style={{
-                width: "100%",
-                padding: "14px 14px 14px 48px",
-                borderRadius: "16px",
-                border: `1px solid ${error && !email.trim() ? GREEN.error : GREEN.border}`,
-                background: GREEN.grayLight,
-                color: GREEN.textPrimary,
-                fontSize: "15px",
-                outline: "none",
-              }}
-            />
-          </div>
+           <div className="space-y-1">
+            <label className="text-sm font-medium text-text-muted ml-1">Email</label>
+            <div className="relative group">
+              <FaEnvelope className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted group-focus-within:text-secondary transition-colors" />
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full bg-primary-light/50 border border-white/10 rounded-xl px-12 py-3.5 text-white placeholder-white/20 focus:outline-none focus:border-secondary focus:ring-1 focus:ring-secondary transition-all"
+                placeholder="john@example.com"
+              />
+            </div>
+           </div>
 
-          {/* Password */}
-          <div style={{ position: "relative" }}>
-            <FaLock style={{ position: "absolute", left: "16px", top: "50%", transform: "translateY(-50%)", color: GREEN.textMuted, fontSize: "18px" }} />
-            <input
-              type={showPassword ? "text" : "password"}
-              value={password}
-              onChange={(e) => { setPassword(e.target.value); setError(null); }}
-              placeholder="Password (min 6 characters)"
-              required
-              disabled={loading || success}
-              style={{
-                width: "100%",
-                padding: "14px 14px 14px 48px",
-                borderRadius: "16px",
-                border: `1px solid ${error && !password ? GREEN.error : GREEN.border}`,
-                background: GREEN.grayLight,
-                color: GREEN.textPrimary,
-                fontSize: "15px",
-                outline: "none",
-              }}
-            />
-            <button
-              type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              disabled={loading || success}
-              style={{
-                position: "absolute",
-                right: "16px",
-                top: "50%",
-                transform: "translateY(-50%)",
-                background: "none",
-                border: "none",
-                color: GREEN.textSecondary,
-              }}
-            >
-              {showPassword ? <FaEyeSlash size={18} /> : <FaEye size={18} />}
-            </button>
-          </div>
-
-          {/* Password Strength */}
-          {password.length > 0 && (
-            <div style={{ marginTop: "-8px" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                <div style={{ flex: 1, height: "4px", background: GREEN.border, borderRadius: "2px", overflow: "hidden" }}>
-                  <motion.div
+           <div className="space-y-1">
+            <label className="text-sm font-medium text-text-muted ml-1">Password</label>
+            <div className="relative group">
+              <FaLock className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted group-focus-within:text-secondary transition-colors" />
+              <input
+                type={showPassword ? "text" : "password"}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full bg-primary-light/50 border border-white/10 rounded-xl px-12 py-3.5 text-white placeholder-white/20 focus:outline-none focus:border-secondary focus:ring-1 focus:ring-secondary transition-all"
+                placeholder="Min 6 characters"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-text-muted hover:text-white transition-colors"
+              >
+                {showPassword ? <FaEyeSlash /> : <FaEye />}
+              </button>
+            </div>
+             {password && (
+              <div className="flex items-center gap-2 mt-1 ml-1">
+                <div className="h-1 flex-1 bg-white/10 rounded-full overflow-hidden">
+                  <motion.div 
+                    className={`h-full ${strength.color}`} 
                     initial={{ width: 0 }}
-                    animate={{ width: `${passwordStrength.strength}%` }}
-                    style={{
-                      height: "100%",
-                      background: passwordStrength.color,
-                      borderRadius: "2px",
-                    }}
+                    animate={{ width: strength.width }}
                   />
                 </div>
-                <span style={{ fontSize: "12px", fontWeight: 600, color: passwordStrength.color }}>
-                  {passwordStrength.label}
-                </span>
+                <span className="text-xs text-text-muted">{strength.label}</span>
               </div>
+            )}
+           </div>
+
+           <div className="space-y-1">
+            <label className="text-sm font-medium text-text-muted ml-1">Confirm Password</label>
+            <div className="relative group">
+              <FaLock className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted group-focus-within:text-secondary transition-colors" />
+              <input
+                type={showConfirmPassword ? "text" : "password"}
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                className="w-full bg-primary-light/50 border border-white/10 rounded-xl px-12 py-3.5 text-white placeholder-white/20 focus:outline-none focus:border-secondary focus:ring-1 focus:ring-secondary transition-all"
+                placeholder="Repeat password"
+              />
+               <button
+                type="button"
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-text-muted hover:text-white transition-colors"
+              >
+                {showConfirmPassword ? <FaEyeSlash /> : <FaEye />}
+              </button>
             </div>
-          )}
-
-          {/* Confirm Password */}
-          <div style={{ position: "relative" }}>
-            <FaLock style={{ position: "absolute", left: "16px", top: "50%", transform: "translateY(-50%)", color: GREEN.textMuted, fontSize: "18px" }} />
-            <input
-              type={showConfirmPassword ? "text" : "password"}
-              value={confirmPassword}
-              onChange={(e) => { setConfirmPassword(e.target.value); setError(null); }}
-              placeholder="Confirm password"
-              required
-              disabled={loading || success}
-              style={{
-                width: "100%",
-                padding: "14px 14px 14px 48px",
-                borderRadius: "16px",
-                border: `1px solid ${error && password !== confirmPassword ? GREEN.error : GREEN.border}`,
-                background: GREEN.grayLight,
-                color: GREEN.textPrimary,
-                fontSize: "15px",
-                outline: "none",
-              }}
-            />
-            <button
-              type="button"
-              onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-              disabled={loading || success}
-              style={{
-                position: "absolute",
-                right: "16px",
-                top: "50%",
-                transform: "translateY(-50%)",
-                background: "none",
-                border: "none",
-                color: GREEN.textSecondary,
-              }}
-            >
-              {showConfirmPassword ? <FaEyeSlash size={18} /> : <FaEye size={18} />}
-            </button>
-          </div>
-
-          {/* Password Match */}
-          {confirmPassword && password && (
-            <div style={{ display: "flex", alignItems: "center", gap: "8px", marginTop: "-8px" }}>
-              <div style={{
-                width: "16px",
-                height: "16px",
-                borderRadius: "50%",
-                background: password === confirmPassword ? GREEN.accent : GREEN.error,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                color: "white",
-                fontSize: "10px",
-              }}>
-                {password === confirmPassword ? <FaCheck /> : "!"}
-              </div>
-              <span style={{ 
-                fontSize: "12px", 
-                color: password === confirmPassword ? GREEN.accent : GREEN.error,
-                fontWeight: 500
-              }}>
+            {confirmPassword && (
+              <p className={`text-xs ml-1 ${password === confirmPassword ? "text-green-400" : "text-red-400"}`}>
                 {password === confirmPassword ? "Passwords match" : "Passwords do not match"}
-              </span>
-            </div>
-          )}
+              </p>
+            )}
+           </div>
 
-          {/* Error */}
           {error && (
-            <div style={{
-              background: "rgba(255, 107, 107, 0.1)",
-              padding: "12px",
-              borderRadius: "12px",
-              color: GREEN.error,
-              fontSize: "14px",
-              textAlign: "center",
-            }}>
+            <motion.div 
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-200 text-sm text-center"
+            >
               {error}
-            </div>
+            </motion.div>
           )}
 
-          {/* Submit */}
           <button
             type="submit"
             disabled={loading || success}
-            style={{
-              width: "100%",
-              padding: "16px",
-              background: loading || success ? GREEN.grayLight : GREEN.accent,
-              color: "white",
-              border: "none",
-              borderRadius: "16px",
-              fontSize: "16px",
-              fontWeight: 600,
-              cursor: loading || success ? "not-allowed" : "pointer",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: "8px",
-            }}
+            className="w-full bg-secondary hover:bg-secondary-hover text-white font-semibold py-4 rounded-xl shadow-lg shadow-secondary/20 transition-all transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed mt-2"
           >
-            {loading ? (
-              <>
-                <motion.div
-                  animate={{ rotate: 360 }}
-                  transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                  style={{
-                    width: "20px",
-                    height: "20px",
-                    borderRadius: "50%",
-                    border: "2px solid white",
-                    borderTopColor: "transparent",
-                  }}
-                />
-                Creating account...
-              </>
-            ) : success ? (
-              <>
-                <FaCheck size={16} />
-                Account Created!
-              </>
-            ) : (
-              "Create Account"
-            )}
+            {loading ? "Creating Account..." : "Sign Up"}
           </button>
-
-          {/* Login Link */}
-          <div style={{ textAlign: "center", marginTop: "16px" }}>
-            <span style={{ color: GREEN.textSecondary, fontSize: "15px" }}>
-              Already have an account?{" "}
-            </span>
-            <button
-              type="button"
-              onClick={onGoToLogin}
-              disabled={loading || success}
-              style={{
-                background: "none",
-                border: "none",
-                color: GREEN.accent,
-                fontSize: "15px",
-                fontWeight: 600,
-                cursor: loading || success ? "not-allowed" : "pointer",
-              }}
-            >
-              Sign In
-            </button>
-          </div>
         </form>
+
+        <div className="mt-8 text-center text-text-muted text-sm">
+          Already have an account?{" "}
+          <button 
+            onClick={onGoToLogin}
+            className="text-white hover:text-secondary font-semibold ml-1 transition-colors"
+          >
+            Sign In
+          </button>
+        </div>
       </motion.div>
     </div>
   );

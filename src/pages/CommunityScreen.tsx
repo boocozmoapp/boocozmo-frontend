@@ -1,21 +1,27 @@
-// src/pages/CommunityScreen.tsx
+/* eslint-disable @typescript-eslint/no-explicit-any */
+// src/pages/CommunityScreen.tsx - PREMIUM THEME
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  FaBookOpen,
-  FaMapMarkedAlt,
   FaPlus,
   FaComments,
-  FaUser,
   FaClock,
   FaFire,
   FaHeart,
   FaShareAlt,
   FaUsers,
   FaHashtag,
-  FaChevronRight,
   FaSearch,
-  FaCrown} from "react-icons/fa";
+  FaCrown,
+  FaHome,
+  FaMapMarkedAlt,
+  FaBookOpen,
+  FaBookmark,
+  FaCompass,
+  FaBell,
+  FaBars,
+  FaArrowLeft
+} from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 
 type ViewMode = "feed" | "salons";
@@ -27,17 +33,8 @@ export default function CommunityScreen() {
   const [searchQuery, setSearchQuery] = useState("");
   const [likedPosts, setLikedPosts] = useState<number[]>([]);
   const [joinedSalons, setJoinedSalons] = useState<number[]>([1]);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const navigate = useNavigate();
-
-  // Bronze color palette
-  const BRONZE = {
-    primary: "#CD7F32",
-    light: "#E6B17E",
-    dark: "#B87333",
-    pale: "#F5E7D3",
-    shimmer: "#FFD700",
-    bg: "#F9F5F0",
-  };
 
   const mockFeedPosts = [
     {
@@ -46,13 +43,13 @@ export default function CommunityScreen() {
       displayName: "Annie Bookworm",
       timestamp: "Just now",
       content: "Do we need another Aligarh movement for literary enlightenment? What do you think about reviving the spirit of intellectual discourse through books? 📚",
-      image: "https://images.unsplash.com/photo-1512820790803-83ca734da794?w=800&h=400&fit=crop",
+      image: "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=800&fit=crop&q=80",
       likes: 42,
       comments: 18,
       shares: 7,
       isYou: true,
       tags: ["Philosophy", "History", "Discussion"],
-      userColor: "#4CAF50",
+      userColor: "#d97706",
     },
     {
       id: 2,
@@ -66,7 +63,7 @@ export default function CommunityScreen() {
       shares: 12,
       isYou: false,
       tags: ["Non-fiction", "Science", "Book Review"],
-      userColor: "#2196F3",
+      userColor: "#3b82f6",
     },
     {
       id: 3,
@@ -74,13 +71,13 @@ export default function CommunityScreen() {
       displayName: "Maya Verse",
       timestamp: "5 hours ago",
       content: "Sharing my favorite poetry collection from Rumi. Which poet speaks to your soul the most? Let's create a community poetry anthology! ✨",
-      image: "https://images.unsplash.com/photo-1516979187457-637abb4f9353?w-800&h=500&fit=crop",
+      image: "https://images.unsplash.com/photo-1512820790803-83ca734da794?w=800&fit=crop&q=80",
       likes: 156,
       comments: 47,
       shares: 23,
       isYou: false,
       tags: ["Poetry", "Rumi", "Literature"],
-      userColor: "#9C27B0",
+      userColor: "#8b5cf6",
     },
   ];
 
@@ -94,7 +91,7 @@ export default function CommunityScreen() {
       created: "Created 2 weeks ago",
       popular: true,
       category: "Philosophy",
-      color: "#FF9800",
+      color: "#d97706",
       icon: "🧠",
     },
     {
@@ -106,7 +103,7 @@ export default function CommunityScreen() {
       created: "Created 1 month ago",
       popular: true,
       category: "Fiction",
-      color: "#2196F3",
+      color: "#3b82f6",
       icon: "🚀",
     },
     {
@@ -118,7 +115,7 @@ export default function CommunityScreen() {
       created: "Created 3 days ago",
       popular: false,
       category: "Classics",
-      color: "#4CAF50",
+      color: "#10b981",
       icon: "📜",
     },
     {
@@ -130,25 +127,19 @@ export default function CommunityScreen() {
       created: "Created 1 week ago",
       popular: false,
       category: "Poetry",
-      color: "#9C27B0",
+      color: "#8b5cf6",
       icon: "✍️",
     },
   ];
 
   const handleLikePost = (postId: number) => {
-    if (likedPosts.includes(postId)) {
-      setLikedPosts(likedPosts.filter(id => id !== postId));
-    } else {
-      setLikedPosts([...likedPosts, postId]);
-    }
+    if (likedPosts.includes(postId)) setLikedPosts(likedPosts.filter(id => id !== postId));
+    else setLikedPosts([...likedPosts, postId]);
   };
 
   const handleJoinSalon = (salonId: number) => {
-    if (joinedSalons.includes(salonId)) {
-      setJoinedSalons(joinedSalons.filter(id => id !== salonId));
-    } else {
-      setJoinedSalons([...joinedSalons, salonId]);
-    }
+    if (joinedSalons.includes(salonId)) setJoinedSalons(joinedSalons.filter(id => id !== salonId));
+    else setJoinedSalons([...joinedSalons, salonId]);
   };
 
   const filteredSalons = mockSalons.filter(salon =>
@@ -157,889 +148,138 @@ export default function CommunityScreen() {
     salon.category.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  const navItems = [
+    { icon: FaHome, label: "Home", onClick: () => navigate("/") },
+    { icon: FaMapMarkedAlt, label: "Map", onClick: () => navigate("/map") },
+    { icon: FaBookOpen, label: "My Library", onClick: () => navigate("/my-library") },
+    { icon: FaCompass, label: "Discover", onClick: () => navigate("/discover") },
+    { icon: FaBookmark, label: "Saved", onClick: () => navigate("/saved") },
+    { icon: FaUsers, label: "Community", onClick: () => {}, active: true },
+    { icon: FaComments, label: "Messages", onClick: () => navigate("/chat") },
+  ];
+
   return (
-    <div style={{ 
-      minHeight: "100vh", 
-      background: BRONZE.bg, 
-      display: "flex", 
-      flexDirection: "column",
-      fontFamily: "'Georgia', 'Times New Roman', serif",
-    }}>
-      {/* Fixed Header */}
-      <motion.header 
-        initial={{ y: -20, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        style={{ 
-          padding: "16px 16px 12px 16px", 
-          background: "white", 
-          borderBottom: `1px solid ${BRONZE.pale}`,
-          boxShadow: "0 2px 10px rgba(205, 127, 50, 0.1)",
-          position: "sticky",
-          top: 0,
-          zIndex: 100,
-        }}
-      >
-        <div style={{ 
-          display: "flex", 
-          justifyContent: "space-between", 
-          alignItems: "center",
-          marginBottom: "16px",
-        }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-            <motion.div
-              whileHover={{ rotate: 10 }}
-              style={{ 
-                width: "44px", 
-                height: "44px", 
-                borderRadius: "12px", 
-                background: `linear-gradient(135deg, ${BRONZE.primary}, ${BRONZE.dark})`,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                color: "white",
-                fontSize: "20px",
-                fontWeight: "bold",
-              }}
-            >
-              C
-            </motion.div>
-            <div>
-              <h1 style={{ 
-                fontSize: "28px", 
-                fontWeight: 800, 
-                margin: 0, 
-                color: BRONZE.dark,
-                fontFamily: "'Playfair Display', serif",
-                background: `linear-gradient(135deg, ${BRONZE.dark}, ${BRONZE.primary})`,
-                WebkitBackgroundClip: "text",
-                WebkitTextFillColor: "transparent",
-              }}>
-                Community
-              </h1>
-              <p style={{ 
-                fontSize: "13px", 
-                color: "#666", 
-                margin: "2px 0 0",
-                letterSpacing: "0.5px",
-              }}>
-                Connect • Discuss • Share
-              </p>
+    <div className="h-screen w-full bg-primary text-text-main flex overflow-hidden font-sans">
+      <AnimatePresence>
+        {sidebarOpen && <motion.div initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} onClick={() => setSidebarOpen(false)} className="fixed inset-0 bg-black/50 z-40 lg:hidden" />}
+      </AnimatePresence>
+
+      <motion.aside initial={false} animate={{ width: sidebarOpen ? 260 : 80 }} className="hidden md:flex flex-col bg-primary-light/80 backdrop-blur-xl border-r border-white/5 z-50 overflow-hidden">
+        <div className="p-6 flex items-center gap-3 mb-6"><div className="w-10 h-10 rounded-xl bg-secondary flex items-center justify-center text-white text-xl font-bold font-serif">B</div>{sidebarOpen && <span className="font-serif font-bold text-xl text-white">Boocozmo</span>}</div>
+        <nav className="flex-1 px-4 space-y-2">{navItems.map(item => (<button key={item.label} onClick={item.onClick} className={`w-full flex items-center gap-4 p-3 rounded-xl transition-all ${item.active ? 'bg-secondary/20 text-secondary' : 'bg-transparent text-gray-400 hover:bg-white/5 hover:text-white'}`}><item.icon size={20} />{sidebarOpen && <span className="font-medium whitespace-nowrap">{item.label}</span>}</button>))}</nav>
+      </motion.aside>
+
+      <div className="flex-1 flex flex-col h-full bg-gradient-to-br from-primary via-primary-light/20 to-primary relative overflow-hidden">
+         <div className="absolute top-0 right-0 w-96 h-96 bg-secondary/10 rounded-full blur-3xl pointer-events-none" />
+         
+         <header className="h-20 px-6 flex items-center justify-between border-b border-white/5 bg-primary/80 backdrop-blur-md sticky top-0 z-30">
+            <div className="flex items-center gap-4">
+               <button onClick={() => navigate(-1)} className="md:hidden p-2 text-white"><FaArrowLeft /></button>
+               <h1 className="text-2xl font-serif font-bold text-white flex items-center gap-2"><div className="w-8 h-8 rounded-lg bg-gradient-to-br from-secondary to-secondary-hover flex items-center justify-center text-sm">C</div> Community</h1>
             </div>
-          </div>
-
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => {
-              if (viewMode === "feed") {
-                // Open post creation modal
-              } else {
-                // Open salon creation modal
-              }
-            }}
-            style={{
-              background: `linear-gradient(135deg, ${BRONZE.primary}, ${BRONZE.dark})`,
-              color: "white",
-              border: "none",
-              padding: "12px 20px",
-              borderRadius: "14px",
-              fontSize: "14px",
-              fontWeight: 600,
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-              boxShadow: `0 4px 12px ${BRONZE.primary}40`,
-            }}
-          >
-            <FaPlus size={14} />
-            {viewMode === "feed" ? "New Post" : "Create Salon"}
-          </motion.button>
-        </div>
-
-        {/* View Mode Tabs */}
-        <div style={{ 
-          display: "flex", 
-          gap: "8px",
-          marginBottom: viewMode === "salons" ? "16px" : "0",
-        }}>
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => setViewMode("feed")}
-            style={{
-              padding: "12px 24px",
-              borderRadius: "14px",
-              border: "none",
-              fontWeight: viewMode === "feed" ? "700" : "500",
-              background: viewMode === "feed" ? `linear-gradient(135deg, ${BRONZE.primary}, ${BRONZE.dark})` : BRONZE.pale,
-              color: viewMode === "feed" ? "white" : BRONZE.dark,
-              fontSize: "14px",
-              cursor: "pointer",
-              flex: 1,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: "8px",
-              transition: "all 0.3s ease",
-            }}
-          >
-            <FaComments /> Feed
-          </motion.button>
-          
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => setViewMode("salons")}
-            style={{
-              padding: "12px 24px",
-              borderRadius: "14px",
-              border: "none",
-              fontWeight: viewMode === "salons" ? "700" : "500",
-              background: viewMode === "salons" ? `linear-gradient(135deg, #9C27B0, #7B1FA2)` : BRONZE.pale,
-              color: viewMode === "salons" ? "white" : BRONZE.dark,
-              fontSize: "14px",
-              cursor: "pointer",
-              flex: 1,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: "8px",
-              transition: "all 0.3s ease",
-            }}
-          >
-            <FaUsers /> Salons
-          </motion.button>
-        </div>
-
-        {/* Search Bar for Salons */}
-        {viewMode === "salons" && (
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            style={{ position: "relative", marginTop: "12px" }}
-          >
-            <FaSearch style={{ 
-              position: "absolute", 
-              left: "16px", 
-              top: "50%", 
-              transform: "translateY(-50%)", 
-              color: BRONZE.primary,
-              fontSize: "18px",
-            }} />
-            <input
-              type="text"
-              placeholder="Search salons by name, topic, or category..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              style={{
-                width: "100%",
-                padding: "14px 14px 14px 48px",
-                borderRadius: "14px",
-                border: `1px solid ${BRONZE.light}`,
-                background: "white",
-                fontSize: "16px",
-                color: "#333",
-                transition: "all 0.3s ease",
-                outline: "none",
-                boxShadow: "0 2px 8px rgba(205, 127, 50, 0.08)",
-              }}
-              onFocus={(e) => e.target.style.borderColor = BRONZE.primary}
-              onBlur={(e) => e.target.style.borderColor = BRONZE.light}
-            />
-          </motion.div>
-        )}
-      </motion.header>
-
-      {/* Filter Tabs */}
-      <motion.div 
-        initial={{ y: 10, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ delay: 0.1 }}
-        style={{ 
-          padding: "12px 16px", 
-          background: BRONZE.bg,
-          position: "sticky",
-          top: viewMode === "salons" ? "156px" : "122px",
-          zIndex: 90,
-          borderBottom: `1px solid ${BRONZE.pale}`,
-        }}
-      >
-        <div style={{ display: "flex", gap: "8px", overflowX: "auto" }}>
-          {viewMode === "feed" ? (
-            <>
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => setFeedFilter("latest")}
-                style={{
-                  padding: "10px 20px",
-                  borderRadius: "12px",
-                  border: "none",
-                  fontWeight: feedFilter === "latest" ? "700" : "500",
-                  background: feedFilter === "latest" ? BRONZE.primary : BRONZE.pale,
-                  color: feedFilter === "latest" ? "white" : BRONZE.dark,
-                  fontSize: "14px",
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "8px",
-                  whiteSpace: "nowrap",
-                }}
-              >
-                <FaClock /> Latest
-              </motion.button>
-              
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => setFeedFilter("popular")}
-                style={{
-                  padding: "10px 20px",
-                  borderRadius: "12px",
-                  border: "none",
-                  fontWeight: feedFilter === "popular" ? "700" : "500",
-                  background: feedFilter === "popular" ? BRONZE.primary : BRONZE.pale,
-                  color: feedFilter === "popular" ? "white" : BRONZE.dark,
-                  fontSize: "14px",
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "8px",
-                  whiteSpace: "nowrap",
-                }}
-              >
-                <FaFire /> Popular
-              </motion.button>
-              
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => setFeedFilter("following")}
-                style={{
-                  padding: "10px 20px",
-                  borderRadius: "12px",
-                  border: "none",
-                  fontWeight: feedFilter === "following" ? "700" : "500",
-                  background: feedFilter === "following" ? BRONZE.primary : BRONZE.pale,
-                  color: feedFilter === "following" ? "white" : BRONZE.dark,
-                  fontSize: "14px",
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "8px",
-                  whiteSpace: "nowrap",
-                }}
-              >
-                <FaUsers /> Following
-              </motion.button>
-            </>
-          ) : (
-            <>
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => setSalonFilter("active")}
-                style={{
-                  padding: "10px 20px",
-                  borderRadius: "12px",
-                  border: "none",
-                  fontWeight: salonFilter === "active" ? "700" : "500",
-                  background: salonFilter === "active" ? "#9C27B0" : BRONZE.pale,
-                  color: salonFilter === "active" ? "white" : BRONZE.dark,
-                  fontSize: "14px",
-                  cursor: "pointer",
-                  whiteSpace: "nowrap",
-                }}
-              >
-                Most Active
-              </motion.button>
-              
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => setSalonFilter("popular")}
-                style={{
-                  padding: "10px 20px",
-                  borderRadius: "12px",
-                  border: "none",
-                  fontWeight: salonFilter === "popular" ? "700" : "500",
-                  background: salonFilter === "popular" ? "#9C27B0" : BRONZE.pale,
-                  color: salonFilter === "popular" ? "white" : BRONZE.dark,
-                  fontSize: "14px",
-                  cursor: "pointer",
-                  whiteSpace: "nowrap",
-                }}
-              >
-                Most Popular
-              </motion.button>
-              
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => setSalonFilter("new")}
-                style={{
-                  padding: "10px 20px",
-                  borderRadius: "12px",
-                  border: "none",
-                  fontWeight: salonFilter === "new" ? "700" : "500",
-                  background: salonFilter === "new" ? "#9C27B0" : BRONZE.pale,
-                  color: salonFilter === "new" ? "white" : BRONZE.dark,
-                  fontSize: "14px",
-                  cursor: "pointer",
-                  whiteSpace: "nowrap",
-                }}
-              >
-                New & Growing
-              </motion.button>
-            </>
-          )}
-        </div>
-      </motion.div>
-
-      {/* Content Area */}
-      <div style={{ 
-        flex: 1, 
-        overflowY: "auto",
-        padding: "16px",
-        paddingBottom: "80px",
-      }}>
-        <AnimatePresence mode="wait">
-          {viewMode === "feed" ? (
-            // Feed View
-            <motion.div
-              key="feed"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              style={{ display: "flex", flexDirection: "column", gap: "20px" }}
-            >
-              {mockFeedPosts.map((post, index) => (
-                <motion.div
-                  key={post.id}
-                  initial={{ opacity: 0, y: 20, scale: 0.95 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  transition={{ delay: index * 0.1 }}
-                  whileHover={{ y: -4 }}
-                  style={{
-                    background: "white",
-                    borderRadius: "24px",
-                    padding: "24px",
-                    boxShadow: "0 8px 32px rgba(205, 127, 50, 0.12)",
-                    border: `1px solid ${BRONZE.pale}`,
-                  }}
-                >
-                  {/* Post Header */}
-                  <div style={{ 
-                    display: "flex", 
-                    alignItems: "center", 
-                    gap: "12px", 
-                    marginBottom: "16px" 
-                  }}>
-                    <div style={{
-                      width: "52px",
-                      height: "52px",
-                      borderRadius: "50%",
-                      background: post.userColor,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      color: "white",
-                      fontSize: "20px",
-                      fontWeight: "bold",
-                      boxShadow: "0 4px 12px rgba(0, 0, 0, 0.1)",
-                    }}>
-                      {post.username[0].toUpperCase()}
-                    </div>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ 
-                        display: "flex", 
-                        alignItems: "center", 
-                        gap: "8px",
-                        marginBottom: "4px",
-                      }}>
-                        <h3 style={{ 
-                          fontSize: "16px", 
-                          fontWeight: 700, 
-                          color: BRONZE.dark,
-                          margin: 0,
-                        }}>
-                          {post.displayName}
-                        </h3>
-                        {post.isYou && (
-                          <span style={{
-                            background: BRONZE.primary,
-                            color: "white",
-                            padding: "2px 8px",
-                            borderRadius: "10px",
-                            fontSize: "11px",
-                            fontWeight: 600,
-                          }}>
-                            You
-                          </span>
-                        )}
-                      </div>
-                      <div style={{ 
-                        display: "flex", 
-                        alignItems: "center", 
-                        gap: "8px",
-                        fontSize: "13px",
-                        color: "#666",
-                      }}>
-                        <span>@{post.username}</span>
-                        <span>•</span>
-                        <span>{post.timestamp}</span>
-                      </div>
-                    </div>
-                    <motion.button
-                      whileHover={{ rotate: 90 }}
-                      style={{
-                        background: "none",
-                        border: "none",
-                        color: "#666",
-                        fontSize: "20px",
-                        cursor: "pointer",
-                        padding: "4px",
-                      }}
-                    >
-                      ⋯
-                    </motion.button>
-                  </div>
-
-                  {/* Post Content */}
-                  <p style={{ 
-                    fontSize: "16px", 
-                    color: "#333", 
-                    lineHeight: 1.6,
-                    margin: "0 0 20px",
-                  }}>
-                    {post.content}
-                  </p>
-
-                  {/* Tags */}
-                  <div style={{ 
-                    display: "flex", 
-                    flexWrap: "wrap", 
-                    gap: "8px",
-                    marginBottom: "16px",
-                  }}>
-                    {post.tags.map((tag) => (
-                      <span
-                        key={tag}
-                        style={{
-                          background: BRONZE.pale,
-                          color: BRONZE.dark,
-                          padding: "6px 12px",
-                          borderRadius: "20px",
-                          fontSize: "12px",
-                          fontWeight: 600,
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "4px",
-                        }}
-                      >
-                        <FaHashtag size={10} /> {tag}
-                      </span>
-                    ))}
-                  </div>
-
-                  {/* Post Image */}
-                  {post.image && (
-                    <motion.div
-                      whileHover={{ scale: 1.01 }}
-                      style={{
-                        borderRadius: "16px",
-                        overflow: "hidden",
-                        marginBottom: "20px",
-                      }}
-                    >
-                      <img
-                        src={post.image}
-                        alt="Post content"
-                        style={{
-                          width: "100%",
-                          height: "300px",
-                          objectFit: "cover",
-                        }}
-                      />
-                    </motion.div>
-                  )}
-
-                  {/* Post Actions */}
-                  <div style={{ 
-                    display: "flex", 
-                    justifyContent: "space-between",
-                    paddingTop: "16px",
-                    borderTop: `1px solid ${BRONZE.pale}`,
-                  }}>
-                    <motion.button
-                      whileHover={{ scale: 1.1 }}
-                      whileTap={{ scale: 0.9 }}
-                      onClick={() => handleLikePost(post.id)}
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "8px",
-                        background: "none",
-                        border: "none",
-                        color: likedPosts.includes(post.id) ? "#E91E63" : "#666",
-                        fontSize: "15px",
-                        fontWeight: 600,
-                        cursor: "pointer",
-                        padding: "8px 16px",
-                        borderRadius: "12px",
-                        transition: "all 0.3s ease",
-                      }}
-                    >
-                      <FaHeart /> {post.likes + (likedPosts.includes(post.id) ? 1 : 0)}
-                    </motion.button>
-                    
-                    <button style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "8px",
-                      background: "none",
-                      border: "none",
-                      color: "#666",
-                      fontSize: "15px",
-                      fontWeight: 600,
-                      cursor: "pointer",
-                      padding: "8px 16px",
-                      borderRadius: "12px",
-                    }}>
-                      💬 {post.comments}
-                    </button>
-                    
-                    <button style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "8px",
-                      background: "none",
-                      border: "none",
-                      color: "#666",
-                      fontSize: "15px",
-                      fontWeight: 600,
-                      cursor: "pointer",
-                      padding: "8px 16px",
-                      borderRadius: "12px",
-                    }}>
-                      <FaShareAlt /> {post.shares}
-                    </button>
-                  </div>
-                </motion.div>
-              ))}
-            </motion.div>
-          ) : (
-            // Salons View
-            <motion.div
-              key="salons"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              style={{ display: "flex", flexDirection: "column", gap: "20px" }}
-            >
-              {searchQuery && (
-                <p style={{ 
-                  fontSize: "14px", 
-                  color: "#666", 
-                  margin: "0 0 8px",
-                  textAlign: "center",
-                }}>
-                  Showing results for "{searchQuery}"
-                </p>
-              )}
-
-              {filteredSalons.length === 0 ? (
-                <motion.div
-                  initial={{ scale: 0.9, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  style={{
-                    textAlign: "center",
-                    padding: "48px 20px",
-                    background: "white",
-                    borderRadius: "24px",
-                    boxShadow: "0 8px 24px rgba(205, 127, 50, 0.1)",
-                  }}
-                >
-                  <div style={{ fontSize: "64px", marginBottom: "16px", color: BRONZE.light }}>
-                    🏛️
-                  </div>
-                  <h3 style={{ 
-                    fontSize: "22px", 
-                    fontWeight: 700, 
-                    color: BRONZE.dark,
-                    marginBottom: "8px",
-                  }}>
-                    No Salons Found
-                  </h3>
-                  <p style={{ 
-                    fontSize: "15px", 
-                    color: "#666", 
-                    marginBottom: "24px",
-                  }}>
-                    Try a different search or create your own salon!
-                  </p>
-                </motion.div>
-              ) : (
-                filteredSalons.map((salon, index) => (
-                  <motion.div
-                    key={salon.id}
-                    initial={{ opacity: 0, y: 20, scale: 0.95 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    transition={{ delay: index * 0.1 }}
-                    whileHover={{ y: -4 }}
-                    style={{
-                      background: "white",
-                      borderRadius: "24px",
-                      padding: "24px",
-                      boxShadow: "0 8px 32px rgba(205, 127, 50, 0.12)",
-                      border: `1px solid ${BRONZE.pale}`,
-                      position: "relative",
-                      overflow: "hidden",
-                    }}
-                  >
-                    {/* Salon Header */}
-                    <div style={{ 
-                      display: "flex", 
-                      justifyContent: "space-between", 
-                      alignItems: "flex-start",
-                      marginBottom: "16px",
-                    }}>
-                      <div style={{ display: "flex", alignItems: "flex-start", gap: "16px" }}>
-                        <div style={{
-                          width: "64px",
-                          height: "64px",
-                          borderRadius: "16px",
-                          background: salon.color,
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          fontSize: "28px",
-                          color: "white",
-                          boxShadow: `0 6px 20px ${salon.color}40`,
-                        }}>
-                          {salon.icon}
-                        </div>
-                        <div>
-                          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                            <h3 style={{ 
-                              fontSize: "22px", 
-                              fontWeight: 800, 
-                              margin: "0 0 8px", 
-                              color: salon.color,
-                            }}>
-                              {salon.name}
-                            </h3>
-                            {salon.popular && (
-                              <FaCrown style={{ 
-                                color: BRONZE.shimmer,
-                                fontSize: "20px",
-                              }} />
-                            )}
-                          </div>
-                          <p style={{ 
-                            fontSize: "15px", 
-                            color: "#666", 
-                            margin: "0 0 12px",
-                            lineHeight: 1.5,
-                          }}>
-                            {salon.description}
-                          </p>
-                        </div>
-                      </div>
-                      
-                      {salon.popular && (
-                        <div style={{
-                          position: "absolute",
-                          top: "20px",
-                          right: "20px",
-                          background: "linear-gradient(135deg, #FFD700, #FF9800)",
-                          color: "white",
-                          padding: "6px 12px",
-                          borderRadius: "20px",
-                          fontSize: "12px",
-                          fontWeight: 700,
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "4px",
-                        }}>
-                          <FaFire /> Popular
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Salon Stats */}
-                    <div style={{ 
-                      display: "flex", 
-                      gap: "24px",
-                      marginBottom: "20px",
-                    }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                        <FaUsers style={{ color: BRONZE.primary }} />
-                        <span style={{ fontSize: "14px", color: "#666", fontWeight: 600 }}>
-                          {salon.members} members
-                        </span>
-                      </div>
-                      
-                      <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                        <FaComments style={{ color: BRONZE.primary }} />
-                        <span style={{ fontSize: "14px", color: "#666", fontWeight: 600 }}>
-                          {salon.comments} discussions
-                        </span>
-                      </div>
-                      
-                      <div style={{ 
-                        background: BRONZE.pale,
-                        color: BRONZE.dark,
-                        padding: "4px 12px",
-                        borderRadius: "12px",
-                        fontSize: "12px",
-                        fontWeight: 600,
-                      }}>
-                        {salon.category}
-                      </div>
-                    </div>
-
-                    {/* Salon Footer */}
-                    <div style={{ 
-                      display: "flex", 
-                      justifyContent: "space-between", 
-                      alignItems: "center",
-                      paddingTop: "16px",
-                      borderTop: `1px solid ${BRONZE.pale}`,
-                    }}>
-                      <div style={{ fontSize: "13px", color: "#999" }}>
-                        {salon.created}
-                      </div>
-                      
-                      <div style={{ display: "flex", gap: "12px" }}>
-                        <motion.button
-                          whileHover={{ scale: 1.05 }}
-                          whileTap={{ scale: 0.95 }}
-                          onClick={() => handleJoinSalon(salon.id)}
-                          style={{
-                            background: joinedSalons.includes(salon.id) 
-                              ? BRONZE.pale 
-                              : `linear-gradient(135deg, ${salon.color}, ${salon.color}DD)`,
-                            color: joinedSalons.includes(salon.id) ? BRONZE.dark : "white",
-                            border: joinedSalons.includes(salon.id) ? `2px solid ${BRONZE.light}` : "none",
-                            padding: "10px 24px",
-                            borderRadius: "14px",
-                            fontSize: "15px",
-                            fontWeight: 600,
-                            cursor: "pointer",
-                            display: "flex",
-                            alignItems: "center",
-                            gap: "8px",
-                            boxShadow: joinedSalons.includes(salon.id) ? "none" : `0 4px 12px ${salon.color}40`,
-                          }}
-                        >
-                          {joinedSalons.includes(salon.id) ? "✓ Joined" : "Join Salon"}
-                        </motion.button>
-                        
-                        <motion.button
-                          whileHover={{ scale: 1.05 }}
-                          whileTap={{ scale: 0.95 }}
-                          onClick={() => navigate(`/salon/${salon.id}`)}
-                          style={{
-                            background: BRONZE.pale,
-                            color: BRONZE.dark,
-                            border: `2px solid ${BRONZE.light}`,
-                            padding: "10px 20px",
-                            borderRadius: "14px",
-                            fontSize: "15px",
-                            fontWeight: 600,
-                            cursor: "pointer",
-                            display: "flex",
-                            alignItems: "center",
-                            gap: "8px",
-                          }}
-                        >
-                          Explore <FaChevronRight size={12} />
-                        </motion.button>
-                      </div>
-                    </div>
-                  </motion.div>
-                ))
-              )}
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
-
-      {/* Bottom Navigation */}
-      <motion.nav
-        initial={{ y: 100, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ delay: 0.8, duration: 0.5 }}
-        style={{
-          position: "fixed",
-          bottom: 0,
-          left: 0,
-          right: 0,
-          background: "white",
-          borderTop: `1px solid ${BRONZE.pale}`,
-          display: "flex",
-          justifyContent: "space-around",
-          padding: "12px 0",
-          boxShadow: "0 -4px 20px rgba(205, 127, 50, 0.1)",
-          zIndex: 100,
-        }}
-      >
-        {[
-          { Icon: FaBookOpen, label: "Home", path: "/", color: "#4CAF50" },
-          { Icon: FaMapMarkedAlt, label: "Map", path: "/map", color: "#2196F3" },
-          { Icon: FaPlus, label: "Post", path: "/offer", color: "#FF9800" },
-          { Icon: FaComments, label: "Community", path: "/community", color: "#9C27B0", active: true },
-          { Icon: FaUser, label: "Profile", path: "/profile", color: BRONZE.primary },
-        ].map(({ Icon, label, path, color, active }) => (
-          <motion.button
-            key={label}
-            whileHover={{ y: -4 }}
-            whileTap={{ scale: 0.9 }}
-            onClick={() => navigate(path)}
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              gap: "6px",
-              background: "none",
-              border: "none",
-              color: active ? color : "#94A3B8",
-              fontSize: "12px",
-              cursor: "pointer",
-              position: "relative",
-            }}
-          >
-            <div style={{
-              width: "44px",
-              height: "44px",
-              borderRadius: "14px",
-              background: active ? `${color}15` : "transparent",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              border: active ? `2px solid ${color}30` : "none",
-            }}>
-              <Icon size={22} color={active ? color : "#94A3B8"} />
+            <div className="flex items-center gap-4">
+               <button onClick={() => {}} className="p-2 bg-secondary text-white rounded-lg font-bold text-sm px-4 flex items-center gap-2 shadow-lg hover:bg-secondary-hover transition-colors">
+                  <FaPlus /> <span className="hidden sm:inline">{viewMode === 'feed' ? 'New Post' : 'Create Salon'}</span>
+               </button>
+               <button onClick={() => setSidebarOpen(!sidebarOpen)} className="md:hidden p-2 text-white"><FaBars /></button>
             </div>
-            {label}
-            {active && (
-              <motion.div
-                layoutId="navIndicator"
-                style={{
-                  position: "absolute",
-                  bottom: "-2px",
-                  width: "20px",
-                  height: "3px",
-                  background: color,
-                  borderRadius: "2px",
-                }}
-              />
+         </header>
+
+         <div className="px-6 py-4 sticky top-20 z-20 bg-primary/95 backdrop-blur-md border-b border-white/5">
+            <div className="flex gap-2 mb-4">
+               <button onClick={() => setViewMode('feed')} className={`flex-1 py-2 rounded-xl text-sm font-bold transition-all ${viewMode === 'feed' ? 'bg-secondary text-white' : 'bg-primary-light/50 text-gray-400'}`}><FaComments className="inline mr-2" /> Feed</button>
+               <button onClick={() => setViewMode('salons')} className={`flex-1 py-2 rounded-xl text-sm font-bold transition-all ${viewMode === 'salons' ? 'bg-purple-600 text-white' : 'bg-primary-light/50 text-gray-400'}`}><FaUsers className="inline mr-2" /> Salons</button>
+            </div>
+            
+            <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+               {viewMode === 'feed' ? (
+                  ['latest', 'popular', 'following'].map((t: any) => (
+                     <button key={t} onClick={() => setFeedFilter(t)} className={`px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap border ${feedFilter === t ? 'bg-white text-primary border-white' : 'border-white/10 text-gray-400 hover:border-white/30'}`}>
+                        {t === 'latest' && <FaClock className="inline mr-1" />}
+                        {t === 'popular' && <FaFire className="inline mr-1" />}
+                        {t === 'following' && <FaUsers className="inline mr-1" />}
+                        {t.charAt(0).toUpperCase() + t.slice(1)}
+                     </button>
+                  ))
+               ) : (
+                  ['active', 'popular', 'new'].map((t: any) => (
+                     <button key={t} onClick={() => setSalonFilter(t)} className={`px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap border ${salonFilter === t ? 'bg-purple-600 text-white border-purple-600' : 'border-white/10 text-gray-400 hover:border-white/30'}`}>
+                        {t.charAt(0).toUpperCase() + t.slice(1)}
+                     </button>
+                  ))
+               )}
+            </div>
+
+            {viewMode === 'salons' && (
+               <div className="relative mt-4">
+                  <FaSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+                  <input value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Search salons..." className="w-full bg-primary-light/50 border border-white/10 rounded-xl py-3 pl-10 pr-4 text-white focus:border-purple-600 outline-none placeholder-gray-500" />
+               </div>
             )}
-          </motion.button>
-        ))}
-      </motion.nav>
+         </div>
+
+         <main className="flex-1 overflow-y-auto p-4 md:p-6 pb-20">
+            <div className="max-w-3xl mx-auto space-y-6">
+               <AnimatePresence mode="wait">
+                  {viewMode === 'feed' ? (
+                     <motion.div key="feed" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="space-y-6">
+                        {mockFeedPosts.map((post) => (
+                           <div key={post.id} className="bg-primary-light/30 backdrop-blur-md border border-white/10 rounded-3xl p-6 hover:border-white/20 transition-all">
+                              <div className="flex items-center gap-3 mb-4">
+                                 <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold" style={{background: post.userColor}}>{post.username[0].toUpperCase()}</div>
+                                 <div className="flex-1">
+                                    <div className="flex items-center gap-2">
+                                       <h3 className="font-bold text-white">{post.displayName}</h3>
+                                       {post.isYou && <span className="bg-secondary text-white text-[10px] px-2 py-0.5 rounded-full font-bold">YOU</span>}
+                                    </div>
+                                    <div className="text-xs text-gray-400">@{post.username} • {post.timestamp}</div>
+                                 </div>
+                              </div>
+                              <p className="text-gray-200 mb-4 leading-relaxed">{post.content}</p>
+                              {post.image && <img src={post.image} className="w-full h-64 object-cover rounded-2xl mb-4" />}
+                              <div className="flex flex-wrap gap-2 mb-4">
+                                 {post.tags.map(tag => <span key={tag} className="px-3 py-1 rounded-full bg-white/5 text-gray-300 text-xs flex items-center gap-1"><FaHashtag size={10} /> {tag}</span>)}
+                              </div>
+                              <div className="flex items-center justify-between pt-4 border-t border-white/5">
+                                 <button onClick={() => handleLikePost(post.id)} className={`flex items-center gap-2 text-sm font-bold transition-colors ${likedPosts.includes(post.id) ? 'text-red-500' : 'text-gray-400 hover:text-white'}`}>
+                                    <FaHeart /> {post.likes + (likedPosts.includes(post.id) ? 1 : 0)}
+                                 </button>
+                                 <button className="flex items-center gap-2 text-sm font-bold text-gray-400 hover:text-white transition-colors"><FaComments /> {post.comments}</button>
+                                 <button className="flex items-center gap-2 text-sm font-bold text-gray-400 hover:text-white transition-colors"><FaShareAlt /> {post.shares}</button>
+                              </div>
+                           </div>
+                        ))}
+                     </motion.div>
+                  ) : (
+                     <motion.div key="salons" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="space-y-6">
+                        {filteredSalons.map((salon) => (
+                           <div key={salon.id} className="bg-primary-light/30 backdrop-blur-md border border-white/10 rounded-3xl p-6 hover:border-purple-500/50 transition-all relative overflow-hidden group">
+                              <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity text-6xl">{salon.icon}</div>
+                              <div className="flex justify-between items-start mb-2 relative z-10">
+                                 <div>
+                                    <h3 className="text-xl font-bold text-white mb-1">{salon.name}</h3>
+                                    <span className="text-xs text-purple-400 font-bold uppercase tracking-wider">{salon.category}</span>
+                                 </div>
+                                 {salon.popular && <FaCrown className="text-yellow-500" />}
+                              </div>
+                              <p className="text-gray-300 text-sm mb-4 relative z-10">{salon.description}</p>
+                              <div className="flex items-center justify-between relative z-10">
+                                 <div className="text-xs text-gray-400 flex items-center gap-3">
+                                    <span className="flex items-center gap-1"><FaUsers /> {salon.members}</span>
+                                    <span className="flex items-center gap-1"><FaComments /> {salon.comments}</span>
+                                 </div>
+                                 <button onClick={() => handleJoinSalon(salon.id)} className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${joinedSalons.includes(salon.id) ? 'bg-white/10 text-white' : 'bg-purple-600 text-white hover:bg-purple-700'}`}>
+                                    {joinedSalons.includes(salon.id) ? 'Joined' : 'Join Salon'}
+                                 </button>
+                              </div>
+                           </div>
+                        ))}
+                     </motion.div>
+                  )}
+               </AnimatePresence>
+            </div>
+         </main>
+      </div>
     </div>
   );
 }

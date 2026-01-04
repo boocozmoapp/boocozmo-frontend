@@ -1,7 +1,9 @@
-// src/App.tsx - GREEN ENERGY THEME + Fixed White Space Issue
-import { useEffect, useState } from "react";
-import { BrowserRouter, Routes, Route, useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
+/* eslint-disable @typescript-eslint/no-explicit-any */
+// src/App.tsx - PREMIUM THEME
+import React, { useEffect, useState } from "react";
+import { BrowserRouter, Routes, Route, useNavigate, useLocation } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
+import { FaHome, FaSearch, FaPlusSquare, FaBookOpen, FaUser } from "react-icons/fa";
 import SplashScreen from "./pages/SplashScreen";
 import HomeScreen from "./pages/HomeScreen";
 import OfferScreen from "./pages/OfferScreen";
@@ -13,22 +15,8 @@ import ChatScreen from "./pages/ChatScreen";
 import SingleChat from "./pages/SingleChat";
 import OfferDetailScreen from "./pages/OfferDetailScreen";
 import MyLibraryScreen from "./pages/MyLibraryScreen";
+import CommunityScreen from "./pages/CommunityScreen";
 import "leaflet/dist/leaflet.css";
-
-// GREEN ENERGY THEME
-const GREEN = {
-  dark: "#0F2415",
-  medium: "#1A3A2A",
-  accent: "#4A7C59",
-  accentLight: "#6BA87A",
-  textPrimary: "#E8F0E8",
-  textSecondary: "#A8B8A8",
-  textMuted: "#80A080",
-  border: "rgba(74, 124, 89, 0.3)",
-  grayLight: "#2A4A3A",
-  hoverBg: "#255035",
-  success: "#6BA87A",
-};
 
 type User = {
   email: string;
@@ -37,188 +25,65 @@ type User = {
   token: string;
 } | null;
 
-// Green energy loading screen (replaces Pinterest red)
-function GreenLoadingScreen() {
+// Premium loading screen
+function PremiumLoadingScreen() {
   return (
-    <div style={{
-      position: "fixed",
-      top: 0,
-      left: 0,
-      width: "100vw",
-      height: "100vh",
-      margin: 0,
-      padding: 0,
-      display: "flex",
-      flexDirection: "column",
-      alignItems: "center",
-      justifyContent: "center",
-      background: GREEN.dark,
-      zIndex: 9999,
-      fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-      overflow: "hidden",
-    }}>
-      {/* Subtle animated grid background */}
-      <div style={{
-        position: "absolute",
-        top: 0,
-        left: 0,
-        width: "100%",
-        height: "100%",
-        backgroundImage: `
-          linear-gradient(to right, ${GREEN.border} 1px, transparent 1px),
-          linear-gradient(to bottom, ${GREEN.border} 1px, transparent 1px)
-        `,
-        backgroundSize: "60px 60px",
-        opacity: 0.3,
-      }} />
+    <div className="fixed inset-0 bg-primary flex flex-col items-center justify-center z-50 overflow-hidden">
+      {/* Background Glow */}
+      <div className="absolute top-[-20%] left-[-20%] w-[60%] h-[60%] bg-secondary/10 rounded-full blur-[120px]" />
+      <div className="absolute bottom-[-20%] right-[-20%] w-[60%] h-[60%] bg-primary-light/20 rounded-full blur-[120px]" />
 
-      {/* Bouncing green dots */}
-      <div style={{
-        display: "flex",
-        gap: "16px",
-        marginBottom: "40px",
-      }}>
-        {[0, 1, 2].map((i) => (
-          <motion.div
-            key={i}
-            style={{
-              width: "20px",
-              height: "20px",
-              borderRadius: "50%",
-              background: GREEN.accent,
-              boxShadow: `0 6px 20px rgba(74, 124, 89, 0.4)`,
-            }}
-            animate={{
-              y: [0, -30, 0],
-              scale: [1, 1.3, 1],
-              opacity: [0.6, 1, 0.6],
-            }}
-            transition={{
-              duration: 1,
-              repeat: Infinity,
-              delay: i * 0.2,
-              ease: "easeInOut",
-            }}
-          />
-        ))}
-      </div>
-
-      {/* Logo with rotation */}
       <motion.div
-        style={{
-          width: "80px",
-          height: "80px",
-          borderRadius: "50%",
-          background: `linear-gradient(135deg, ${GREEN.accent}, ${GREEN.accentLight})`,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          color: "white",
-          fontSize: "32px",
-          fontWeight: "800",
-          marginBottom: "24px",
-          boxShadow: `0 12px 40px rgba(74, 124, 89, 0.5)`,
-        }}
-        animate={{
-          rotate: [0, 360],
-        }}
-        transition={{
-          duration: 4,
-          repeat: Infinity,
-          ease: "linear",
-        }}
-      >
-        B
-      </motion.div>
-
-      {/* Text */}
-      <motion.h1
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        style={{
-          fontSize: "24px",
-          fontWeight: "700",
-          color: GREEN.textPrimary,
-          margin: "0 0 12px",
-          letterSpacing: "-0.5px",
-        }}
-      >
-        Boocozmo
-      </motion.h1>
-
+        animate={{ rotate: 360 }}
+        transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+        className="w-16 h-16 border-4 border-primary-light border-t-secondary rounded-full"
+      />
       <motion.p
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        transition={{ delay: 0.3 }}
-        style={{
-          fontSize: "16px",
-          color: GREEN.textSecondary,
-          margin: "0 0 32px",
-          textAlign: "center",
-          maxWidth: "280px",
-          lineHeight: 1.5,
-        }}
+        transition={{ delay: 0.5 }}
+        className="mt-6 text-text-muted font-serif tracking-widest text-sm"
       >
-        Connecting readers, one book at a time
+        LOADING EXPERIENCE...
       </motion.p>
+    </div>
+  );
+}
 
-      {/* Progress bar */}
-      <div style={{
-        width: "240px",
-        height: "6px",
-        background: GREEN.grayLight,
-        borderRadius: "3px",
-        overflow: "hidden",
-        marginTop: "20px",
-      }}>
-        <motion.div
-          style={{
-            height: "100%",
-            background: `linear-gradient(90deg, ${GREEN.accent}, ${GREEN.accentLight})`,
-            borderRadius: "3px",
-          }}
-          animate={{
-            width: ["20%", "80%", "20%"],
-          }}
-          transition={{
-            duration: 2.5,
-            repeat: Infinity,
-            ease: "easeInOut",
-          }}
-        />
-      </div>
+function MobileNavBar() {
+  const navigate = useNavigate();
+  const location = useLocation();
 
-      {/* Floating book icons */}
-      <div style={{
-        position: "absolute",
-        width: "100%",
-        height: "100%",
-        pointerEvents: "none",
-        opacity: 0.15,
-      }}>
-        {[...Array(10)].map((_, i) => (
-          <motion.div
-            key={i}
-            style={{
-              position: "absolute",
-              fontSize: "32px",
-              left: `${Math.random() * 100}%`,
-              top: `${Math.random() * 100}%`,
-            }}
-            animate={{
-              y: [0, -40, 0],
-              rotate: [0, 360],
-            }}
-            transition={{
-              duration: 6 + Math.random() * 4,
-              repeat: Infinity,
-              delay: i * 0.5,
-            }}
+  const navItems = [
+    { icon: FaHome, route: "/", label: "Home" },
+    { icon: FaSearch, route: "/map", label: "Explore" },
+    { icon: FaPlusSquare, route: "/offer", label: "Post" },
+    { icon: FaBookOpen, route: "/my-library", label: "Library" },
+    { icon: FaUser, route: "/profile", label: "You" },
+  ];
+
+  return (
+    <div className="md:hidden fixed bottom-6 left-4 right-4 h-16 bg-primary/95 backdrop-blur-xl border border-white/10 rounded-2xl z-50 flex items-center justify-around px-2 shadow-2xl shadow-black/50">
+      {navItems.map((item) => {
+        const isActive = location.pathname === item.route;
+        return (
+          <button
+            key={item.label}
+            onClick={() => navigate(item.route)}
+            className={`relative flex flex-col items-center justify-center w-full h-full space-y-1 transition-colors ${
+              isActive ? "text-secondary" : "text-gray-400 hover:text-white"
+            }`}
           >
-            📚
-          </motion.div>
-        ))}
-      </div>
+            <item.icon size={isActive ? 24 : 22} />
+            {isActive && (
+              <motion.div
+                layoutId="nav-indicator"
+                className="absolute -bottom-2 w-1 h-1 rounded-full bg-secondary"
+              />
+            )}
+          </button>
+        );
+      })}
     </div>
   );
 }
@@ -234,11 +99,7 @@ function AppContent() {
       if (saved) {
         try {
           const parsedUser = JSON.parse(saved) as User;
-
           if (parsedUser && parsedUser.token && parsedUser.email) {
-            // Optional: validate session with backend
-            // const response = await fetch(`${API_BASE}/validate-session`, { ... });
-            // For now, trust localStorage
             setUser(parsedUser);
           } else {
             localStorage.removeItem("user");
@@ -269,150 +130,38 @@ function AppContent() {
   const goTo = (path: string) => () => navigate(path);
 
   if (isLoadingUser) {
-    return <GreenLoadingScreen />;
+    return <PremiumLoadingScreen />;
   }
 
+  const authorized = !!user;
+
+  // Helper to render protected route or redirect
+  const ProtectedRoute = ({ element }: { element: React.ReactElement }) => {
+    return authorized ? element : <LoginScreen onLoginSuccess={handleAuthSuccess} onGoToSignup={goTo("/signup")} />;
+  };
+
   return (
-    <div style={{
-      margin: 0,
-      padding: 0,
-      width: "100vw",
-      height: "100vh",
-      overflow: "hidden",
-      position: "fixed",
-      top: 0,
-      left: 0,
-      background: GREEN.dark,
-    }}>
-      <Routes>
-        {/* Public Routes */}
-        <Route
-          path="/login"
-          element={
-            user ? (
-              <HomeScreen
-                currentUser={user}
-                onAddPress={goTo("/offer")}
-                onProfilePress={goTo("/profile")}
-                onMapPress={goTo("/map")}
-              />
-            ) : (
-              <LoginScreen
-                onLoginSuccess={handleAuthSuccess}
-                onGoToSignup={goTo("/signup")}
-              />
-            )
-          }
-        />
+    <div className="w-screen h-screen overflow-hidden bg-primary text-text-main flex flex-col relative">
+      <div className="flex-1 overflow-hidden relative z-0">
+        <Routes>
+          {/* Public Routes */}
+          <Route path="/login" element={authorized ? <HomeScreen currentUser={user!} onAddPress={goTo("/offer")} onProfilePress={goTo("/profile")} onMapPress={goTo("/map")} /> : <LoginScreen onLoginSuccess={handleAuthSuccess} onGoToSignup={goTo("/signup")} />} />
+          <Route path="/signup" element={authorized ? <HomeScreen currentUser={user!} onAddPress={goTo("/offer")} onProfilePress={goTo("/profile")} onMapPress={goTo("/map")} /> : <SignupScreen onSignupSuccess={handleAuthSuccess} onGoToLogin={goTo("/login")} />} />
 
-        <Route
-          path="/signup"
-          element={
-            user ? (
-              <HomeScreen
-                currentUser={user}
-                onAddPress={goTo("/offer")}
-                onProfilePress={goTo("/profile")}
-                onMapPress={goTo("/map")}
-              />
-            ) : (
-              <SignupScreen
-                onSignupSuccess={handleAuthSuccess}
-                onGoToLogin={goTo("/login")}
-              />
-            )
-          }
-        />
+          {/* Protected Routes */}
+          <Route path="/" element={<ProtectedRoute element={<HomeScreen currentUser={user!} onAddPress={goTo("/offer")} onProfilePress={goTo("/profile")} onMapPress={goTo("/map")} />} />} />
+          <Route path="/offer" element={<ProtectedRoute element={<OfferScreen onBack={goTo("/")} currentUser={user!} onProfilePress={goTo("/profile")} onMapPress={goTo("/map")} onAddPress={goTo("/offer")} />} />} />
+          <Route path="/offer/:id" element={<ProtectedRoute element={<OfferDetailScreen currentUser={user!} />} />} />
+          <Route path="/profile" element={<ProtectedRoute element={<ProfileScreen currentUser={user!} />} />} />
+          <Route path="/map" element={<ProtectedRoute element={<MapScreen currentUser={user!} />} />} />
+          <Route path="/chat" element={<ProtectedRoute element={<ChatScreen currentUser={user!} />} />} />
+          <Route path="/chat/:chatId" element={<ProtectedRoute element={<SingleChat currentUser={user!} />} />} />
+          <Route path="/my-library" element={<ProtectedRoute element={<MyLibraryScreen currentUser={user!} onBack={goTo("/")} onAddPress={goTo("/offer")} onProfilePress={goTo("/profile")} onMapPress={goTo("/map")} />} />} />
+          <Route path="/community" element={<ProtectedRoute element={<CommunityScreen />} />} />
+        </Routes>
+      </div>
 
-        {/* Protected Routes */}
-        <Route
-          path="/"
-          element={
-            user ? (
-              <HomeScreen
-                currentUser={user}
-                onAddPress={goTo("/offer")}
-                onProfilePress={goTo("/profile")}
-                onMapPress={goTo("/map")}
-              />
-            ) : (
-              <LoginScreen onLoginSuccess={handleAuthSuccess} onGoToSignup={goTo("/signup")} />
-            )
-          }
-        />
-
-        <Route
-          path="/offer"
-          element={
-            user ? (
-              <OfferScreen
-                onBack={goTo("/")}
-                currentUser={user}
-                onProfilePress={goTo("/profile")}
-                onMapPress={goTo("/map")}
-                onAddPress={goTo("/offer")}
-              />
-            ) : (
-              <LoginScreen onLoginSuccess={handleAuthSuccess} onGoToSignup={goTo("/signup")} />
-            )
-          }
-        />
-
-        <Route
-          path="/offer/:id"
-          element={user ? <OfferDetailScreen currentUser={user} /> : <LoginScreen onLoginSuccess={handleAuthSuccess} onGoToSignup={function (): void {
-            throw new Error("Function not implemented.");
-          } } />}
-        />
-
-        {/* FIXED: Removed invalid onLogout prop */}
-        <Route
-          path="/profile"
-          element={user ? <ProfileScreen currentUser={user} /> : <LoginScreen onLoginSuccess={handleAuthSuccess} onGoToSignup={function (): void {
-            throw new Error("Function not implemented.");
-          } } />}
-        />
-
-        <Route
-          path="/map"
-          element={user ? <MapScreen currentUser={user} /> : <LoginScreen onLoginSuccess={handleAuthSuccess} onGoToSignup={function (): void {
-            throw new Error("Function not implemented.");
-          } } />}
-        />
-
-        <Route
-          path="/chat"
-          element={user ? <ChatScreen currentUser={user} /> : <LoginScreen onLoginSuccess={handleAuthSuccess} onGoToSignup={function (): void {
-            throw new Error("Function not implemented.");
-          } } />}
-        />
-
-        <Route
-          path="/chat/:chatId"
-          element={user ? <SingleChat currentUser={user} /> : <LoginScreen onLoginSuccess={handleAuthSuccess} onGoToSignup={function (): void {
-            throw new Error("Function not implemented.");
-          } } />}
-        />
-
-        <Route
-          path="/my-library"
-          element={
-            user ? (
-              <MyLibraryScreen
-                currentUser={user}
-                onBack={goTo("/")}
-                onAddPress={goTo("/offer")}
-                onProfilePress={goTo("/profile")}
-                onMapPress={goTo("/map")}
-              />
-            ) : (
-              <LoginScreen onLoginSuccess={handleAuthSuccess} onGoToSignup={function (): void {
-                  throw new Error("Function not implemented.");
-                } } />
-            )
-          }
-        />
-      </Routes>
+      {authorized && <MobileNavBar />}
     </div>
   );
 }
@@ -420,59 +169,9 @@ function AppContent() {
 export default function App() {
   const [showSplash, setShowSplash] = useState(true);
 
-  useEffect(() => {
-    const timer = setTimeout(() => setShowSplash(false), 2500);
-    return () => clearTimeout(timer);
-  }, []);
-
   return (
     <BrowserRouter>
-      <div style={{
-        margin: 0,
-        padding: 0,
-        width: "100vw",
-        height: "100vh",
-        overflow: "hidden",
-        position: "fixed",
-        top: 0,
-        left: 0,
-      }}>
-        {showSplash ? <SplashScreen onFinish={() => setShowSplash(false)} /> : <AppContent />}
-      </div>
+      {showSplash ? <SplashScreen onFinish={() => setShowSplash(false)} /> : <AppContent />}
     </BrowserRouter>
   );
 }
-
-// Add global CSS reset inline
-const globalStyles = `
-  * {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-  }
-  
-  html, body {
-    margin: 0 !important;
-    padding: 0 !important;
-    width: 100vw;
-    height: 100vh;
-    overflow: hidden;
-    background: #0F2415;
-    position: fixed;
-    top: 0;
-    left: 0;
-  }
-  
-  #root {
-    width: 100vw;
-    height: 100vh;
-    margin: 0;
-    padding: 0;
-    overflow: hidden;
-  }
-`;
-
-// Create style tag with global styles
-const styleSheet = document.createElement("style");
-styleSheet.innerText = globalStyles;
-document.head.appendChild(styleSheet);

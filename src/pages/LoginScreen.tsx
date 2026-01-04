@@ -1,27 +1,12 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-// src/pages/LoginScreen.tsx - GREEN ENERGY THEME: Calm, Sustainable, Professional
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { FaEnvelope, FaLock, FaEye, FaEyeSlash } from "react-icons/fa";
+import { FaEnvelope, FaLock, FaEye, FaEyeSlash, FaBookOpen } from "react-icons/fa";
 
 const API_BASE = "https://boocozmo-api.onrender.com";
 
 type Props = {
   onLoginSuccess: (user: { email: string; name: string; id: string; token: string }) => void;
   onGoToSignup: () => void;
-};
-
-const GREEN = {
-  dark: "#0F2415",           // Deep forest green background
-  medium: "#1A3A2A",         // Card background
-  accent: "#4A7C59",         // Soft sage green for accents
-  accentLight: "#6BA87A",
-  textPrimary: "#E8F0E8",    // Soft off-white
-  textSecondary: "#A8B8A8",  // Muted green
-  textMuted: "#80A080",
-  border: "rgba(74, 124, 89, 0.3)",
-  grayLight: "#2A4A3A",
-  error: "#FF6B6B",          // Soft red for errors
 };
 
 export default function LoginScreen({ onLoginSuccess, onGoToSignup }: Props) {
@@ -32,13 +17,13 @@ export default function LoginScreen({ onLoginSuccess, onGoToSignup }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [checkingSession, setCheckingSession] = useState(true);
 
+  // Check for existing session
   useEffect(() => {
     const checkExistingSession = async () => {
       try {
         const storedUser = localStorage.getItem("user");
         if (storedUser) {
           const user = JSON.parse(storedUser);
-          
           const response = await fetch(`${API_BASE}/validate-session`, {
             headers: { Authorization: `Bearer ${user.token}` },
           });
@@ -60,20 +45,8 @@ export default function LoginScreen({ onLoginSuccess, onGoToSignup }: Props) {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-
     if (!email.trim() || !password) {
       setError("Please enter both email and password");
-      return;
-    }
-
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email.trim())) {
-      setError("Please enter a valid email address");
-      return;
-    }
-
-    if (password.length < 6) {
-      setError("Password must be at least 6 characters");
       return;
     }
 
@@ -93,14 +66,7 @@ export default function LoginScreen({ onLoginSuccess, onGoToSignup }: Props) {
       const data = await res.json();
 
       if (!res.ok) {
-        if (res.status === 401) throw new Error("Invalid email or password");
-        if (res.status === 400) throw new Error(data.error || "Email and password required");
-        if (res.status === 429) throw new Error("Too many attempts. Try again later.");
         throw new Error(data.error || "Login failed");
-      }
-
-      if (!data.id || !data.email || !data.name || !data.token) {
-        throw new Error("Invalid response from server");
       }
 
       const user = {
@@ -112,289 +78,132 @@ export default function LoginScreen({ onLoginSuccess, onGoToSignup }: Props) {
 
       localStorage.setItem("user", JSON.stringify(user));
       onLoginSuccess(user);
-
-      setEmail("");
-      setPassword("");
     } catch (err: any) {
       setError(err.message || "Network error. Please try again.");
-      setPassword("");
     } finally {
       setLoading(false);
     }
   };
 
-
   if (checkingSession) {
     return (
-      <div style={{
-        minHeight: "100vh",
-        background: GREEN.dark,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-      }}>
-        <div style={{
-          textAlign: "center",
-        }}>
-          <div style={{
-            width: "80px",
-            height: "80px",
-            borderRadius: "50%",
-            background: GREEN.accent,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            margin: "0 auto 16px",
-            boxShadow: "0 8px 24px rgba(74, 124, 89, 0.3)",
-          }}>
-            <span style={{ fontSize: "36px", fontWeight: "800", color: "white" }}>B</span>
+      <div className="min-h-screen bg-primary flex items-center justify-center">
+        <motion.div 
+          animate={{ opacity: [0.5, 1, 0.5] }} 
+          transition={{ duration: 1.5, repeat: Infinity }}
+          className="flex flex-col items-center"
+        >
+          <div className="text-secondary text-4xl mb-4">
+            <FaBookOpen />
           </div>
-          <p style={{ color: GREEN.textSecondary, fontSize: "14px", marginTop: "12px" }}>
-            Checking session...
-          </p>
-        </div>
+          <p className="text-text-muted text-sm tracking-wider uppercase">Authenticating...</p>
+        </motion.div>
       </div>
     );
   }
 
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        background: `linear-gradient(to bottom, ${GREEN.dark} 0%, #0A1C10 100%)`,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: "24px",
-        fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-      }}
-    >
-      {/* Login Card - Clean & Compact */}
+    <div className="min-h-screen w-full bg-primary flex items-center justify-center p-4 relative overflow-hidden">
+      {/* Background Decor */}
+      <div className="absolute top-[-20%] left-[-10%] w-[600px] h-[600px] bg-secondary/10 rounded-full blur-[120px] pointer-events-none" />
+      <div className="absolute bottom-[-20%] right-[-10%] w-[600px] h-[600px] bg-primary-light/20 rounded-full blur-[120px] pointer-events-none" />
+
       <motion.div
-        initial={{ opacity: 0, y: 40 }}
+        initial={{ opacity: 0, y: 30 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.8 }}
-        style={{
-          width: "100%",
-          maxWidth: "420px",
-          background: GREEN.medium,
-          borderRadius: "24px",
-          padding: "48px 32px",
-          boxShadow: "0 16px 40px rgba(0, 0, 0, 0.3)",
-          border: `1px solid ${GREEN.border}`,
-        }}
+        transition={{ duration: 0.6, ease: "easeOut" }}
+        className="glass-panel w-full max-w-md p-8 md:p-12 rounded-3xl shadow-2xl relative z-10 backdrop-blur-xl border border-white/10"
       >
-        {/* Logo */}
-        <div style={{ textAlign: "center", marginBottom: "32px" }}>
-          <div
-            style={{
-              width: "80px",
-              height: "80px",
-              borderRadius: "50%",
-              background: GREEN.accent,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              margin: "0 auto 16px",
-              boxShadow: "0 8px 24px rgba(74, 124, 89, 0.3)",
-            }}
+        <div className="text-center mb-10">
+          <motion.div 
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ type: "spring", delay: 0.2 }}
+            className="w-16 h-16 bg-secondary text-white rounded-2xl mx-auto flex items-center justify-center text-2xl shadow-lg mb-6 rotate-3"
           >
-            <span style={{ fontSize: "36px", fontWeight: "800", color: "white" }}>B</span>
-          </div>
-          <h2 style={{ fontSize: "1.8rem", fontWeight: 700, color: GREEN.textPrimary, margin: 0 }}>
-            Welcome Back
-          </h2>
-          <p style={{ fontSize: "0.95rem", color: GREEN.textSecondary, marginTop: "8px" }}>
-            Sign in to your book community
-          </p>
+            <FaBookOpen />
+          </motion.div>
+          <h2 className="text-3xl font-serif font-bold text-white mb-2">Welcome Back</h2>
+          <p className="text-text-muted">Sign in to continue your literary journey.</p>
         </div>
 
-        <form onSubmit={handleLogin} style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
-          {/* Email */}
-          <div style={{ position: "relative" }}>
-            <FaEnvelope
-              style={{
-                position: "absolute",
-                left: "16px",
-                top: "50%",
-                transform: "translateY(-50%)",
-                color: GREEN.textMuted,
-                fontSize: "18px",
-              }}
-            />
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => {
-                setEmail(e.target.value);
-                setError(null);
-              }}
-              placeholder="Email address"
-              required
-              disabled={loading}
-              style={{
-                width: "100%",
-                padding: "14px 14px 14px 48px",
-                borderRadius: "16px",
-                border: `1px solid ${error ? GREEN.error : GREEN.border}`,
-                background: GREEN.grayLight,
-                color: GREEN.textPrimary,
-                fontSize: "15px",
-                outline: "none",
-              }}
-            />
+        <form onSubmit={handleLogin} className="space-y-6">
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-text-muted ml-1">Email</label>
+            <div className="relative group">
+              <FaEnvelope className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted group-focus-within:text-secondary transition-colors" />
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full bg-primary-light/50 border border-white/10 rounded-xl px-12 py-3.5 text-white placeholder-white/20 focus:outline-none focus:border-secondary focus:ring-1 focus:ring-secondary transition-all"
+                placeholder="reader@example.com"
+                required
+              />
+            </div>
           </div>
 
-          {/* Password */}
-          <div style={{ position: "relative" }}>
-            <FaLock
-              style={{
-                position: "absolute",
-                left: "16px",
-                top: "50%",
-                transform: "translateY(-50%)",
-                color: GREEN.textMuted,
-                fontSize: "18px",
-              }}
-            />
-            <input
-              type={showPassword ? "text" : "password"}
-              value={password}
-              onChange={(e) => {
-                setPassword(e.target.value);
-                setError(null);
-              }}
-              placeholder="Password"
-              required
-              disabled={loading}
-              style={{
-                width: "100%",
-                padding: "14px 14px 14px 48px",
-                borderRadius: "16px",
-                border: `1px solid ${error ? GREEN.error : GREEN.border}`,
-                background: GREEN.grayLight,
-                color: GREEN.textPrimary,
-                fontSize: "15px",
-                outline: "none",
-              }}
-            />
-            <button
-              type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              disabled={loading}
-              style={{
-                position: "absolute",
-                right: "16px",
-                top: "50%",
-                transform: "translateY(-50%)",
-                background: "none",
-                border: "none",
-                color: GREEN.textSecondary,
-                cursor: loading ? "not-allowed" : "pointer",
-              }}
-            >
-              {showPassword ? <FaEyeSlash size={18} /> : <FaEye size={18} />}
-            </button>
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-text-muted ml-1">Password</label>
+            <div className="relative group">
+              <FaLock className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted group-focus-within:text-secondary transition-colors" />
+              <input
+                type={showPassword ? "text" : "password"}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full bg-primary-light/50 border border-white/10 rounded-xl px-12 py-3.5 text-white placeholder-white/20 focus:outline-none focus:border-secondary focus:ring-1 focus:ring-secondary transition-all"
+                placeholder="••••••••"
+                required
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-text-muted hover:text-white transition-colors"
+              >
+                {showPassword ? <FaEyeSlash /> : <FaEye />}
+              </button>
+            </div>
           </div>
 
-          {/* Forgot Password */}
-          <div style={{ textAlign: "right" }}>
-            <button
-              type="button"
-              onClick={() => alert("Forgot password feature coming soon!")}
-              disabled={loading}
-              style={{
-                background: "none",
-                border: "none",
-                color: GREEN.accent,
-                fontSize: "14px",
-                cursor: loading ? "not-allowed" : "pointer",
-              }}
+          {error && (
+            <motion.div 
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-200 text-sm text-center"
             >
+              {error}
+            </motion.div>
+          )}
+
+          <div className="flex items-center justify-between text-sm">
+            <label className="flex items-center space-x-2 cursor-pointer group">
+              <input type="checkbox" className="w-4 h-4 rounded border-white/20 bg-white/5 text-secondary focus:ring-secondary" />
+              <span className="text-text-muted group-hover:text-white transition-colors">Remember me</span>
+            </label>
+            <button type="button" className="text-secondary hover:text-secondary-hover transition-colors font-medium">
               Forgot password?
             </button>
           </div>
 
-          {/* Error */}
-          {error && (
-            <div style={{
-              background: "rgba(255, 107, 107, 0.1)",
-              padding: "12px",
-              borderRadius: "12px",
-              color: GREEN.error,
-              fontSize: "14px",
-              textAlign: "center",
-            }}>
-              {error}
-            </div>
-          )}
-
-          {/* Submit Button */}
           <button
             type="submit"
             disabled={loading}
-            style={{
-              width: "100%",
-              padding: "16px",
-              background: loading ? GREEN.grayLight : GREEN.accent,
-              color: "white",
-              border: "none",
-              borderRadius: "16px",
-              fontSize: "16px",
-              fontWeight: 600,
-              cursor: loading ? "not-allowed" : "pointer",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: "8px",
-            }}
+            className="w-full bg-secondary hover:bg-secondary-hover text-white font-semibold py-4 rounded-xl shadow-lg shadow-secondary/20 transition-all transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed"
           >
-            {loading ? (
-              <>
-                <div style={{
-                  width: "20px",
-                  height: "20px",
-                  borderRadius: "50%",
-                  border: `2px solid ${GREEN.textSecondary}`,
-                  borderTopColor: GREEN.accent,
-                  animation: "spin 1s linear infinite",
-                }} />
-                Signing in...
-              </>
-            ) : (
-              "Sign In"
-            )}
+            {loading ? "Signing in..." : "Sign In"}
           </button>
-
-          {/* Sign Up Link */}
-          <div style={{ textAlign: "center", marginTop: "16px" }}>
-            <span style={{ color: GREEN.textSecondary, fontSize: "15px" }}>
-              Don't have an account?{" "}
-            </span>
-            <button
-              type="button"
-              onClick={onGoToSignup}
-              disabled={loading}
-              style={{
-                background: "none",
-                border: "none",
-                color: GREEN.accent,
-                fontSize: "15px",
-                fontWeight: 600,
-                cursor: loading ? "not-allowed" : "pointer",
-              }}
-            >
-              Create one
-            </button>
-          </div>
         </form>
-      </motion.div>
 
-      <style>{`
-        @keyframes spin {
-          to { transform: rotate(360deg); }
-        }
-      `}</style>
+        <div className="mt-8 text-center text-text-muted text-sm">
+          Don't have an account?{" "}
+          <button 
+            onClick={onGoToSignup}
+            className="text-white hover:text-secondary font-semibold ml-1 transition-colors"
+          >
+            Create account
+          </button>
+        </div>
+      </motion.div>
     </div>
   );
 }
