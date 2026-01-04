@@ -18,7 +18,7 @@ const GREEN = {
   accentLight: "#6BA87A",
   textPrimary: "#E8F0E8",    // Soft off-white
   textSecondary: "#A8B8A8",  // Muted green
-  textMuted: "#80A080",      // ← Added this line
+  textMuted: "#80A080",
   border: "rgba(74, 124, 89, 0.3)",
   grayLight: "#2A4A3A",
   error: "#FF6B6B",          // Soft red for errors
@@ -133,17 +133,26 @@ export default function LoginScreen({ onLoginSuccess, onGoToSignup }: Props) {
         alignItems: "center",
         justifyContent: "center",
       }}>
-        <motion.div
-          animate={{ rotate: 360 }}
-          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-          style={{
-            width: "48px",
-            height: "48px",
+        <div style={{
+          textAlign: "center",
+        }}>
+          <div style={{
+            width: "80px",
+            height: "80px",
             borderRadius: "50%",
-            border: `4px solid ${GREEN.accent}`,
-            borderTopColor: "transparent",
-          }}
-        />
+            background: GREEN.accent,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            margin: "0 auto 16px",
+            boxShadow: "0 8px 24px rgba(74, 124, 89, 0.3)",
+          }}>
+            <span style={{ fontSize: "36px", fontWeight: "800", color: "white" }}>B</span>
+          </div>
+          <p style={{ color: GREEN.textSecondary, fontSize: "14px", marginTop: "12px" }}>
+            Checking session...
+          </p>
+        </div>
       </div>
     );
   }
@@ -342,17 +351,14 @@ export default function LoginScreen({ onLoginSuccess, onGoToSignup }: Props) {
           >
             {loading ? (
               <>
-                <motion.div
-                  animate={{ rotate: 360 }}
-                  transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                  style={{
-                    width: "20px",
-                    height: "20px",
-                    borderRadius: "50%",
-                    border: "2px solid white",
-                    borderTopColor: "transparent",
-                  }}
-                />
+                <div style={{
+                  width: "20px",
+                  height: "20px",
+                  borderRadius: "50%",
+                  border: `2px solid ${GREEN.textSecondary}`,
+                  borderTopColor: GREEN.accent,
+                  animation: "spin 1s linear infinite",
+                }} />
                 Signing in...
               </>
             ) : (
@@ -383,6 +389,12 @@ export default function LoginScreen({ onLoginSuccess, onGoToSignup }: Props) {
           </div>
         </form>
       </motion.div>
+
+      <style>{`
+        @keyframes spin {
+          to { transform: rotate(360deg); }
+        }
+      `}</style>
     </div>
   );
 }
