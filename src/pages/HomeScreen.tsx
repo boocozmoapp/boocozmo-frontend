@@ -20,7 +20,7 @@ import {
   FaDollarSign,
   FaExchangeAlt,
   FaTag,
-  FaEllipsisH,
+  FaBars,
   FaHeart,
   FaShareAlt,
   FaBookmark as FaBookmarkSolid,
@@ -497,11 +497,11 @@ export default function HomeScreen({
   // Update navigation to include My Library
   const navItems = [
     { icon: FaHome, label: "Home", active: true, onClick: () => navigate("/") },
-    { icon: FaCompass, label: "Discover", onClick: () => {} },
+    { icon: FaMapMarkedAlt, label: "Map", onClick: onMapPress },
     { icon: FaBookOpen, label: "My Library", onClick: () => navigate("/my-library") },
+    { icon: FaCompass, label: "Discover", onClick: () => {} },
     { icon: FaBookmark, label: "Saved", onClick: () => navigate("/saved") },
     { icon: FaUsers, label: "Following", onClick: () => {} },
-    { icon: FaMapMarkedAlt, label: "Map", onClick: onMapPress },
     { icon: FaComments, label: "Messages", onClick: () => navigate("/chat") },
     { icon: FaBell, label: "Notifications", onClick: () => {} },
     { icon: FaStar, label: "Top Picks", onClick: () => {} },
@@ -964,26 +964,36 @@ export default function HomeScreen({
             justifyContent: "space-between",
             marginBottom: "12px",
           }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "12px", flex: 1 }}>
-              <motion.button
-                whileTap={{ scale: 0.9 }}
-                onClick={() => setSidebarOpen(!sidebarOpen)}
-                style={{
-                  width: "36px",
-                  height: "36px",
-                  borderRadius: "8px",
-                  background: PINTEREST.hoverBg,
-                  border: `1px solid ${PINTEREST.border}`,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  color: PINTEREST.textDark,
-                  cursor: "pointer",
-                  flexShrink: 0,
-                }}
-              >
-                {sidebarOpen ? <FaTimes size={16} /> : <FaEllipsisH size={16} color={PINTEREST.textDark} />}
-              </motion.button>
+           <div style={{ display: "flex", alignItems: "center", gap: "12px", flex: 1 }}>
+  <div
+    onClick={() => setSidebarOpen(!sidebarOpen)}
+    style={{
+      width: "36px",
+      height: "36px",
+      borderRadius: "8px",
+      background: PINTEREST.hoverBg,
+      border: `1px solid ${PINTEREST.border}`,
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      cursor: "pointer",
+      flexShrink: 0,
+    }}
+  >
+    {sidebarOpen ? (
+      <FaTimes 
+        size={16} 
+        color={PINTEREST.textDark}
+        style={{ display: 'block' }}
+      />
+    ) : (
+      <FaBars 
+        size={16} 
+        color={PINTEREST.textDark}
+        style={{ display: 'block' }}
+      />
+    )}
+  </div>
 
               {/* Search */}
               <div style={{ position: "relative", flex: 1 }}>
@@ -1028,35 +1038,33 @@ export default function HomeScreen({
 
             {/* Notifications */}
             <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-              <motion.button
-                whileTap={{ scale: 0.9 }}
-                style={{
-                  width: "36px",
-                  height: "36px",
-                  borderRadius: "8px",
-                  background: PINTEREST.hoverBg,
-                  border: `1px solid ${PINTEREST.border}`,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  color: PINTEREST.textDark,
-                  cursor: "pointer",
-                  position: "relative",
-                }}
-              >
-                <FaBell size={16}  color={PINTEREST.textDark} />
-                <div style={{
-                  position: "absolute",
-                  top: "6px",
-                  right: "6px",
-                  width: "6px",
-                  height: "6px",
-                  borderRadius: "50%",
-                  background: PINTEREST.primary,
-                  border: `2px solid ${PINTEREST.hoverBg}`,
-                }} />
-              </motion.button>
-            </div>
+  <div
+    style={{
+      width: "36px",
+      height: "36px",
+      borderRadius: "8px",
+      background: PINTEREST.hoverBg,
+      border: `1px solid ${PINTEREST.border}`,
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      cursor: "pointer",
+      position: "relative",
+    }}
+  >
+    <FaBell size={16} color={PINTEREST.textDark} />
+    <div style={{
+      position: "absolute",
+      top: "6px",
+      right: "6px",
+      width: "6px",
+      height: "6px",
+      borderRadius: "50%",
+      background: PINTEREST.primary,
+      border: `2px solid ${PINTEREST.hoverBg}`,
+    }} />
+  </div>
+</div>
           </div>
 
           {/* Filter Tabs */}

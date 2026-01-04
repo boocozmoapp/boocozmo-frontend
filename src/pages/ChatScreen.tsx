@@ -1,4 +1,4 @@
-// src/pages/ChatScreen.tsx - PINTEREST-STYLE (Fixed: Sends JWT Token, Larger Header Icons)
+// src/pages/ChatScreen.tsx - UPDATED (Fixed navigation)
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { 
@@ -12,7 +12,7 @@ import {
   FaBookOpen,
   FaStar,
   FaCog,
-  FaEllipsisH,
+  FaBars,
   FaTimes,
   FaUsers
 } from "react-icons/fa";
@@ -51,7 +51,7 @@ type Conversation = {
 };
 
 type ChatScreenProps = {
-  currentUser: { email: string; name: string; id: string; token: string }; // ← token added
+  currentUser: { email: string; name: string; id: string; token: string };
   onProfilePress?: () => void;
   onMapPress?: () => void;
   onAddPress?: () => void;
@@ -77,7 +77,7 @@ export default function ChatScreen({
       try {
         const resp = await fetch(`${API_BASE}/chats?user=${encodeURIComponent(currentUser.email)}`, {
           headers: {
-            "Authorization": `Bearer ${currentUser.token}`, // ← Token sent here
+            "Authorization": `Bearer ${currentUser.token}`,
             "Content-Type": "application/json",
           },
         });
@@ -185,16 +185,17 @@ export default function ChatScreen({
     });
   };
 
+  // UPDATED NAVIGATION ITEMS - Fixed onClick handlers
   const navItems = [
     { icon: FaHome, label: "Home", onClick: () => navigate("/") },
-    { icon: FaCompass, label: "Discover", onClick: () => {} },
+    { icon: FaMapMarkedAlt, label: "Map", onClick: onMapPress || (() => navigate("/map")) },
     { icon: FaBookOpen, label: "My Library", onClick: () => navigate("/my-library") },
-    { icon: FaBookmark, label: "Saved", onClick: () => {} },
-    { icon: FaUsers, label: "Following", onClick: () => {} },
-    { icon: FaMapMarkedAlt, label: "Map", onClick: onMapPress },
-    { icon: FaComments, label: "Messages", active: true, onClick: () => {} },
-    { icon: FaBell, label: "Notifications", onClick: () => {} },
-    { icon: FaStar, label: "Top Picks", onClick: () => {} },
+    { icon: FaCompass, label: "Discover", onClick: () => navigate("/discover") },
+    { icon: FaBookmark, label: "Saved", onClick: () => navigate("/saved") },
+    { icon: FaUsers, label: "Following", onClick: () => navigate("/following") },
+    { icon: FaComments, label: "Messages", active: true, onClick: () => navigate("/chat") },
+    { icon: FaBell, label: "Notifications", onClick: () => navigate("/notifications") },
+    { icon: FaStar, label: "Top Picks", onClick: () => navigate("/top-picks") },
   ];
 
   return (
@@ -254,7 +255,7 @@ export default function ChatScreen({
 
         <motion.div
           whileHover={{ scale: 1.02 }}
-          onClick={onProfilePress}
+          onClick={onProfilePress || (() => navigate("/profile"))}
           style={{
             display: "flex",
             alignItems: "center",
@@ -323,7 +324,7 @@ export default function ChatScreen({
         <motion.button
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
-          onClick={onAddPress}
+          onClick={onAddPress || (() => navigate("/create"))}
           style={{
             display: "flex",
             alignItems: "center",
@@ -346,6 +347,7 @@ export default function ChatScreen({
 
         <motion.button
           whileHover={{ x: 4 }}
+          onClick={() => navigate("/settings")}
           style={{
             display: "flex",
             alignItems: "center",
@@ -392,8 +394,8 @@ export default function ChatScreen({
               whileTap={{ scale: 0.9 }}
               onClick={() => setSidebarOpen(!sidebarOpen)}
               style={{
-                width: "56px",  // bigger button
-                height: "56px", // bigger button
+                width: "56px",
+                height: "56px",
                 borderRadius: "50%",
                 background: PINTEREST.hoverBg,
                 border: "none",
@@ -404,7 +406,7 @@ export default function ChatScreen({
                 cursor: "pointer",
               }}
             >
-              {sidebarOpen ? <FaTimes size={28} /> : <FaEllipsisH size={28} />}
+              {sidebarOpen ? <FaTimes size={28} /> : <FaBars size={16} />}
             </motion.button>
 
             <h1 style={{
@@ -420,9 +422,10 @@ export default function ChatScreen({
           <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
             <motion.button
               whileTap={{ scale: 0.9 }}
+              onClick={() => navigate("/notifications")}
               style={{
-                width: "56px", // bigger button
-                height: "56px", // bigger button
+                width: "56px",
+                height: "56px",
                 borderRadius: "50%",
                 background: PINTEREST.hoverBg,
                 border: "none",
@@ -434,7 +437,7 @@ export default function ChatScreen({
                 position: "relative",
               }}
             >
-              <FaBell size={28} />  {/* bigger icon */}
+              <FaBell size={28} />
               <div style={{
                 position: "absolute",
                 top: "6px",

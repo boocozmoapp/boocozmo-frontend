@@ -1,4 +1,5 @@
-// src/pages/MapScreen.tsx - COMPLETELY FIXED VERSION
+/* eslint-disable @typescript-eslint/no-explicit-any */
+// src/pages/MapScreen.tsx - COMPLETELY UPDATED FOR NEW BACKEND WITH SIDEBAR
 import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -19,6 +20,15 @@ import {
   FaSync,
   FaPlus,
   FaBookOpen,
+  FaHome,
+  FaMapMarkedAlt,
+  FaCompass,
+  FaUsers,
+  FaBell,
+  FaCog,
+  FaStar,
+  FaBars,
+  FaBookmark as FaBookmarkSolid,
 } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 
@@ -29,6 +39,7 @@ const PINTEREST = {
   dark: "#A3081A",
   light: "#FF4D6D",
   bg: "#FFFFFF",
+  sidebarBg: "#FFFFFF",
   textDark: "#000000",
   textLight: "#5F5F5F",
   textMuted: "#8E8E8E",
@@ -60,18 +71,23 @@ type Offer = {
   lastUpdated?: string;
   saved?: boolean;
   liked?: boolean;
+  visibility: "public" | "private";
+  state: "open" | "closed";
+  publishedAt?: string;
 };
 
 type Props = {
   currentUser: { 
     email: string; 
     name: string; 
-    id: string;  // FIXED: Added missing id field
+    id: string;
     token: string;
   };
+  onAddPress?: () => void;
+  onProfilePress?: () => void;
 };
 
-// Retry wrapper with timeout - EXACT SAME AS HOMESCREEN
+// Retry wrapper with timeout - SAME AS HOMESCREEN
 const fetchWithTimeout = async (url: string, options: RequestInit = {}, timeout = 10000) => {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeout);
@@ -149,7 +165,7 @@ const createMarkerIcon = (() => {
   };
 })();
 
-export default function MapScreen({ currentUser }: Props) {
+export default function MapScreen({ currentUser, onAddPress, onProfilePress }: Props) {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstance = useRef<L.Map | null>(null);
   const markersRef = useRef<L.Marker[]>([]);
@@ -167,10 +183,11 @@ export default function MapScreen({ currentUser }: Props) {
   const [isLiked, setIsLiked] = useState<Record<number, boolean>>({});
   const [isSaved, setIsSaved] = useState<Record<number, boolean>>({});
   const [, setImageErrors] = useState<Record<number, boolean>>({});
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const abortControllerRef = useRef<AbortController | null>(null);
 
-  // Fetch offers - FIXED to match HomeScreen exactly
+  // Fetch offers - UPDATED TO MATCH HOMESCREEN EXACTLY
   const fetchOffers = useCallback(async (silent = false) => {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
@@ -184,10 +201,20 @@ export default function MapScreen({ currentUser }: Props) {
       setRefreshing(true);
     }
     
-    setImageErrors({}); // FIXED: Reset image errors
+    setImageErrors({});
 
     try {
-      const response = await fetchWithTimeout(`${API_BASE}/offers`, {
+      // Check if we're searching or fetching all offers - SAME AS HOMESCREEN
+      let endpoint = `${API_BASE}/offers`;
+      if (searchQuery.trim()) {
+        endpoint = `${API_BASE}/search-offers?query=${encodeURIComponent(searchQuery)}&`;
+      } else {
+        endpoint += "?";
+      }
+      
+      endpoint += `limit=100`; // Get more for map view
+
+      const response = await fetchWithTimeout(endpoint, {
         signal: abortControllerRef.current.signal,
         headers: {
           "Authorization": `Bearer ${currentUser.token}`,
@@ -215,54 +242,58 @@ export default function MapScreen({ currentUser }: Props) {
       }
 
       // Process offers - EXACT SAME AS HOMESCREEN
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const processed: Offer[] = rawOffers.map((o: any, index: number) => {
-        let imageUrl = null;
-        
-        if (o.imageUrl) {
-          if (o.imageUrl.startsWith('data:image/')) {
-            imageUrl = o.imageUrl;
-          } else if (o.imageUrl.startsWith('http')) {
-            imageUrl = o.imageUrl;
-          } else if (o.imageUrl.startsWith('/')) {
-            imageUrl = `${API_BASE}${o.imageUrl}`;
-          } else {
-            imageUrl = `${API_BASE}/uploads/${o.imageUrl}`;
+      const processed: Offer[] = rawOffers
+        .filter((o: any) => o.visibility === "public" && o.state === "open")
+        .map((o: any, index: number) => {
+          let imageUrl = null;
+          
+          if (o.imageUrl) {
+            if (o.imageUrl.startsWith('data:image/')) {
+              imageUrl = o.imageUrl;
+            } else if (o.imageUrl.startsWith('http')) {
+              imageUrl = o.imageUrl;
+            } else if (o.imageUrl.startsWith('/')) {
+              imageUrl = `${API_BASE}${o.imageUrl}`;
+            } else {
+              imageUrl = `${API_BASE}/uploads/${o.imageUrl}`;
+            }
           }
-        }
-        
-        if (!imageUrl) {
-          const fallbacks = [
-            "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=300&h=400&fit=crop&q=80",
-            "https://images.unsplash.com/photo-1541963463532-d68292c34b19?w=300&h=380&fit=crop&q=80",
-            "https://images.unsplash.com/photo-1512820790803-83ca734da794?w=300&h=420&fit=crop&q=80",
-            "https://images.unsplash.com/photo-1516979187457-637abb4f9353?w=300&h=400&fit=crop&q=80",
-            "https://images.unsplash.com/photo-1532012197267-da84d127e765?w=300&h=380&fit=crop&q=80",
-            "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&h=400&fit=crop&q=80",
-          ];
-          imageUrl = fallbacks[index % fallbacks.length];
-        }
+          
+          if (!imageUrl) {
+            const fallbacks = [
+              "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=300&h=400&fit=crop&q=80",
+              "https://images.unsplash.com/photo-1541963463532-d68292c34b19?w=300&h=380&fit=crop&q=80",
+              "https://images.unsplash.com/photo-1512820790803-83ca734da794?w=300&h=420&fit=crop&q=80",
+              "https://images.unsplash.com/photo-1516979187457-637abb4f9353?w=300&h=400&fit=crop&q=80",
+              "https://images.unsplash.com/photo-1532012197267-da84d127e765?w=300&h=380&fit=crop&q=80",
+              "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&h=400&fit=crop&q=80",
+            ];
+            imageUrl = fallbacks[index % fallbacks.length];
+          }
 
-        return {
-          id: o.id || index,
-          type: o.type || "sell",
-          bookTitle: o.bookTitle || o.title || "Unknown Book",
-          exchangeBook: o.exchangeBook || null,
-          price: o.price ? parseFloat(o.price) : null,
-          condition: o.condition || null,
-          ownerEmail: o.ownerEmail || "unknown@example.com",
-          imageUrl,
-          imageBase64: o.imageBase64 || null,
-          latitude: o.latitude ? parseFloat(o.latitude) : null,
-          longitude: o.longitude ? parseFloat(o.longitude) : null,
-          ownerName: o.ownerName || o.ownerEmail?.split("@")[0] || "User",
-          distance: o.distance || "Nearby",
-          description: o.description || `A great book about ${o.genre || "fiction"}. Perfect condition!`,
-          genre: o.genre || "Fiction",
-          author: o.author || "Unknown Author",
-          lastUpdated: o.lastUpdated || o.created_at || new Date().toISOString(),
-        };
-      });
+          return {
+            id: o.id || index,
+            type: o.type || "sell",
+            bookTitle: o.bookTitle || o.title || "Unknown Book",
+            exchangeBook: o.exchangeBook || null,
+            price: o.price ? parseFloat(o.price) : null,
+            condition: o.condition || null,
+            ownerEmail: o.ownerEmail || "unknown@example.com",
+            imageUrl,
+            imageBase64: o.imageBase64 || null,
+            latitude: o.latitude ? parseFloat(o.latitude) : null,
+            longitude: o.longitude ? parseFloat(o.longitude) : null,
+            ownerName: o.ownerName || o.ownerEmail?.split("@")[0] || "User",
+            distance: o.distance || "Nearby",
+            description: o.description || `A great book about ${o.genre || "fiction"}. Perfect condition!`,
+            genre: o.genre || "Fiction",
+            author: o.author || "Unknown Author",
+            lastUpdated: o.lastUpdated || o.publishedAt || o.created_at || new Date().toISOString(),
+            visibility: o.visibility || "public",
+            state: o.state || "open",
+            publishedAt: o.publishedAt,
+          };
+        });
 
       setOffers(processed);
       
@@ -274,8 +305,7 @@ export default function MapScreen({ currentUser }: Props) {
       });
       setIsLiked(likes);
       setIsSaved(saves);
-      setError(null); // FIXED: Reset error on success like HomeScreen
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      setError(null);
     } catch (err: any) {
       if (err.name !== "AbortError") {
         console.error("Error:", err);
@@ -285,7 +315,7 @@ export default function MapScreen({ currentUser }: Props) {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [currentUser.token]);
+  }, [currentUser.token, searchQuery]);
 
   useEffect(() => {
     fetchOffers();
@@ -319,9 +349,14 @@ export default function MapScreen({ currentUser }: Props) {
     }
   }, [userLocation]);
 
-  // Filter offers
+  // Filter offers - UPDATED TO INCLUDE VISIBILITY CHECK
   const filteredOffers = useMemo(() => {
-    let result = offers.filter(offer => offer.latitude && offer.longitude);
+    let result = offers.filter(offer => 
+      offer.latitude && 
+      offer.longitude &&
+      offer.visibility === "public" && 
+      offer.state === "open"
+    );
 
     if (filter !== "all") {
       result = result.filter(offer => offer.type === filter);
@@ -416,7 +451,27 @@ export default function MapScreen({ currentUser }: Props) {
 
   }, [filteredOffers, loading, userLocation, selectedOffer, handleMarkerClick]);
 
-  // Helper functions - EXACT SAME AS HOMESCREEN
+  // Navigation items - SAME AS HOMESCREEN
+  const navItems = [
+    { icon: FaHome, label: "Home", active: false, onClick: () => navigate("/") },
+    { icon: FaMapMarkedAlt, label: "Map", active: true, onClick: () => {} },
+    { icon: FaBookOpen, label: "My Library", onClick: () => navigate("/my-library") },
+    { icon: FaCompass, label: "Discover", onClick: () => {} },
+    { icon: FaBookmark, label: "Saved", onClick: () => navigate("/saved") },
+    { icon: FaUsers, label: "Following", onClick: () => {} },
+    { icon: FaComments, label: "Messages", onClick: () => navigate("/chat") },
+    { icon: FaBell, label: "Notifications", onClick: () => {} },
+    { icon: FaStar, label: "Top Picks", onClick: () => {} },
+  ];
+
+  const filterButtons = [
+    { id: "all" as const, label: "All", icon: <FaFilter size={12} /> },
+    { id: "sell" as const, label: "For Sale", icon: <FaDollarSign size={12} /> },
+    { id: "exchange" as const, label: "Exchange", icon: <FaExchangeAlt size={12} /> },
+    { id: "buy" as const, label: "Wanted", icon: <FaTag size={12} /> },
+  ];
+
+  // Helper functions - SAME AS HOMESCREEN
   const getTypeLabel = (type: string) => {
     switch (type) {
       case "sell": return "For Sale";
@@ -479,13 +534,38 @@ export default function MapScreen({ currentUser }: Props) {
     }));
   }, []);
 
-  const handleSave = useCallback((e: React.MouseEvent, id: number) => {
+  const handleSave = useCallback(async (e: React.MouseEvent, id: number) => {
     e.stopPropagation();
+    
+    const newSavedState = !isSaved[id];
     setIsSaved(prev => ({
       ...prev,
-      [id]: !prev[id]
+      [id]: newSavedState
     }));
-  }, []);
+
+    try {
+      const endpoint = newSavedState ? `${API_BASE}/save-offer` : `${API_BASE}/unsave-offer`;
+      const response = await fetchWithTimeout(endpoint, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${currentUser.token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ offer_id: id }),
+      }, 8000);
+
+      if (!response.ok) {
+        setIsSaved(prev => ({
+          ...prev,
+          [id]: !newSavedState
+        }));
+        throw new Error("Failed to update saved status");
+      }
+    } catch (err) {
+      console.error("Save/Unsave error:", err);
+      alert("Failed to update saved status. Please try again.");
+    }
+  }, [currentUser.token, isSaved]);
 
   const formatPrice = (price: number | null) => price ? `$${price.toFixed(2)}` : "Free";
 
@@ -499,7 +579,7 @@ export default function MapScreen({ currentUser }: Props) {
     return `${Math.floor(hours / 24)}d ago`;
   };
 
-  // ==================== EXACT CHAT FUNCTIONALITY FROM HOMESCREEN ====================
+  // ==================== CHAT FUNCTIONALITY - SAME AS HOMESCREEN ====================
   const handleChat = useCallback(async (offer: Offer) => {
     if (offer.ownerEmail === currentUser.email) {
       alert("This is your own listing!");
@@ -509,7 +589,6 @@ export default function MapScreen({ currentUser }: Props) {
     setChatLoading(true);
     
     try {
-      // Step 1: Get all chats for current user
       const chatsResponse = await fetchWithTimeout(`${API_BASE}/chats`, {
         headers: {
           "Authorization": `Bearer ${currentUser.token}`,
@@ -523,10 +602,8 @@ export default function MapScreen({ currentUser }: Props) {
 
       const chats = await chatsResponse.json();
       
-      // Find existing chat with this user for this offer
       let existingChat = null;
       if (Array.isArray(chats)) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         existingChat = chats.find((chat: any) => 
           ((chat.user1 === currentUser.email && chat.user2 === offer.ownerEmail) ||
            (chat.user1 === offer.ownerEmail && chat.user2 === currentUser.email)) &&
@@ -536,7 +613,6 @@ export default function MapScreen({ currentUser }: Props) {
 
       let chatId = existingChat?.id;
 
-      // Step 2: Create new chat if none exists
       if (!chatId) {
         const messageResponse = await fetchWithTimeout(`${API_BASE}/send-message`, {
           method: "POST",
@@ -562,7 +638,6 @@ export default function MapScreen({ currentUser }: Props) {
       }
 
       if (chatId) {
-        // Navigate to chat screen with proper state
         navigate(`/chat/${chatId}`, {
           state: {
             chat: {
@@ -577,7 +652,6 @@ export default function MapScreen({ currentUser }: Props) {
           },
         });
         
-        // Close offer detail modal
         setSelectedOffer(null);
       }
     } catch (error) {
@@ -592,197 +666,412 @@ export default function MapScreen({ currentUser }: Props) {
     setSelectedOffer(null);
   }, []);
 
-  const filterButtons = [
-    { id: "all" as const, label: "All", icon: <FaFilter size={12} /> },
-    { id: "sell" as const, label: "For Sale", icon: <FaDollarSign size={12} /> },
-    { id: "exchange" as const, label: "Exchange", icon: <FaExchangeAlt size={12} /> },
-    { id: "buy" as const, label: "Wanted", icon: <FaTag size={12} /> },
-  ];
-
   return (
     <div style={{ 
-      width: "100%", 
-      height: "100vh",
-      position: "relative",
+      height: "100vh", 
+      width: "100vw", 
+      background: PINTEREST.bg, 
+      display: "flex", 
+      overflow: "hidden",
+      fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
     }}>
-      {/* Simple Header */}
-      <div style={{
-        position: "absolute",
-        top: 0,
-        left: 0,
-        right: 0,
-        padding: "16px",
-        zIndex: 1000,
-        background: "rgba(255, 255, 255, 0.9)",
-        display: "flex",
-        alignItems: "center",
-        gap: "12px",
-      }}>
-        <button
-          onClick={() => navigate(-1)}
-          style={{
-            width: "40px",
-            height: "40px",
-            borderRadius: "50%",
-            background: PINTEREST.primary,
-            border: "none",
-            color: "white",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            cursor: "pointer",
-            fontSize: "16px",
-          }}
-        >
-          <FaTimes />
-        </button>
-        
-        <div style={{ flex: 1, position: "relative" }}>
-          <FaSearch style={{ 
-            position: "absolute", 
-            left: "12px", 
-            top: "50%", 
-            transform: "translateY(-50%)", 
-            color: PINTEREST.icon,
-            zIndex: 1,
-          }} />
-          <input
-            type="text"
-            placeholder="Search books..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            style={{
-              width: "100%",
-              padding: "10px 10px 10px 36px",
-              borderRadius: "20px",
-              border: `1px solid ${PINTEREST.border}`,
-              background: "white",
-              fontSize: "14px",
-              outline: "none",
-            }}
-          />
-        </div>
-
-        <button
-          onClick={() => fetchOffers(true)}
-          disabled={refreshing}
-          style={{
-            width: "40px",
-            height: "40px",
-            borderRadius: "50%",
-            background: PINTEREST.primary,
-            border: "none",
-            color: "white",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            cursor: "pointer",
-            fontSize: "16px",
-            opacity: refreshing ? 0.7 : 1,
-          }}
-        >
-          <FaSync className={refreshing ? "spin" : ""} />
-        </button>
-
-        <button
-          onClick={() => navigate("/offer")}
-          style={{
-            width: "40px",
-            height: "40px",
-            borderRadius: "50%",
-            background: PINTEREST.primary,
-            border: "none",
-            color: "white",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            cursor: "pointer",
-            fontSize: "16px",
-          }}
-        >
-          <FaPlus />
-        </button>
-      </div>
-
-      {/* Filter Tabs */}
-      <div style={{
-        position: "absolute",
-        top: "80px",
-        left: "50%",
-        transform: "translateX(-50%)",
-        display: "flex",
-        gap: "6px",
-        zIndex: 1000,
-        background: "rgba(255, 255, 255, 0.9)",
-        padding: "8px",
-        borderRadius: "20px",
-        backdropFilter: "blur(10px)",
-        boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
-      }}>
-        {filterButtons.map((f) => (
-          <button
-            key={f.id}
-            onClick={() => setFilter(f.id)}
-            style={{
-              padding: "6px 12px",
-              borderRadius: "16px",
-              background: filter === f.id ? PINTEREST.primary : "transparent",
-              color: filter === f.id ? "white" : PINTEREST.textDark,
-              fontSize: "12px",
-              fontWeight: "600",
-              whiteSpace: "nowrap",
+      {/* Sidebar - SAME AS HOMESCREEN */}
+      <motion.aside
+        initial={{ x: -300 }}
+        animate={{ x: sidebarOpen ? 0 : -300 }}
+        transition={{ type: "spring", damping: 25 }}
+        style={{
+          width: "240px",
+          background: PINTEREST.sidebarBg,
+          borderRight: `1px solid ${PINTEREST.border}`,
+          position: "fixed",
+          top: 0,
+          left: 0,
+          bottom: 0,
+          zIndex: 2000,
+          padding: "20px 16px",
+          overflowY: "auto",
+        }}
+      >
+        {/* Logo */}
+        <div style={{ marginBottom: "24px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            <div style={{
+              width: "32px",
+              height: "32px",
+              borderRadius: "50%",
+              background: `linear-gradient(135deg, ${PINTEREST.primary}, ${PINTEREST.dark})`,
               display: "flex",
               alignItems: "center",
-              gap: "4px",
-              cursor: "pointer",
-              border: "none",
-            }}
-          >
-            {f.icon}
-            {f.label}
-          </button>
-        ))}
-      </div>
+              justifyContent: "center",
+              color: "white",
+              fontWeight: "700",
+              fontSize: "14px",
+            }}>
+              B
+            </div>
+            <span style={{ 
+              fontSize: "20px", 
+              fontWeight: "800", 
+              color: PINTEREST.textDark,
+              letterSpacing: "-0.5px",
+            }}>
+              boocozmo
+            </span>
+          </div>
+        </div>
 
-      {/* Map Container */}
-      <div 
-        ref={mapRef} 
-        style={{ 
-          width: "100%", 
-          height: "100%",
-        }} 
-      />
+        {/* User Profile */}
+        <motion.div
+          whileHover={{ scale: 1.02 }}
+          onClick={onProfilePress}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "12px",
+            padding: "12px",
+            borderRadius: "12px",
+            background: PINTEREST.hoverBg,
+            marginBottom: "24px",
+            cursor: "pointer",
+          }}
+        >
+          <div style={{
+            width: "40px",
+            height: "40px",
+            borderRadius: "50%",
+            background: `linear-gradient(135deg, ${PINTEREST.primary}, ${PINTEREST.dark})`,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            color: "white",
+            fontWeight: "600",
+            fontSize: "16px",
+          }}>
+            {currentUser.name.charAt(0).toUpperCase()}
+          </div>
+          <div>
+            <div style={{ fontSize: "14px", fontWeight: "600", color: PINTEREST.textDark }}>
+              {currentUser.name.split(" ")[0]}
+            </div>
+            <div style={{ fontSize: "12px", color: PINTEREST.textLight }}>View profile</div>
+          </div>
+        </motion.div>
 
-      {/* Offers count */}
-      {!loading && !error && (
+        {/* Navigation */}
+        <nav style={{ flex: 1 }}>
+          {navItems.map((item) => (
+            <motion.button
+              key={item.label}
+              whileHover={{ x: 4 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={item.onClick}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "12px",
+                width: "100%",
+                padding: "12px",
+                background: item.active ? PINTEREST.redLight : "transparent",
+                border: "none",
+                color: item.active ? PINTEREST.primary : PINTEREST.textDark,
+                fontSize: "14px",
+                fontWeight: item.active ? "600" : "500",
+                cursor: "pointer",
+                borderRadius: "12px",
+                marginBottom: "4px",
+                textAlign: "left",
+              }}
+            >
+              <item.icon size={18} />
+              {item.label}
+            </motion.button>
+          ))}
+        </nav>
+
+        {/* Create Button */}
+        <motion.button
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          onClick={onAddPress}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "12px",
+            padding: "14px",
+            background: PINTEREST.primary,
+            color: "white",
+            border: "none",
+            borderRadius: "24px",
+            fontSize: "14px",
+            fontWeight: "600",
+            cursor: "pointer",
+            width: "100%",
+            justifyContent: "center",
+            marginTop: "20px",
+            boxShadow: "0 4px 20px rgba(230, 0, 35, 0.3)",
+          }}
+        >
+          <FaPlus /> Share a Book
+        </motion.button>
+
+        {/* Settings */}
+        <motion.button
+          whileHover={{ x: 4 }}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "12px",
+            width: "100%",
+            padding: "12px",
+            background: "transparent",
+            border: "none",
+            color: PINTEREST.textLight,
+            fontSize: "14px",
+            fontWeight: "500",
+            cursor: "pointer",
+            borderRadius: "12px",
+            marginTop: "12px",
+            textAlign: "left",
+          }}
+        >
+          <FaCog size={18} />
+          Settings
+        </motion.button>
+      </motion.aside>
+
+      {/* Main Content */}
+      <div style={{ 
+        flex: 1, 
+        marginLeft: sidebarOpen ? "240px" : "0", 
+        transition: "margin-left 0.3s ease",
+        display: "flex",
+        flexDirection: "column",
+        overflow: "hidden",
+      }}>
+        {/* Header - SAME AS HOMESCREEN */}
+        <header style={{
+          padding: "12px 20px",
+          background: "white",
+          borderBottom: `1px solid ${PINTEREST.border}`,
+          flexShrink: 0,
+          zIndex: 1000,
+        }}>
+          <div style={{ 
+            display: "flex", 
+            alignItems: "center", 
+            justifyContent: "space-between",
+            marginBottom: "12px",
+          }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "12px", flex: 1 }}>
+              {/* Menu Button */}
+              <div
+                onClick={() => setSidebarOpen(!sidebarOpen)}
+                style={{
+                  width: "36px",
+                  height: "36px",
+                  borderRadius: "8px",
+                  background: PINTEREST.hoverBg,
+                  border: `1px solid ${PINTEREST.border}`,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  cursor: "pointer",
+                  flexShrink: 0,
+                }}
+              >
+                {sidebarOpen ? (
+                  <FaTimes 
+                    size={16} 
+                    color={PINTEREST.textDark}
+                    style={{ display: 'block' }}
+                  />
+                ) : (
+                  <FaBars 
+                    size={16} 
+                    color={PINTEREST.textDark}
+                    style={{ display: 'block' }}
+                  />
+                )}
+              </div>
+
+              {/* Search */}
+              <div style={{ position: "relative", flex: 1 }}>
+                <FaSearch
+                  size={12}
+                  style={{
+                    position: "absolute",
+                    left: "12px",
+                    top: "50%",
+                    transform: "translateY(-50%)",
+                    color: PINTEREST.icon,
+                    zIndex: 1,
+                  }}
+                />
+                <input
+                  type="text"
+                  placeholder="Search books, authors, genres..."
+                  value={searchQuery}
+                  onChange={(e) => {
+                    setSearchQuery(e.target.value);
+                    const handler = setTimeout(() => {
+                      fetchOffers();
+                    }, 500);
+                    return () => clearTimeout(handler);
+                  }}
+                  style={{
+                    width: "100%",
+                    padding: "10px 10px 10px 36px",
+                    borderRadius: "20px",
+                    border: `1px solid ${PINTEREST.border}`,
+                    fontSize: "14px",
+                    background: PINTEREST.grayLight,
+                    color: PINTEREST.textDark,
+                    outline: "none",
+                    fontFamily: "inherit",
+                  }}
+                />
+              </div>
+            </div>
+
+            {/* Notifications */}
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <div
+                style={{
+                  width: "36px",
+                  height: "36px",
+                  borderRadius: "8px",
+                  background: PINTEREST.hoverBg,
+                  border: `1px solid ${PINTEREST.border}`,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  cursor: "pointer",
+                  position: "relative",
+                }}
+              >
+                <FaBell size={16} color={PINTEREST.textDark} />
+                <div style={{
+                  position: "absolute",
+                  top: "6px",
+                  right: "6px",
+                  width: "6px",
+                  height: "6px",
+                  borderRadius: "50%",
+                  background: PINTEREST.primary,
+                  border: `2px solid ${PINTEREST.hoverBg}`,
+                }} />
+              </div>
+            </div>
+          </div>
+
+          {/* Filter Tabs */}
+          <div style={{ 
+            display: "flex", 
+            gap: "6px",
+            overflowX: "auto",
+            paddingBottom: "2px",
+            scrollbarWidth: "none",
+          }}>
+            {filterButtons.map((filterBtn) => (
+              <motion.button
+                key={filterBtn.id}
+                whileHover={{ scale: 1.03 }}
+                whileTap={{ scale: 0.97 }}
+                onClick={() => setFilter(filterBtn.id)}
+                style={{
+                  padding: "6px 12px",
+                  borderRadius: "16px",
+                  background: filter === filterBtn.id ? PINTEREST.primary : PINTEREST.hoverBg,
+                  color: filter === filterBtn.id ? "white" : PINTEREST.textDark,
+                  fontSize: "12px",
+                  fontWeight: filter === filterBtn.id ? "600" : "500",
+                  whiteSpace: "nowrap",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "4px",
+                  cursor: "pointer",
+                  border: "none",
+                  flexShrink: 0,
+                }}
+              >
+                {filterBtn.icon}
+                {filterBtn.label}
+              </motion.button>
+            ))}
+          </div>
+        </header>
+
+        {/* Map Container */}
+        <div 
+          ref={mapRef} 
+          style={{ 
+            flex: 1,
+            width: "100%",
+            position: "relative",
+          }} 
+        />
+
+        {/* Refresh Button */}
         <div style={{
           position: "absolute",
           bottom: "20px",
-          left: "50%",
-          transform: "translateX(-50%)",
-          background: "rgba(255, 255, 255, 0.95)",
-          padding: "10px 20px",
-          borderRadius: "20px",
-          boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
-          zIndex: 1001,
-          backdropFilter: "blur(10px)",
-          border: `1px solid ${PINTEREST.border}`,
+          right: "20px",
+          zIndex: 1000,
         }}>
-          <p style={{ 
-            margin: 0, 
-            fontSize: "14px",
-            fontWeight: "600",
-            color: PINTEREST.textDark,
-            display: "flex",
-            alignItems: "center",
-            gap: "6px",
-          }}>
-            <FaMapMarkerAlt /> {filteredOffers.length} books nearby
-          </p>
+          <button
+            onClick={() => fetchOffers(true)}
+            disabled={refreshing}
+            style={{
+              width: "50px",
+              height: "50px",
+              borderRadius: "50%",
+              background: PINTEREST.primary,
+              border: "none",
+              color: "white",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              cursor: "pointer",
+              fontSize: "20px",
+              boxShadow: "0 4px 12px rgba(0,0,0,0.2)",
+            }}
+          >
+            <FaSync className={refreshing ? "spin" : ""} />
+          </button>
         </div>
-      )}
 
-      {/* Selected Offer Detail Modal */}
+        {/* Offers count */}
+        {!loading && !error && (
+          <div style={{
+            position: "absolute",
+            bottom: "20px",
+            left: "50%",
+            transform: "translateX(-50%)",
+            background: "rgba(255, 255, 255, 0.95)",
+            padding: "10px 20px",
+            borderRadius: "20px",
+            boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
+            zIndex: 1000,
+            backdropFilter: "blur(10px)",
+            border: `1px solid ${PINTEREST.border}`,
+          }}>
+            <p style={{ 
+              margin: 0, 
+              fontSize: "14px",
+              fontWeight: "600",
+              color: PINTEREST.textDark,
+              display: "flex",
+              alignItems: "center",
+              gap: "6px",
+            }}>
+              <FaMapMarkerAlt /> {filteredOffers.length} books nearby
+            </p>
+          </div>
+        )}
+      </div>
+
+      {/* Selected Offer Detail Modal - SAME AS HOMESCREEN */}
       <AnimatePresence>
         {selectedOffer && (
           <>
@@ -796,11 +1085,11 @@ export default function MapScreen({ currentUser }: Props) {
                 position: "fixed",
                 top: 0,
                 left: 0,
-                width: "100%",
-                height: "100%",
-                background: PINTEREST.overlay,
+                right: 0,
+                bottom: 0,
+                background: "rgba(0, 0, 0, 0.7)",
                 backdropFilter: "blur(4px)",
-                zIndex: 2000,
+                zIndex: 3000,
               }}
             />
             
@@ -814,7 +1103,7 @@ export default function MapScreen({ currentUser }: Props) {
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              zIndex: 2001,
+              zIndex: 3001,
               pointerEvents: "none",
             }}>
               {/* Detail Modal */}
@@ -1105,7 +1394,7 @@ export default function MapScreen({ currentUser }: Props) {
                       disabled: false,
                     },
                     { 
-                      icon: FaBookmark, 
+                      icon: FaBookmarkSolid, 
                       label: "Save", 
                       onClick: (e: React.MouseEvent) => handleSave(e, selectedOffer.id), 
                       color: isSaved[selectedOffer.id] ? PINTEREST.primary : PINTEREST.textLight,
@@ -1176,7 +1465,7 @@ export default function MapScreen({ currentUser }: Props) {
           alignItems: "center",
           justifyContent: "center",
           background: "rgba(255, 255, 255, 0.9)",
-          zIndex: 2002,
+          zIndex: 4000,
         }}>
           <div style={{
             background: "white",
@@ -1225,7 +1514,7 @@ export default function MapScreen({ currentUser }: Props) {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          zIndex: 2002,
+          zIndex: 4000,
         }}>
           <div style={{
             background: "white",
@@ -1356,6 +1645,10 @@ export default function MapScreen({ currentUser }: Props) {
         
         ::-webkit-scrollbar-thumb:hover {
           background: ${PINTEREST.textLight};
+        }
+        
+        div::-webkit-scrollbar {
+          display: none;
         }
       `}</style>
     </div>

@@ -1,10 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-// src/pages/ProfileScreen.tsx - Fixed with collapsible sidebar
+// src/pages/ProfileScreen.tsx - Updated with Sidebar Navigation
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   FaEdit,
-  FaCamera,
   FaBook,
   FaDollarSign,
   FaExchangeAlt,
@@ -14,15 +13,24 @@ import {
   FaEyeSlash,
   FaArrowLeft,
   FaCheck,
-  FaMapMarkerAlt,
-  FaCalendarAlt,
   FaFolder,
   FaPlus,
   FaEllipsisV,
   FaGlobe,
   FaLock,
-  FaChevronLeft,
-  FaChevronRight,
+  FaSearch,
+  FaHome,
+  FaMapMarkedAlt,
+  FaComments,
+  FaBell,
+  FaBookmark,
+  FaCog,
+  FaBookOpen,
+  FaUsers,
+  FaCompass,
+  FaStar,
+  FaTimes,
+  FaBars,
 } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 
@@ -49,7 +57,6 @@ const PINTEREST = {
   cardShadowHover: "0 4px 12px rgba(0,0,0,0.12)",
 };
 
-// FIXED: Added 'closed' to the state type
 type OfferState = "open" | "draft" | "private" | "closed";
 
 type Offer = {
@@ -68,7 +75,7 @@ type Offer = {
   genre?: string;
   author?: string;
   lastUpdated?: string;
-  state?: OfferState; // FIXED: Now includes 'closed'
+  state?: OfferState;
   visibility?: "public" | "private";
   publishedAt?: string;
   created_at?: string;
@@ -98,9 +105,10 @@ type Props = {
     email: string;
     name: string;
     token: string;
+    id: string;
   };
-  onBack?: () => void;
-  onLogout?: () => void;
+  onAddPress?: () => void;
+  onMapPress?: () => void;
 };
 
 const fetchWithTimeout = async (url: string, options: RequestInit = {}, timeout = 10000) => {
@@ -120,11 +128,11 @@ const fetchWithTimeout = async (url: string, options: RequestInit = {}, timeout 
   }
 };
 
-export default function ProfileScreen({ currentUser, onBack }: Props) {
+export default function ProfileScreen({ currentUser, onAddPress, onMapPress }: Props) {
   const navigate = useNavigate();
   
   const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [loadingProfile, setLoadingProfile] = useState(true);
+  const [, setLoadingProfile] = useState(true);
   const [myOffers, setMyOffers] = useState<Offer[]>([]);
   const [loadingOffers, setLoadingOffers] = useState(true);
   const [stores, setStores] = useState<Store[]>([]);
@@ -140,12 +148,10 @@ export default function ProfileScreen({ currentUser, onBack }: Props) {
   });
   
   // Edit offer modal
-  const [, setShowEditOfferModal] = useState(false);
-  // eslint-disable-next-line no-empty-pattern
-  const [] = useState(false);
-   
-  const [, setSelectedOffer] = useState<Offer | null>(null);
-  const [, setEditOfferForm] = useState({
+  const [showEditOfferModal, setShowEditOfferModal] = useState(false);
+  const [deletingOffer, setDeletingOffer] = useState(false);
+  const [selectedOffer, setSelectedOffer] = useState<Offer | null>(null);
+  const [editOfferForm, setEditOfferForm] = useState({
     bookTitle: "",
     author: "",
     genre: "Fiction",
@@ -165,8 +171,21 @@ export default function ProfileScreen({ currentUser, onBack }: Props) {
   const [searchQuery, setSearchQuery] = useState("");
   const [filterType, setFilterType] = useState<"all" | "public" | "private">("all");
   
-  // FIXED: Sidebar width state
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  // Sidebar state
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  // Navigation items
+  const navItems = [
+    { icon: FaHome, label: "Home", active: false, onClick: () => navigate("/") },
+    { icon: FaMapMarkedAlt, label: "Map", active: false, onClick: onMapPress || (() => navigate("/map")) },
+    { icon: FaBookOpen, label: "My Library", active: false, onClick: () => navigate("/my-library") },
+    { icon: FaCompass, label: "Discover", active: false, onClick: () => {} },
+    { icon: FaBookmark, label: "Saved", active: false, onClick: () => navigate("/saved") },
+    { icon: FaUsers, label: "Following", active: false, onClick: () => {} },
+    { icon: FaComments, label: "Messages", active: false, onClick: () => navigate("/chat") },
+    { icon: FaBell, label: "Notifications", active: false, onClick: () => {} },
+    { icon: FaStar, label: "Top Picks", active: false, onClick: () => {} },
+  ];
 
   // Fetch user profile
   const fetchProfile = useCallback(async () => {
@@ -354,6 +373,7 @@ export default function ProfileScreen({ currentUser, onBack }: Props) {
   const handleDeleteOffer = async (offerId: number) => {
     if (!confirm("Delete this offer permanently? This action cannot be undone.")) return;
 
+    setDeletingOffer(true);
     try {
       const response = await fetchWithTimeout(`${API_BASE}/delete-offer/${offerId}`, {
         method: "DELETE",
@@ -373,10 +393,36 @@ export default function ProfileScreen({ currentUser, onBack }: Props) {
     } catch (err: any) {
       console.error("Error deleting offer:", err);
       alert(err.message || "Failed to delete offer");
+    } finally {
+      setDeletingOffer(false);
     }
   };
 
-  // Edit offer
+  // Edit offer - placeholder function
+  const handleEditOffer = async (offerId: number) => {
+    const offer = myOffers.find(o => o.id === offerId);
+    if (!offer) return;
+    
+    setSelectedOffer(offer);
+    setEditOfferForm({
+      bookTitle: offer.bookTitle,
+      author: offer.author || "",
+      genre: offer.genre || "Fiction",
+      condition: offer.condition || "Good",
+      price: offer.price ? offer.price.toString() : "",
+      exchangeBook: offer.exchangeBook || "",
+      description: offer.description || "",
+    });
+    setShowEditOfferModal(true);
+  };
+
+  // Save edited offer - placeholder function
+  const handleSaveEditedOffer = async () => {
+    if (!selectedOffer) return;
+    
+    alert("Edit offer functionality would be implemented here");
+    setShowEditOfferModal(false);
+  };
 
   // Close deal
   const handleCloseDeal = async (offerId: number) => {
@@ -515,644 +561,525 @@ export default function ProfileScreen({ currentUser, onBack }: Props) {
       width: "100vw", 
       background: PINTEREST.bg, 
       display: "flex", 
-      flexDirection: "column",
       overflow: "hidden",
       fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
     }}>
-      {/* Header */}
-      <div style={{
-        padding: "16px 24px",
-        background: "white",
-        borderBottom: `1px solid ${PINTEREST.border}`,
-        boxShadow: "0 1px 2px rgba(0,0,0,0.04)",
-      }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
-          <button
-            onClick={onBack ? onBack : () => navigate(-1)}
-            style={{
-              width: "40px",
-              height: "40px",
-              borderRadius: "10px",
-              background: "white",
-              border: `1px solid ${PINTEREST.border}`,
+      {/* Sidebar */}
+      <motion.aside
+        initial={{ x: -300 }}
+        animate={{ x: sidebarOpen ? 0 : -300 }}
+        transition={{ type: "spring", damping: 25 }}
+        style={{
+          width: "240px",
+          background: PINTEREST.sidebarBg,
+          borderRight: `1px solid ${PINTEREST.border}`,
+          position: "fixed",
+          top: 0,
+          left: 0,
+          bottom: 0,
+          zIndex: 1000,
+          padding: "20px 16px",
+          overflowY: "auto",
+        }}
+      >
+        {/* Logo */}
+        <div style={{ marginBottom: "24px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            <div style={{
+              width: "32px",
+              height: "32px",
+              borderRadius: "50%",
+              background: `linear-gradient(135deg, ${PINTEREST.primary}, ${PINTEREST.dark})`,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
+              color: "white",
+              fontWeight: "700",
+              fontSize: "14px",
+            }}>
+              B
+            </div>
+            <span style={{ 
+              fontSize: "20px", 
+              fontWeight: "800", 
               color: PINTEREST.textDark,
-              cursor: "pointer",
-              fontSize: "16px",
-            }}
-          >
-            <FaArrowLeft />
-          </button>
-          <h1 style={{
-            fontSize: "24px",
-            fontWeight: "700",
-            color: PINTEREST.textDark,
-            margin: 0,
-          }}>
-            My Profile
-          </h1>
+              letterSpacing: "-0.5px",
+            }}>
+              boocozmo
+            </span>
+          </div>
         </div>
-      </div>
 
-      <div style={{ 
-        flex: 1,
-        display: "flex",
-        overflow: "hidden",
-      }}>
-        {/* Left Sidebar - Profile Info - NOW COLLAPSIBLE */}
+        {/* User Profile */}
         <motion.div
-          animate={{ width: sidebarCollapsed ? "60px" : "280px" }}
-          transition={{ duration: 0.3, ease: "easeInOut" }}
+          whileHover={{ scale: 1.02 }}
+          onClick={() => setSidebarOpen(false)}
           style={{
-            background: PINTEREST.sidebarBg,
-            borderRight: `1px solid ${PINTEREST.border}`,
-            padding: sidebarCollapsed ? "24px 12px" : "24px",
             display: "flex",
-            flexDirection: "column",
-            alignItems: sidebarCollapsed ? "center" : "flex-start",
-            gap: sidebarCollapsed ? "20px" : "24px",
-            position: "relative",
-            overflow: "hidden",
+            alignItems: "center",
+            gap: "12px",
+            padding: "12px",
+            borderRadius: "12px",
+            background: PINTEREST.hoverBg,
+            marginBottom: "24px",
+            cursor: "pointer",
           }}
         >
-          {/* Collapse/Expand Button */}
-          <button
-            onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-            style={{
-              position: "absolute",
-              top: "20px",
-              right: "-12px",
-              width: "24px",
-              height: "24px",
-              borderRadius: "50%",
-              background: "white",
-              border: `1px solid ${PINTEREST.border}`,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              color: PINTEREST.textDark,
-              cursor: "pointer",
-              fontSize: "10px",
-              boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
-              zIndex: 10,
-            }}
-          >
-            {sidebarCollapsed ? <FaChevronRight /> : <FaChevronLeft />}
-          </button>
-
-          {/* Profile Photo */}
-          <div style={{ position: "relative", textAlign: sidebarCollapsed ? "center" : "left" }}>
-            <div style={{
-              width: sidebarCollapsed ? "48px" : "120px",
-              height: sidebarCollapsed ? "48px" : "120px",
-              borderRadius: "50%",
-              background: profile?.profilePhoto 
-                ? `url(${profile.profilePhoto}) center/cover no-repeat`
-                : `linear-gradient(135deg, ${PINTEREST.primary}, ${PINTEREST.dark})`,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              color: profile?.profilePhoto ? "transparent" : "white",
-              fontSize: sidebarCollapsed ? "20px" : "48px",
-              fontWeight: "600",
-              boxShadow: "0 4px 20px rgba(0,0,0,0.15)",
-              marginBottom: sidebarCollapsed ? "0" : "16px",
-              margin: sidebarCollapsed ? "0 auto" : "0",
-            }}>
-              {!profile?.profilePhoto && currentUser.name.charAt(0).toUpperCase()}
-            </div>
-            
-            {!sidebarCollapsed && (
-              <button
-                onClick={() => setShowEditModal(true)}
-                style={{
-                  position: "absolute",
-                  bottom: "10px",
-                  right: "0",
-                  width: "36px",
-                  height: "36px",
-                  borderRadius: "50%",
-                  background: PINTEREST.primary,
-                  color: "white",
-                  border: "none",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  cursor: "pointer",
-                  fontSize: "14px",
-                  boxShadow: "0 2px 8px rgba(230,0,35,0.3)",
-                }}
-              >
-                <FaCamera />
-              </button>
-            )}
+          <div style={{
+            width: "40px",
+            height: "40px",
+            borderRadius: "50%",
+            background: `linear-gradient(135deg, ${PINTEREST.primary}, ${PINTEREST.dark})`,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            color: "white",
+            fontWeight: "600",
+            fontSize: "16px",
+          }}>
+            {currentUser.name.charAt(0).toUpperCase()}
           </div>
-
-          {/* User Info - Hidden when collapsed */}
-          <AnimatePresence>
-            {!sidebarCollapsed && (
-              <motion.div
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -10 }}
-                style={{ textAlign: "center", width: "100%" }}
-              >
-                {loadingProfile ? (
-                  <div style={{ textAlign: "center" }}>
-                    <div style={{
-                      width: "30px",
-                      height: "30px",
-                      border: `3px solid ${PINTEREST.primary}20`,
-                      borderTopColor: PINTEREST.primary,
-                      borderRadius: "50%",
-                      margin: "0 auto",
-                      animation: "spin 1s linear infinite",
-                    }} />
-                  </div>
-                ) : profile && (
-                  <>
-                    <h2 style={{
-                      fontSize: "22px",
-                      fontWeight: "700",
-                      color: PINTEREST.textDark,
-                      margin: "0 0 8px",
-                    }}>
-                      {profile.name}
-                    </h2>
-                    
-                    <p style={{
-                      fontSize: "14px",
-                      color: PINTEREST.textLight,
-                      margin: "0 0 12px",
-                      lineHeight: 1.5,
-                    }}>
-                      {profile.bio || "No bio yet"}
-                    </p>
-                    
-                    <div style={{ 
-                      display: "flex", 
-                      flexDirection: "column",
-                      gap: "8px",
-                      marginTop: "16px",
-                      width: "100%",
-                    }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "13px", color: PINTEREST.textDark }}>
-                        <FaMapMarkerAlt size={12} color={PINTEREST.textLight} />
-                        <span>{profile.location || "Unknown location"}</span>
-                      </div>
-                      
-                      <div style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "13px", color: PINTEREST.textDark }}>
-                        <FaCalendarAlt size={12} color={PINTEREST.textLight} />
-                        <span>Joined {formatDate(profile.joinedAt)}</span>
-                      </div>
-                    </div>
-                  </>
-                )}
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          {/* Stats Cards - Compact when collapsed */}
-          <AnimatePresence>
-            {!sidebarCollapsed ? (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                style={{ 
-                  display: "grid", 
-                  gridTemplateColumns: "1fr 1fr", 
-                  gap: "12px", 
-                  width: "100%",
-                  marginTop: "16px",
-                }}
-              >
-                <div style={{
-                  background: "white",
-                  borderRadius: "12px",
-                  padding: "16px",
-                  textAlign: "center",
-                  border: `1px solid ${PINTEREST.border}`,
-                  boxShadow: PINTEREST.cardShadow,
-                }}>
-                  <div style={{ 
-                    fontSize: "28px", 
-                    fontWeight: "700", 
-                    color: PINTEREST.primary,
-                    marginBottom: "4px",
-                  }}>
-                    {profile?.offersPosted || 0}
-                  </div>
-                  <div style={{ fontSize: "12px", color: PINTEREST.textLight }}>
-                    Offers Posted
-                  </div>
-                </div>
-                
-                <div style={{
-                  background: "white",
-                  borderRadius: "12px",
-                  padding: "16px",
-                  textAlign: "center",
-                  border: `1px solid ${PINTEREST.border}`,
-                  boxShadow: PINTEREST.cardShadow,
-                }}>
-                  <div style={{ 
-                    fontSize: "28px", 
-                    fontWeight: "700", 
-                    color: PINTEREST.success,
-                    marginBottom: "4px",
-                  }}>
-                    {profile?.dealsCompleted || 0}
-                  </div>
-                  <div style={{ fontSize: "12px", color: PINTEREST.textLight }}>
-                    Deals Completed
-                  </div>
-                </div>
-              </motion.div>
-            ) : (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                style={{ textAlign: "center", width: "100%" }}
-              >
-                <div style={{ fontSize: "11px", color: PINTEREST.textLight, marginBottom: "4px" }}>
-                  Offers
-                </div>
-                <div style={{ 
-                  fontSize: "20px", 
-                  fontWeight: "700", 
-                  color: PINTEREST.primary,
-                  marginBottom: "12px",
-                }}>
-                  {profile?.offersPosted || 0}
-                </div>
-                
-                <div style={{ fontSize: "11px", color: PINTEREST.textLight, marginBottom: "4px" }}>
-                  Deals
-                </div>
-                <div style={{ 
-                  fontSize: "20px", 
-                  fontWeight: "700", 
-                  color: PINTEREST.success,
-                }}>
-                  {profile?.dealsCompleted || 0}
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          {/* Edit Profile Button - Hidden when collapsed */}
-          <AnimatePresence>
-            {!sidebarCollapsed && (
-              <motion.button
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                onClick={() => setShowEditModal(true)}
-                style={{
-                  width: "100%",
-                  padding: "14px",
-                  background: PINTEREST.primary,
-                  color: "white",
-                  border: "none",
-                  borderRadius: "10px",
-                  fontSize: "14px",
-                  fontWeight: "600",
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: "8px",
-                  marginTop: "16px",
-                }}
-              >
-                <FaEdit size={14} />
-                Edit Profile
-              </motion.button>
-            )}
-          </AnimatePresence>
+          <div>
+            <div style={{ fontSize: "14px", fontWeight: "600", color: PINTEREST.textDark }}>
+              {currentUser.name.split(" ")[0]}
+            </div>
+            <div style={{ fontSize: "12px", color: PINTEREST.textLight }}>My Profile</div>
+          </div>
         </motion.div>
 
-        {/* Main Content - NOW WIDER */}
-        <div style={{ 
-          flex: 1,
-          display: "flex",
-          flexDirection: "column",
-          overflow: "hidden",
-          minWidth: 0, // Prevents overflow
+        {/* Navigation */}
+        <nav style={{ flex: 1 }}>
+          {navItems.map((item) => (
+            <motion.button
+              key={item.label}
+              whileHover={{ x: 4 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => {
+                item.onClick();
+                setSidebarOpen(false);
+              }}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "12px",
+                width: "100%",
+                padding: "12px",
+                background: item.active ? PINTEREST.redLight : "transparent",
+                border: "none",
+                color: item.active ? PINTEREST.primary : PINTEREST.textDark,
+                fontSize: "14px",
+                fontWeight: item.active ? "600" : "500",
+                cursor: "pointer",
+                borderRadius: "12px",
+                marginBottom: "4px",
+                textAlign: "left",
+              }}
+            >
+              <item.icon size={18} />
+              {item.label}
+            </motion.button>
+          ))}
+        </nav>
+
+        {/* Create Button */}
+        {onAddPress && (
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => {
+              onAddPress();
+              setSidebarOpen(false);
+            }}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "12px",
+              padding: "14px",
+              background: PINTEREST.primary,
+              color: "white",
+              border: "none",
+              borderRadius: "24px",
+              fontSize: "14px",
+              fontWeight: "600",
+              cursor: "pointer",
+              width: "100%",
+              justifyContent: "center",
+              marginTop: "20px",
+              boxShadow: "0 4px 20px rgba(230, 0, 35, 0.3)",
+            }}
+          >
+            <FaPlus /> Share a Book
+          </motion.button>
+        )}
+
+        {/* Settings */}
+        <motion.button
+          whileHover={{ x: 4 }}
+          onClick={() => setSidebarOpen(false)}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "12px",
+            width: "100%",
+            padding: "12px",
+            background: "transparent",
+            border: "none",
+            color: PINTEREST.textLight,
+            fontSize: "14px",
+            fontWeight: "500",
+            cursor: "pointer",
+            borderRadius: "12px",
+            marginTop: "12px",
+            textAlign: "left",
+          }}
+        >
+          <FaCog size={18} />
+          Settings
+        </motion.button>
+      </motion.aside>
+
+      {/* Main Content */}
+      <div style={{ 
+        flex: 1, 
+        marginLeft: sidebarOpen ? "240px" : "0", 
+        transition: "margin-left 0.3s ease",
+        display: "flex",
+        flexDirection: "column",
+        overflow: "hidden",
+      }}>
+        {/* Header */}
+        <header style={{
+          padding: "12px 20px",
+          background: "white",
+          borderBottom: `1px solid ${PINTEREST.border}`,
+          flexShrink: 0,
+          zIndex: 100,
         }}>
-          {/* Tabs */}
-          <div style={{
-            padding: "0 24px",
-            background: "white",
-            borderBottom: `1px solid ${PINTEREST.border}`,
+          <div style={{ 
+            display: "flex", 
+            alignItems: "center", 
+            justifyContent: "space-between",
+            marginBottom: "12px",
           }}>
-            <div style={{ display: "flex", gap: "8px" }}>
-              {tabs.map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
+            <div style={{ display: "flex", alignItems: "center", gap: "12px", flex: 1 }}>
+              {/* Menu Button */}
+              <div
+                onClick={() => setSidebarOpen(!sidebarOpen)}
+                style={{
+                  width: "36px",
+                  height: "36px",
+                  borderRadius: "8px",
+                  background: PINTEREST.hoverBg,
+                  border: `1px solid ${PINTEREST.border}`,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  cursor: "pointer",
+                  flexShrink: 0,
+                }}
+              >
+                {sidebarOpen ? (
+                  <FaTimes 
+                    size={16} 
+                    color={PINTEREST.textDark}
+                    style={{ display: 'block' }}
+                  />
+                ) : (
+                  <FaBars 
+                    size={16} 
+                    color={PINTEREST.textDark}
+                    style={{ display: 'block' }}
+                  />
+                )}
+              </div>
+
+              {/* Search */}
+              <div style={{ position: "relative", flex: 1 }}>
+                <FaSearch
+                  size={12}
                   style={{
-                    padding: "16px 24px",
-                    background: "transparent",
-                    border: "none",
-                    borderBottom: `3px solid ${activeTab === tab.id ? PINTEREST.primary : "transparent"}`,
-                    color: activeTab === tab.id ? PINTEREST.primary : PINTEREST.textLight,
-                    fontSize: "14px",
-                    fontWeight: "600",
-                    cursor: "pointer",
-                    position: "relative",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "8px",
+                    position: "absolute",
+                    left: "12px",
+                    top: "50%",
+                    transform: "translateY(-50%)",
+                    color: PINTEREST.icon,
+                    zIndex: 1,
                   }}
-                >
-                  {tab.label}
-                  {tab.count > 0 && (
-                    <span style={{
-                      background: activeTab === tab.id ? PINTEREST.primary : PINTEREST.grayLight,
-                      color: activeTab === tab.id ? "white" : PINTEREST.textLight,
-                      fontSize: "12px",
-                      padding: "2px 6px",
-                      borderRadius: "10px",
-                      fontWeight: "600",
-                    }}>
-                      {tab.count}
-                    </span>
-                  )}
-                </button>
-              ))}
+                />
+                <input
+                  type="text"
+                  placeholder="Search your offers and libraries..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  style={{
+                    width: "100%",
+                    padding: "10px 10px 10px 36px",
+                    borderRadius: "20px",
+                    border: `1px solid ${PINTEREST.border}`,
+                    fontSize: "14px",
+                    background: PINTEREST.grayLight,
+                    color: PINTEREST.textDark,
+                    outline: "none",
+                    fontFamily: "inherit",
+                  }}
+                />
+              </div>
+            </div>
+
+            {/* Back Button */}
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <div
+                onClick={() => navigate(-1)}
+                style={{
+                  width: "36px",
+                  height: "36px",
+                  borderRadius: "8px",
+                  background: PINTEREST.hoverBg,
+                  border: `1px solid ${PINTEREST.border}`,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  cursor: "pointer",
+                  position: "relative",
+                }}
+              >
+                <FaArrowLeft size={16} color={PINTEREST.textDark} />
+              </div>
             </div>
           </div>
 
-          {/* Tab Content */}
+          {/* Filter Tabs */}
           <div style={{ 
-            flex: 1, 
-            overflowY: "auto", 
-            padding: "24px",
-            minWidth: 0, // Prevents overflow
+            display: "flex", 
+            gap: "6px",
+            overflowX: "auto",
+            paddingBottom: "2px",
+            scrollbarWidth: "none",
           }}>
-            {activeTab === "offers" && (
-              <>
-                {/* Offers Header */}
-                <div style={{ 
-                  display: "flex", 
-                  alignItems: "center", 
-                  justifyContent: "space-between",
-                  marginBottom: "20px",
-                  flexWrap: "wrap",
-                  gap: "16px",
-                }}>
-                  <div style={{ flex: 1, minWidth: "300px" }}>
-                    <h3 style={{ 
-                      fontSize: "20px", 
-                      fontWeight: "700", 
-                      color: PINTEREST.textDark,
-                      margin: "0 0 8px",
-                    }}>
-                      My Book Offers
-                    </h3>
-                    <p style={{ 
-                      fontSize: "14px", 
-                      color: PINTEREST.textLight,
-                      margin: 0,
-                    }}>
-                      Manage your book offers, publish them publicly, or keep them private
-                    </p>
-                  </div>
-                  
-                  <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
-                    <div style={{ position: "relative" }}>
-                      <input
-                        type="text"
-                        placeholder="Search offers..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        style={{
-                          padding: "10px 12px 10px 36px",
-                          borderRadius: "8px",
-                          border: `1px solid ${PINTEREST.border}`,
-                          background: PINTEREST.grayLight,
-                          fontSize: "14px",
-                          width: "240px",
-                          minWidth: "200px",
-                        }}
-                      />
-                    </div>
-                    
-                    <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
-                      {[
-                        { id: "all" as const, label: "All" },
-                        { id: "public" as const, label: "Public" },
-                        { id: "private" as const, label: "Private" },
-                      ].map((filter) => (
-                        <button
-                          key={filter.id}
-                          onClick={() => setFilterType(filter.id)}
-                          style={{
-                            padding: "10px 16px",
-                            borderRadius: "8px",
-                            background: filterType === filter.id ? PINTEREST.primary : PINTEREST.hoverBg,
-                            color: filterType === filter.id ? "white" : PINTEREST.textDark,
-                            fontSize: "14px",
-                            fontWeight: "600",
-                            border: "none",
-                            cursor: "pointer",
-                            whiteSpace: "nowrap",
-                          }}
-                        >
-                          {filter.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
+            {tabs.map((tab) => (
+              <motion.button
+                key={tab.id}
+                whileHover={{ scale: 1.03 }}
+                whileTap={{ scale: 0.97 }}
+                onClick={() => setActiveTab(tab.id)}
+                style={{
+                  padding: "6px 12px",
+                  borderRadius: "16px",
+                  background: activeTab === tab.id ? PINTEREST.primary : PINTEREST.hoverBg,
+                  color: activeTab === tab.id ? "white" : PINTEREST.textDark,
+                  fontSize: "12px",
+                  fontWeight: activeTab === tab.id ? "600" : "500",
+                  whiteSpace: "nowrap",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "4px",
+                  cursor: "pointer",
+                  border: "none",
+                  flexShrink: 0,
+                }}
+              >
+                {tab.id === "offers" && <FaBook size={12} />}
+                {tab.id === "libraries" && <FaFolder size={12} />}
+                {tab.id === "stats" && <FaStar size={12} />}
+                {tab.label}
+                {tab.count > 0 && (
+                  <span style={{
+                    background: activeTab === tab.id ? "rgba(255,255,255,0.3)" : PINTEREST.grayLight,
+                    color: activeTab === tab.id ? "white" : PINTEREST.textLight,
+                    fontSize: "11px",
+                    padding: "1px 6px",
+                    borderRadius: "10px",
+                    fontWeight: "600",
+                    marginLeft: "4px",
+                  }}>
+                    {tab.count}
+                  </span>
+                )}
+              </motion.button>
+            ))}
+          </div>
+        </header>
 
-                {/* Offers Grid */}
-                {loadingOffers ? (
-                  <div style={{ textAlign: "center", padding: "60px 20px" }}>
-                    <div style={{
-                      width: "40px",
-                      height: "40px",
-                      border: `3px solid ${PINTEREST.primary}20`,
-                      borderTopColor: PINTEREST.primary,
-                      borderRadius: "50%",
-                      margin: "0 auto",
-                      animation: "spin 1s linear infinite",
-                    }} />
-                  </div>
-                ) : filteredOffers.length === 0 ? (
-                  <div style={{
-                    textAlign: "center",
-                    padding: "80px 40px",
-                    background: "white",
-                    borderRadius: "16px",
-                    border: `2px dashed ${PINTEREST.border}`,
-                    maxWidth: "600px",
-                    margin: "0 auto",
+        {/* Main Content */}
+        <div style={{ 
+          flex: 1, 
+          overflowY: "auto", 
+          padding: "24px",
+          minWidth: 0,
+        }}>
+          {activeTab === "offers" && (
+            <>
+              {/* Offers Header */}
+              <div style={{ 
+                display: "flex", 
+                alignItems: "center", 
+                justifyContent: "space-between",
+                marginBottom: "20px",
+                flexWrap: "wrap",
+                gap: "16px",
+              }}>
+                <div style={{ flex: 1, minWidth: "300px" }}>
+                  <h3 style={{ 
+                    fontSize: "20px", 
+                    fontWeight: "700", 
+                    color: PINTEREST.textDark,
+                    margin: "0 0 8px",
                   }}>
-                    <FaBook size={60} style={{ color: PINTEREST.textLight, opacity: 0.5, marginBottom: "20px" }} />
-                    <h3 style={{ fontSize: "22px", fontWeight: "600", color: PINTEREST.textDark, marginBottom: "12px" }}>
-                      No offers yet
-                    </h3>
-                    <p style={{ color: PINTEREST.textLight, fontSize: "16px", marginBottom: "24px", lineHeight: 1.5 }}>
-                      Create your first book offer to get started
-                    </p>
-                    <button
-                      onClick={() => navigate("/submit-offer")}
-                      style={{
-                        padding: "14px 32px",
-                        background: PINTEREST.primary,
-                        color: "white",
-                        border: "none",
-                        borderRadius: "10px",
-                        fontSize: "16px",
-                        fontWeight: "600",
-                        cursor: "pointer",
-                      }}
-                    >
-                      Create Offer
-                    </button>
-                  </div>
-                ) : (
-                  <div style={{
-                    display: "grid",
-                    gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))",
-                    gap: "24px",
+                    My Book Offers
+                  </h3>
+                  <p style={{ 
+                    fontSize: "14px", 
+                    color: PINTEREST.textLight,
+                    margin: 0,
                   }}>
-                    {filteredOffers.map((offer) => (
-                      <motion.div
-                        key={offer.id}
-                        whileHover={{ y: -4 }}
+                    Manage your book offers, publish them publicly, or keep them private
+                  </p>
+                </div>
+                
+                <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
+                  <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                    {[
+                      { id: "all" as const, label: "All" },
+                      { id: "public" as const, label: "Public" },
+                      { id: "private" as const, label: "Private" },
+                    ].map((filter) => (
+                      <button
+                        key={filter.id}
+                        onClick={() => setFilterType(filter.id)}
                         style={{
-                          background: "white",
-                          borderRadius: "16px",
-                          border: `1px solid ${PINTEREST.border}`,
-                          padding: "20px",
-                          boxShadow: PINTEREST.cardShadow,
-                          position: "relative",
-                          transition: "all 0.2s ease",
+                          padding: "10px 16px",
+                          borderRadius: "8px",
+                          background: filterType === filter.id ? PINTEREST.primary : PINTEREST.hoverBg,
+                          color: filterType === filter.id ? "white" : PINTEREST.textDark,
+                          fontSize: "14px",
+                          fontWeight: "600",
+                          border: "none",
+                          cursor: "pointer",
+                          whiteSpace: "nowrap",
                         }}
                       >
-                        {/* Offer Menu */}
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setShowOfferMenu(showOfferMenu === offer.id ? null : offer.id);
-                          }}
+                        {filter.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Offers Grid */}
+              {loadingOffers ? (
+                <div style={{ textAlign: "center", padding: "60px 20px" }}>
+                  <div style={{
+                    width: "40px",
+                    height: "40px",
+                    border: `3px solid ${PINTEREST.primary}20`,
+                    borderTopColor: PINTEREST.primary,
+                    borderRadius: "50%",
+                    margin: "0 auto",
+                    animation: "spin 1s linear infinite",
+                  }} />
+                </div>
+              ) : filteredOffers.length === 0 ? (
+                <div style={{
+                  textAlign: "center",
+                  padding: "80px 40px",
+                  background: "white",
+                  borderRadius: "16px",
+                  border: `2px dashed ${PINTEREST.border}`,
+                  maxWidth: "600px",
+                  margin: "0 auto",
+                }}>
+                  <FaBook size={60} style={{ color: PINTEREST.textLight, opacity: 0.5, marginBottom: "20px" }} />
+                  <h3 style={{ fontSize: "22px", fontWeight: "600", color: PINTEREST.textDark, marginBottom: "12px" }}>
+                    No offers yet
+                  </h3>
+                  <p style={{ color: PINTEREST.textLight, fontSize: "16px", marginBottom: "24px", lineHeight: 1.5 }}>
+                    Create your first book offer to get started
+                  </p>
+                  <button
+                    onClick={() => navigate("/submit-offer")}
+                    style={{
+                      padding: "14px 32px",
+                      background: PINTEREST.primary,
+                      color: "white",
+                      border: "none",
+                      borderRadius: "10px",
+                      fontSize: "16px",
+                      fontWeight: "600",
+                      cursor: "pointer",
+                    }}
+                  >
+                    Create Offer
+                  </button>
+                </div>
+              ) : (
+                <div style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))",
+                  gap: "24px",
+                }}>
+                  {filteredOffers.map((offer) => (
+                    <motion.div
+                      key={offer.id}
+                      whileHover={{ y: -4 }}
+                      style={{
+                        background: "white",
+                        borderRadius: "16px",
+                        border: `1px solid ${PINTEREST.border}`,
+                        padding: "20px",
+                        boxShadow: PINTEREST.cardShadow,
+                        position: "relative",
+                        transition: "all 0.2s ease",
+                      }}
+                    >
+                      {/* Offer Menu */}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShowOfferMenu(showOfferMenu === offer.id ? null : offer.id);
+                        }}
+                        style={{
+                          position: "absolute",
+                          top: "16px",
+                          right: "16px",
+                          width: "36px",
+                          height: "36px",
+                          borderRadius: "8px",
+                          background: "white",
+                          border: `1px solid ${PINTEREST.border}`,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          color: PINTEREST.textDark,
+                          cursor: "pointer",
+                          fontSize: "16px",
+                          zIndex: 10,
+                        }}
+                      >
+                        <FaEllipsisV />
+                      </button>
+
+                      {showOfferMenu === offer.id && (
+                        <motion.div
+                          initial={{ opacity: 0, scale: 0.95 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          exit={{ opacity: 0, scale: 0.95 }}
                           style={{
                             position: "absolute",
-                            top: "16px",
+                            top: "60px",
                             right: "16px",
-                            width: "36px",
-                            height: "36px",
-                            borderRadius: "8px",
                             background: "white",
+                            borderRadius: "12px",
+                            boxShadow: PINTEREST.cardShadowHover,
                             border: `1px solid ${PINTEREST.border}`,
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            color: PINTEREST.textDark,
-                            cursor: "pointer",
-                            fontSize: "16px",
-                            zIndex: 10,
+                            zIndex: 20,
+                            minWidth: "200px",
+                            overflow: "hidden",
                           }}
                         >
-                          <FaEllipsisV />
-                        </button>
-
-                        {showOfferMenu === offer.id && (
-                          <motion.div
-                            initial={{ opacity: 0, scale: 0.95 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            exit={{ opacity: 0, scale: 0.95 }}
-                            style={{
-                              position: "absolute",
-                              top: "60px",
-                              right: "16px",
-                              background: "white",
-                              borderRadius: "12px",
-                              boxShadow: PINTEREST.cardShadowHover,
-                              border: `1px solid ${PINTEREST.border}`,
-                              zIndex: 20,
-                              minWidth: "200px",
-                              overflow: "hidden",
-                            }}
-                          >
-                            {offer.visibility === "private" ? (
-                              <button
-                                onClick={() => {
-                                  handlePublishOffer(offer.id);
-                                  setShowOfferMenu(null);
-                                }}
-                                style={{
-                                  width: "100%",
-                                  padding: "14px 18px",
-                                  background: "transparent",
-                                  border: "none",
-                                  borderBottom: `1px solid ${PINTEREST.border}`,
-                                  color: PINTEREST.textDark,
-                                  fontSize: "14px",
-                                  fontWeight: "500",
-                                  cursor: "pointer",
-                                  display: "flex",
-                                  alignItems: "center",
-                                  gap: "10px",
-                                  textAlign: "left",
-                                  transition: "background 0.2s ease",
-                                }}
-                                onMouseEnter={(e) => e.currentTarget.style.background = PINTEREST.hoverBg}
-                                onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
-                              >
-                                <FaGlobe size={14} />
-                                Publish Publicly
-                              </button>
-                            ) : (
-                              <button
-                                onClick={() => {
-                                  handleUnpublishOffer(offer.id);
-                                  setShowOfferMenu(null);
-                                }}
-                                style={{
-                                  width: "100%",
-                                  padding: "14px 18px",
-                                  background: "transparent",
-                                  border: "none",
-                                  borderBottom: `1px solid ${PINTEREST.border}`,
-                                  color: PINTEREST.textDark,
-                                  fontSize: "14px",
-                                  fontWeight: "500",
-                                  cursor: "pointer",
-                                  display: "flex",
-                                  alignItems: "center",
-                                  gap: "10px",
-                                  textAlign: "left",
-                                  transition: "background 0.2s ease",
-                                }}
-                                onMouseEnter={(e) => e.currentTarget.style.background = PINTEREST.hoverBg}
-                                onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
-                              >
-                                <FaLock size={14} />
-                                Make Private
-                              </button>
-                            )}
-                            
+                          {offer.visibility === "private" ? (
                             <button
                               onClick={() => {
-                                setSelectedOffer(offer);
-                                setEditOfferForm({
-                                  bookTitle: offer.bookTitle,
-                                  author: offer.author || "",
-                                  genre: offer.genre || "Fiction",
-                                  condition: offer.condition || "Good",
-                                  price: offer.price ? offer.price.toString() : "",
-                                  exchangeBook: offer.exchangeBook || "",
-                                  description: offer.description || "",
-                                });
-                                setShowEditOfferModal(true);
+                                handlePublishOffer(offer.id);
                                 setShowOfferMenu(null);
                               }}
                               style={{
@@ -1174,43 +1101,13 @@ export default function ProfileScreen({ currentUser, onBack }: Props) {
                               onMouseEnter={(e) => e.currentTarget.style.background = PINTEREST.hoverBg}
                               onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
                             >
-                              <FaEdit size={14} />
-                              Edit Offer
+                              <FaGlobe size={14} />
+                              Publish Publicly
                             </button>
-                            
-                            {offer.visibility === "public" && offer.state === "open" && (
-                              <button
-                                onClick={() => {
-                                  handleCloseDeal(offer.id);
-                                  setShowOfferMenu(null);
-                                }}
-                                style={{
-                                  width: "100%",
-                                  padding: "14px 18px",
-                                  background: "transparent",
-                                  border: "none",
-                                  borderBottom: `1px solid ${PINTEREST.border}`,
-                                  color: PINTEREST.success,
-                                  fontSize: "14px",
-                                  fontWeight: "500",
-                                  cursor: "pointer",
-                                  display: "flex",
-                                  alignItems: "center",
-                                  gap: "10px",
-                                  textAlign: "left",
-                                  transition: "background 0.2s ease",
-                                }}
-                                onMouseEnter={(e) => e.currentTarget.style.background = PINTEREST.hoverBg}
-                                onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
-                              >
-                                <FaCheck size={14} />
-                                Mark as Completed
-                              </button>
-                            )}
-                            
+                          ) : (
                             <button
                               onClick={() => {
-                                handleDeleteOffer(offer.id);
+                                handleUnpublishOffer(offer.id);
                                 setShowOfferMenu(null);
                               }}
                               style={{
@@ -1218,7 +1115,8 @@ export default function ProfileScreen({ currentUser, onBack }: Props) {
                                 padding: "14px 18px",
                                 background: "transparent",
                                 border: "none",
-                                color: PINTEREST.primary,
+                                borderBottom: `1px solid ${PINTEREST.border}`,
+                                color: PINTEREST.textDark,
                                 fontSize: "14px",
                                 fontWeight: "500",
                                 cursor: "pointer",
@@ -1231,440 +1129,506 @@ export default function ProfileScreen({ currentUser, onBack }: Props) {
                               onMouseEnter={(e) => e.currentTarget.style.background = PINTEREST.hoverBg}
                               onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
                             >
-                              <FaTrash size={14} />
-                              Delete Offer
+                              <FaLock size={14} />
+                              Make Private
                             </button>
-                          </motion.div>
-                        )}
-
-                        {/* Offer Content */}
-                        <div style={{ display: "flex", gap: "20px", marginBottom: "20px" }}>
-                          <div style={{
-                            width: "100px",
-                            height: "140px",
-                            borderRadius: "10px",
-                            overflow: "hidden",
-                            flexShrink: 0,
-                            background: PINTEREST.grayLight,
-                          }}>
-                            <img
-                              src={getImageSource(offer)}
-                              alt={offer.bookTitle}
-                              style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                            />
-                          </div>
-                          
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "12px", flexWrap: "wrap" }}>
-                              <div style={{
-                                background: getTypeColor(offer.type),
-                                color: "white",
-                                padding: "6px 10px",
-                                borderRadius: "8px",
-                                fontSize: "12px",
-                                fontWeight: "600",
-                                display: "flex",
-                                alignItems: "center",
-                                gap: "6px",
-                              }}>
-                                {getTypeIcon(offer.type)}
-                                {getTypeLabel(offer.type)}
-                              </div>
-                              
-                              <div style={{
-                                background: offer.visibility === "public" ? PINTEREST.success : PINTEREST.warning,
-                                color: "white",
-                                padding: "6px 10px",
-                                borderRadius: "8px",
-                                fontSize: "12px",
-                                fontWeight: "600",
-                                display: "flex",
-                                alignItems: "center",
-                                gap: "6px",
-                              }}>
-                                {offer.visibility === "public" ? <FaEye size={12} /> : <FaEyeSlash size={12} />}
-                                {offer.visibility === "public" ? "Public" : "Private"}
-                              </div>
-                              
-                              {/* FIXED: Now offer.state can be 'closed' */}
-                              {offer.state === "closed" && (
-                                <div style={{
-                                  background: PINTEREST.textLight,
-                                  color: "white",
-                                  padding: "6px 10px",
-                                  borderRadius: "8px",
-                                  fontSize: "12px",
-                                  fontWeight: "600",
-                                }}>
-                                  Completed
-                                </div>
-                              )}
-                            </div>
-                            
-                            <h4 style={{
-                              fontSize: "18px",
-                              fontWeight: "600",
-                              color: PINTEREST.textDark,
-                              margin: "0 0 8px",
-                              lineHeight: 1.3,
-                            }}>
-                              {offer.bookTitle}
-                            </h4>
-                            
-                            {offer.author && (
-                              <p style={{
-                                fontSize: "14px",
-                                color: PINTEREST.textLight,
-                                margin: "0 0 12px",
-                                fontStyle: "italic",
-                              }}>
-                                {offer.author}
-                              </p>
-                            )}
-                            
-                            <div style={{ display: "flex", gap: "16px", fontSize: "13px", color: PINTEREST.textLight, flexWrap: "wrap" }}>
-                              <span style={{ 
-                                background: PINTEREST.grayLight,
-                                padding: "4px 10px",
-                                borderRadius: "6px",
-                              }}>
-                                {offer.genre || "Fiction"}
-                              </span>
-                              <span>{offer.condition || "Good"}</span>
-                              {offer.price && (
-                                <span style={{ fontWeight: "600", color: PINTEREST.primary }}>
-                                  {formatPrice(offer.price)}
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                        
-                        <div style={{
-                          fontSize: "13px",
-                          color: PINTEREST.textMuted,
-                          display: "flex",
-                          justifyContent: "space-between",
-                          paddingTop: "16px",
-                          borderTop: `1px solid ${PINTEREST.border}`,
-                          flexWrap: "wrap",
-                          gap: "8px",
-                        }}>
-                          <span>Created {formatDate(offer.created_at || offer.lastUpdated || "")}</span>
-                          {offer.publishedAt && (
-                            <span>Published {formatDate(offer.publishedAt)}</span>
                           )}
-                        </div>
-                      </motion.div>
-                    ))}
-                  </div>
-                )}
-              </>
-            )}
-
-            {activeTab === "libraries" && (
-              <>
-                {/* Libraries Header */}
-                <div style={{ 
-                  display: "flex", 
-                  alignItems: "center", 
-                  justifyContent: "space-between",
-                  marginBottom: "20px",
-                  flexWrap: "wrap",
-                  gap: "16px",
-                }}>
-                  <div style={{ flex: 1, minWidth: "300px" }}>
-                    <h3 style={{ 
-                      fontSize: "20px", 
-                      fontWeight: "700", 
-                      color: PINTEREST.textDark,
-                      margin: "0 0 8px",
-                    }}>
-                      My Libraries
-                    </h3>
-                    <p style={{ 
-                      fontSize: "14px", 
-                      color: PINTEREST.textLight,
-                      margin: 0,
-                    }}>
-                      Organize your books in private collections
-                    </p>
-                  </div>
-                  
-                  <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
-                    <input
-                      type="text"
-                      placeholder="Search libraries..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      style={{
-                        padding: "10px 12px",
-                        borderRadius: "8px",
-                        border: `1px solid ${PINTEREST.border}`,
-                        background: PINTEREST.grayLight,
-                        fontSize: "14px",
-                        width: "240px",
-                        minWidth: "200px",
-                      }}
-                    />
-                    
-                    <button
-                      onClick={() => navigate("/my-library")}
-                      style={{
-                        padding: "10px 20px",
-                        background: PINTEREST.primary,
-                        color: "white",
-                        border: "none",
-                        borderRadius: "8px",
-                        fontSize: "14px",
-                        fontWeight: "600",
-                        cursor: "pointer",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "8px",
-                      }}
-                    >
-                      <FaPlus size={14} />
-                      Manage Libraries
-                    </button>
-                  </div>
-                </div>
-
-                {/* Libraries Grid */}
-                {loadingStores ? (
-                  <div style={{ textAlign: "center", padding: "60px 20px" }}>
-                    <div style={{
-                      width: "40px",
-                      height: "40px",
-                      border: `3px solid ${PINTEREST.primary}20`,
-                      borderTopColor: PINTEREST.primary,
-                      borderRadius: "50%",
-                      margin: "0 auto",
-                      animation: "spin 1s linear infinite",
-                    }} />
-                  </div>
-                ) : filteredStores.length === 0 ? (
-                  <div style={{
-                    textAlign: "center",
-                    padding: "80px 40px",
-                    background: "white",
-                    borderRadius: "16px",
-                    border: `2px dashed ${PINTEREST.border}`,
-                    maxWidth: "600px",
-                    margin: "0 auto",
-                  }}>
-                    <FaFolder size={60} style={{ color: PINTEREST.textLight, opacity: 0.5, marginBottom: "20px" }} />
-                    <h3 style={{ fontSize: "22px", fontWeight: "600", color: PINTEREST.textDark, marginBottom: "12px" }}>
-                      No libraries yet
-                    </h3>
-                    <p style={{ color: PINTEREST.textLight, fontSize: "16px", marginBottom: "24px", lineHeight: 1.5 }}>
-                      Create your first library to organize your books
-                    </p>
-                    <button
-                      onClick={() => navigate("/my-library")}
-                      style={{
-                        padding: "14px 32px",
-                        background: PINTEREST.primary,
-                        color: "white",
-                        border: "none",
-                        borderRadius: "10px",
-                        fontSize: "16px",
-                        fontWeight: "600",
-                        cursor: "pointer",
-                      }}
-                    >
-                      Create Library
-                    </button>
-                  </div>
-                ) : (
-                  <div style={{
-                    display: "grid",
-                    gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))",
-                    gap: "24px",
-                  }}>
-                    {filteredStores.map((store) => (
-                      <motion.div
-                        key={store.id}
-                        whileHover={{ y: -4 }}
-                        onClick={() => navigate("/my-library")}
-                        style={{
-                          background: "white",
-                          borderRadius: "16px",
-                          border: `1px solid ${PINTEREST.border}`,
-                          padding: "24px",
-                          boxShadow: PINTEREST.cardShadow,
-                          cursor: "pointer",
-                          transition: "all 0.2s ease",
-                        }}
-                      >
-                        <div style={{ display: "flex", alignItems: "center", gap: "16px", marginBottom: "20px" }}>
-                          <div style={{
-                            width: "56px",
-                            height: "56px",
-                            borderRadius: "12px",
-                            background: PINTEREST.redLight,
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            color: PINTEREST.primary,
-                            fontSize: "24px",
-                          }}>
-                            <FaFolder />
-                          </div>
                           
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <h4 style={{
-                              fontSize: "18px",
-                              fontWeight: "600",
+                          <button
+                            onClick={() => {
+                              handleEditOffer(offer.id);
+                              setShowOfferMenu(null);
+                            }}
+                            style={{
+                              width: "100%",
+                              padding: "14px 18px",
+                              background: "transparent",
+                              border: "none",
+                              borderBottom: `1px solid ${PINTEREST.border}`,
                               color: PINTEREST.textDark,
-                              margin: "0 0 6px",
-                              lineHeight: 1.3,
-                            }}>
-                              {store.name}
-                            </h4>
-                            <div style={{ fontSize: "14px", color: PINTEREST.textLight }}>
-                              {store.offerIds?.length || 0} books • Private Collection
-                            </div>
-                          </div>
+                              fontSize: "14px",
+                              fontWeight: "500",
+                              cursor: "pointer",
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "10px",
+                              textAlign: "left",
+                              transition: "background 0.2s ease",
+                            }}
+                            onMouseEnter={(e) => e.currentTarget.style.background = PINTEREST.hoverBg}
+                            onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
+                          >
+                            <FaEdit size={14} />
+                            Edit Offer
+                          </button>
+                          
+                          {offer.visibility === "public" && offer.state === "open" && (
+                            <button
+                              onClick={() => {
+                                handleCloseDeal(offer.id);
+                                setShowOfferMenu(null);
+                              }}
+                              style={{
+                                width: "100%",
+                                padding: "14px 18px",
+                                background: "transparent",
+                                border: "none",
+                                borderBottom: `1px solid ${PINTEREST.border}`,
+                                color: PINTEREST.success,
+                                fontSize: "14px",
+                                fontWeight: "500",
+                                cursor: "pointer",
+                                display: "flex",
+                                alignItems: "center",
+                                gap: "10px",
+                                textAlign: "left",
+                                transition: "background 0.2s ease",
+                              }}
+                              onMouseEnter={(e) => e.currentTarget.style.background = PINTEREST.hoverBg}
+                              onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
+                            >
+                              <FaCheck size={14} />
+                              Mark as Completed
+                            </button>
+                          )}
+                          
+                          <button
+                            onClick={() => {
+                              handleDeleteOffer(offer.id);
+                              setShowOfferMenu(null);
+                            }}
+                            style={{
+                              width: "100%",
+                              padding: "14px 18px",
+                              background: "transparent",
+                              border: "none",
+                              color: PINTEREST.primary,
+                              fontSize: "14px",
+                              fontWeight: "500",
+                              cursor: "pointer",
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "10px",
+                              textAlign: "left",
+                              transition: "background 0.2s ease",
+                            }}
+                            onMouseEnter={(e) => e.currentTarget.style.background = PINTEREST.hoverBg}
+                            onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
+                          >
+                            <FaTrash size={14} />
+                            Delete Offer
+                          </button>
+                        </motion.div>
+                      )}
+
+                      {/* Offer Content */}
+                      <div style={{ display: "flex", gap: "20px", marginBottom: "20px" }}>
+                        <div style={{
+                          width: "100px",
+                          height: "140px",
+                          borderRadius: "10px",
+                          overflow: "hidden",
+                          flexShrink: 0,
+                          background: PINTEREST.grayLight,
+                        }}>
+                          <img
+                            src={getImageSource(offer)}
+                            alt={offer.bookTitle}
+                            style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                          />
                         </div>
                         
-                        <div style={{
-                          fontSize: "13px",
-                          color: PINTEREST.textMuted,
-                          paddingTop: "16px",
-                          borderTop: `1px solid ${PINTEREST.border}`,
-                        }}>
-                          Created {formatDate(store.created_at)}
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "12px", flexWrap: "wrap" }}>
+                            <div style={{
+                              background: getTypeColor(offer.type),
+                              color: "white",
+                              padding: "6px 10px",
+                              borderRadius: "8px",
+                              fontSize: "12px",
+                              fontWeight: "600",
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "6px",
+                            }}>
+                              {getTypeIcon(offer.type)}
+                              {getTypeLabel(offer.type)}
+                            </div>
+                            
+                            <div style={{
+                              background: offer.visibility === "public" ? PINTEREST.success : PINTEREST.warning,
+                              color: "white",
+                              padding: "6px 10px",
+                              borderRadius: "8px",
+                              fontSize: "12px",
+                              fontWeight: "600",
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "6px",
+                            }}>
+                              {offer.visibility === "public" ? <FaEye size={12} /> : <FaEyeSlash size={12} />}
+                              {offer.visibility === "public" ? "Public" : "Private"}
+                            </div>
+                            
+                            {offer.state === "closed" && (
+                              <div style={{
+                                background: PINTEREST.textLight,
+                                color: "white",
+                                padding: "6px 10px",
+                                borderRadius: "8px",
+                                fontSize: "12px",
+                                fontWeight: "600",
+                              }}>
+                                Completed
+                              </div>
+                            )}
+                          </div>
+                          
+                          <h4 style={{
+                            fontSize: "18px",
+                            fontWeight: "600",
+                            color: PINTEREST.textDark,
+                            margin: "0 0 8px",
+                            lineHeight: 1.3,
+                          }}>
+                            {offer.bookTitle}
+                          </h4>
+                          
+                          {offer.author && (
+                            <p style={{
+                              fontSize: "14px",
+                              color: PINTEREST.textLight,
+                              margin: "0 0 12px",
+                              fontStyle: "italic",
+                            }}>
+                              {offer.author}
+                            </p>
+                          )}
+                          
+                          <div style={{ display: "flex", gap: "16px", fontSize: "13px", color: PINTEREST.textLight, flexWrap: "wrap" }}>
+                            <span style={{ 
+                              background: PINTEREST.grayLight,
+                              padding: "4px 10px",
+                              borderRadius: "6px",
+                            }}>
+                              {offer.genre || "Fiction"}
+                            </span>
+                            <span>{offer.condition || "Good"}</span>
+                            {offer.price && (
+                              <span style={{ fontWeight: "600", color: PINTEREST.primary }}>
+                                {formatPrice(offer.price)}
+                              </span>
+                            )}
+                          </div>
                         </div>
-                      </motion.div>
-                    ))}
-                  </div>
-                )}
-              </>
-            )}
+                      </div>
+                      
+                      <div style={{
+                        fontSize: "13px",
+                        color: PINTEREST.textMuted,
+                        display: "flex",
+                        justifyContent: "space-between",
+                        paddingTop: "16px",
+                        borderTop: `1px solid ${PINTEREST.border}`,
+                        flexWrap: "wrap",
+                        gap: "8px",
+                      }}>
+                        <span>Created {formatDate(offer.created_at || offer.lastUpdated || "")}</span>
+                        {offer.publishedAt && (
+                          <span>Published {formatDate(offer.publishedAt)}</span>
+                        )}
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
 
-            {activeTab === "stats" && profile && (
-              <div style={{
-                maxWidth: "800px",
-                margin: "0 auto",
+          {activeTab === "libraries" && (
+            <>
+              {/* Libraries Header */}
+              <div style={{ 
+                display: "flex", 
+                alignItems: "center", 
+                justifyContent: "space-between",
+                marginBottom: "20px",
+                flexWrap: "wrap",
+                gap: "16px",
               }}>
-                <div style={{
-                  background: "white",
-                  borderRadius: "20px",
-                  border: `1px solid ${PINTEREST.border}`,
-                  padding: "40px",
-                  boxShadow: PINTEREST.cardShadow,
-                }}>
-                  <h3 style={{
-                    fontSize: "24px",
-                    fontWeight: "700",
+                <div style={{ flex: 1, minWidth: "300px" }}>
+                  <h3 style={{ 
+                    fontSize: "20px", 
+                    fontWeight: "700", 
                     color: PINTEREST.textDark,
-                    margin: "0 0 32px",
-                    textAlign: "center",
+                    margin: "0 0 8px",
                   }}>
-                    Your Statistics
+                    My Libraries
                   </h3>
-                  
-                  <div style={{
-                    display: "grid",
-                    gridTemplateColumns: "repeat(2, 1fr)",
-                    gap: "24px",
-                    marginBottom: "40px",
+                  <p style={{ 
+                    fontSize: "14px", 
+                    color: PINTEREST.textLight,
+                    margin: 0,
                   }}>
-                    <div style={{
-                      textAlign: "center",
-                      padding: "32px",
-                      background: `linear-gradient(135deg, ${PINTEREST.redLight}, #FFEDEF)`,
-                      borderRadius: "16px",
-                      border: `1px solid ${PINTEREST.border}`,
-                    }}>
-                      <div style={{
-                        fontSize: "64px",
-                        fontWeight: "700",
-                        color: PINTEREST.primary,
-                        marginBottom: "12px",
-                      }}>
-                        {profile.offersPosted}
-                      </div>
-                      <div style={{
-                        fontSize: "16px",
-                        fontWeight: "600",
-                        color: PINTEREST.textDark,
-                      }}>
-                        Offers Posted
-                      </div>
-                      <p style={{
-                        fontSize: "14px",
-                        color: PINTEREST.textLight,
-                        margin: "12px 0 0",
-                      }}>
-                        Books you've listed for exchange or sale
-                      </p>
-                    </div>
-                    
-                    <div style={{
-                      textAlign: "center",
-                      padding: "32px",
-                      background: `linear-gradient(135deg, #E6FFF4, #F0FFF8)`,
-                      borderRadius: "16px",
-                      border: `1px solid ${PINTEREST.border}`,
-                    }}>
-                      <div style={{
-                        fontSize: "64px",
-                        fontWeight: "700",
-                        color: PINTEREST.success,
-                        marginBottom: "12px",
-                      }}>
-                        {profile.dealsCompleted}
-                      </div>
-                      <div style={{
-                        fontSize: "16px",
-                        fontWeight: "600",
-                        color: PINTEREST.textDark,
-                      }}>
-                        Deals Completed
-                      </div>
-                      <p style={{
-                        fontSize: "14px",
-                        color: PINTEREST.textLight,
-                        margin: "12px 0 0",
-                      }}>
-                        Successful exchanges and sales
-                      </p>
-                    </div>
-                  </div>
-                  
+                    Organize your books in private collections
+                  </p>
+                </div>
+                
+                <button
+                  onClick={() => navigate("/my-library")}
+                  style={{
+                    padding: "10px 20px",
+                    background: PINTEREST.primary,
+                    color: "white",
+                    border: "none",
+                    borderRadius: "8px",
+                    fontSize: "14px",
+                    fontWeight: "600",
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
+                  }}
+                >
+                  <FaPlus size={14} />
+                  Manage Libraries
+                </button>
+              </div>
+
+              {/* Libraries Grid */}
+              {loadingStores ? (
+                <div style={{ textAlign: "center", padding: "60px 20px" }}>
                   <div style={{
-                    background: PINTEREST.redLight,
-                    padding: "24px",
+                    width: "40px",
+                    height: "40px",
+                    border: `3px solid ${PINTEREST.primary}20`,
+                    borderTopColor: PINTEREST.primary,
+                    borderRadius: "50%",
+                    margin: "0 auto",
+                    animation: "spin 1s linear infinite",
+                  }} />
+                </div>
+              ) : filteredStores.length === 0 ? (
+                <div style={{
+                  textAlign: "center",
+                  padding: "80px 40px",
+                  background: "white",
+                  borderRadius: "16px",
+                  border: `2px dashed ${PINTEREST.border}`,
+                  maxWidth: "600px",
+                  margin: "0 auto",
+                }}>
+                  <FaFolder size={60} style={{ color: PINTEREST.textLight, opacity: 0.5, marginBottom: "20px" }} />
+                  <h3 style={{ fontSize: "22px", fontWeight: "600", color: PINTEREST.textDark, marginBottom: "12px" }}>
+                    No libraries yet
+                  </h3>
+                  <p style={{ color: PINTEREST.textLight, fontSize: "16px", marginBottom: "24px", lineHeight: 1.5 }}>
+                    Create your first library to organize your books
+                  </p>
+                  <button
+                    onClick={() => navigate("/my-library")}
+                    style={{
+                      padding: "14px 32px",
+                      background: PINTEREST.primary,
+                      color: "white",
+                      border: "none",
+                      borderRadius: "10px",
+                      fontSize: "16px",
+                      fontWeight: "600",
+                      cursor: "pointer",
+                    }}
+                  >
+                    Create Library
+                  </button>
+                </div>
+              ) : (
+                <div style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))",
+                  gap: "24px",
+                }}>
+                  {filteredStores.map((store) => (
+                    <motion.div
+                      key={store.id}
+                      whileHover={{ y: -4 }}
+                      onClick={() => navigate("/my-library")}
+                      style={{
+                        background: "white",
+                        borderRadius: "16px",
+                        border: `1px solid ${PINTEREST.border}`,
+                        padding: "24px",
+                        boxShadow: PINTEREST.cardShadow,
+                        cursor: "pointer",
+                        transition: "all 0.2s ease",
+                      }}
+                    >
+                      <div style={{ display: "flex", alignItems: "center", gap: "16px", marginBottom: "20px" }}>
+                        <div style={{
+                          width: "56px",
+                          height: "56px",
+                          borderRadius: "12px",
+                          background: PINTEREST.redLight,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          color: PINTEREST.primary,
+                          fontSize: "24px",
+                        }}>
+                          <FaFolder />
+                        </div>
+                        
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <h4 style={{
+                            fontSize: "18px",
+                            fontWeight: "600",
+                            color: PINTEREST.textDark,
+                            margin: "0 0 6px",
+                            lineHeight: 1.3,
+                          }}>
+                            {store.name}
+                          </h4>
+                          <div style={{ fontSize: "14px", color: PINTEREST.textLight }}>
+                            {store.offerIds?.length || 0} books • Private Collection
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div style={{
+                        fontSize: "13px",
+                        color: PINTEREST.textMuted,
+                        paddingTop: "16px",
+                        borderTop: `1px solid ${PINTEREST.border}`,
+                      }}>
+                        Created {formatDate(store.created_at)}
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+
+          {activeTab === "stats" && profile && (
+            <div style={{
+              maxWidth: "800px",
+              margin: "0 auto",
+            }}>
+              <div style={{
+                background: "white",
+                borderRadius: "20px",
+                border: `1px solid ${PINTEREST.border}`,
+                padding: "40px",
+                boxShadow: PINTEREST.cardShadow,
+              }}>
+                <h3 style={{
+                  fontSize: "24px",
+                  fontWeight: "700",
+                  color: PINTEREST.textDark,
+                  margin: "0 0 32px",
+                  textAlign: "center",
+                }}>
+                  Your Statistics
+                </h3>
+                
+                <div style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(2, 1fr)",
+                  gap: "24px",
+                  marginBottom: "40px",
+                }}>
+                  <div style={{
+                    textAlign: "center",
+                    padding: "32px",
+                    background: `linear-gradient(135deg, ${PINTEREST.redLight}, #FFEDEF)`,
                     borderRadius: "16px",
-                    marginBottom: "32px",
                     border: `1px solid ${PINTEREST.border}`,
                   }}>
                     <div style={{
-                      fontSize: "16px",
-                      color: PINTEREST.dark,
-                      lineHeight: 1.6,
-                      textAlign: "center",
+                      fontSize: "64px",
+                      fontWeight: "700",
+                      color: PINTEREST.primary,
+                      marginBottom: "12px",
                     }}>
-                      <strong>📈 Growth Tip:</strong> Complete more deals to increase your rating and visibility on Boocozmo! 
-                      Active traders get more offers and better matches.
+                      {profile.offersPosted}
                     </div>
+                    <div style={{
+                      fontSize: "16px",
+                      fontWeight: "600",
+                      color: PINTEREST.textDark,
+                    }}>
+                      Offers Posted
+                    </div>
+                    <p style={{
+                      fontSize: "14px",
+                      color: PINTEREST.textLight,
+                      margin: "12px 0 0",
+                    }}>
+                      Books you've listed for exchange or sale
+                    </p>
                   </div>
                   
                   <div style={{
-                    fontSize: "14px",
-                    color: PINTEREST.textLight,
                     textAlign: "center",
-                    paddingTop: "24px",
-                    borderTop: `1px solid ${PINTEREST.border}`,
+                    padding: "32px",
+                    background: `linear-gradient(135deg, #E6FFF4, #F0FFF8)`,
+                    borderRadius: "16px",
+                    border: `1px solid ${PINTEREST.border}`,
                   }}>
-                    Last updated: {formatDate(new Date().toISOString())}
+                    <div style={{
+                      fontSize: "64px",
+                      fontWeight: "700",
+                      color: PINTEREST.success,
+                      marginBottom: "12px",
+                    }}>
+                      {profile.dealsCompleted}
+                    </div>
+                    <div style={{
+                      fontSize: "16px",
+                      fontWeight: "600",
+                      color: PINTEREST.textDark,
+                    }}>
+                      Deals Completed
+                    </div>
+                    <p style={{
+                      fontSize: "14px",
+                      color: PINTEREST.textLight,
+                      margin: "12px 0 0",
+                    }}>
+                      Successful exchanges and sales
+                    </p>
                   </div>
                 </div>
+                
+                <div style={{
+                  background: PINTEREST.redLight,
+                  padding: "24px",
+                  borderRadius: "16px",
+                  marginBottom: "32px",
+                  border: `1px solid ${PINTEREST.border}`,
+                }}>
+                  <div style={{
+                    fontSize: "16px",
+                    color: PINTEREST.dark,
+                    lineHeight: 1.6,
+                    textAlign: "center",
+                  }}>
+                    <strong>📈 Growth Tip:</strong> Complete more deals to increase your rating and visibility on Boocozmo! 
+                    Active traders get more offers and better matches.
+                  </div>
+                </div>
+                
+                <div style={{
+                  fontSize: "14px",
+                  color: PINTEREST.textLight,
+                  textAlign: "center",
+                  paddingTop: "24px",
+                  borderTop: `1px solid ${PINTEREST.border}`,
+                }}>
+                  Last updated: {formatDate(new Date().toISOString())}
+                </div>
               </div>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -1684,7 +1648,7 @@ export default function ProfileScreen({ currentUser, onBack }: Props) {
                 width: "100%",
                 height: "100%",
                 background: PINTEREST.overlay,
-                zIndex: 1000,
+                zIndex: 2000,
               }}
             />
             
@@ -1697,7 +1661,7 @@ export default function ProfileScreen({ currentUser, onBack }: Props) {
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              zIndex: 1001,
+              zIndex: 2001,
             }}>
               <motion.div
                 initial={{ opacity: 0, scale: 0.95 }}
@@ -1826,6 +1790,158 @@ export default function ProfileScreen({ currentUser, onBack }: Props) {
         )}
       </AnimatePresence>
 
+      {/* Edit Offer Modal */}
+      <AnimatePresence>
+        {showEditOfferModal && selectedOffer && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowEditOfferModal(false)}
+              style={{
+                position: "fixed",
+                top: 0,
+                left: 0,
+                width: "100%",
+                height: "100%",
+                background: PINTEREST.overlay,
+                zIndex: 2000,
+              }}
+            />
+            
+            <div style={{
+              position: "fixed",
+              top: 0,
+              left: 0,
+              width: "100%",
+              height: "100%",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              zIndex: 2001,
+            }}>
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                style={{
+                  width: "90%",
+                  maxWidth: "500px",
+                  background: "white",
+                  borderRadius: "20px",
+                  padding: "32px",
+                  boxShadow: "0 20px 60px rgba(0,0,0,0.3)",
+                }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <h3 style={{
+                  fontSize: "22px",
+                  fontWeight: "700",
+                  color: PINTEREST.textDark,
+                  margin: "0 0 24px",
+                  textAlign: "center",
+                }}>
+                  Edit Offer
+                </h3>
+                
+                <div style={{ marginBottom: "20px" }}>
+                  <label style={{ display: "block", marginBottom: "8px", fontSize: "14px", fontWeight: "600", color: PINTEREST.textDark }}>
+                    Book Title
+                  </label>
+                  <input
+                    type="text"
+                    value={editOfferForm.bookTitle}
+                    onChange={(e) => setEditOfferForm(prev => ({ ...prev, bookTitle: e.target.value }))}
+                    style={{
+                      width: "100%",
+                      padding: "12px",
+                      borderRadius: "10px",
+                      border: `1px solid ${PINTEREST.border}`,
+                      fontSize: "14px",
+                    }}
+                  />
+                </div>
+                
+                <div style={{ marginBottom: "20px" }}>
+                  <label style={{ display: "block", marginBottom: "8px", fontSize: "14px", fontWeight: "600", color: PINTEREST.textDark }}>
+                    Author
+                  </label>
+                  <input
+                    type="text"
+                    value={editOfferForm.author}
+                    onChange={(e) => setEditOfferForm(prev => ({ ...prev, author: e.target.value }))}
+                    style={{
+                      width: "100%",
+                      padding: "12px",
+                      borderRadius: "10px",
+                      border: `1px solid ${PINTEREST.border}`,
+                      fontSize: "14px",
+                    }}
+                  />
+                </div>
+                
+                <div style={{ marginBottom: "32px" }}>
+                  <label style={{ display: "block", marginBottom: "8px", fontSize: "14px", fontWeight: "600", color: PINTEREST.textDark }}>
+                    Description
+                  </label>
+                  <textarea
+                    value={editOfferForm.description}
+                    onChange={(e) => setEditOfferForm(prev => ({ ...prev, description: e.target.value }))}
+                    rows={4}
+                    style={{
+                      width: "100%",
+                      padding: "12px",
+                      borderRadius: "10px",
+                      border: `1px solid ${PINTEREST.border}`,
+                      fontSize: "14px",
+                      resize: "vertical",
+                    }}
+                  />
+                </div>
+                
+                <div style={{ display: "flex", gap: "16px" }}>
+                  <button
+                    onClick={() => setShowEditOfferModal(false)}
+                    style={{
+                      flex: 1,
+                      padding: "14px",
+                      background: PINTEREST.grayLight,
+                      color: PINTEREST.textDark,
+                      border: `1px solid ${PINTEREST.border}`,
+                      borderRadius: "10px",
+                      fontSize: "14px",
+                      fontWeight: "600",
+                      cursor: "pointer",
+                    }}
+                  >
+                    Cancel
+                  </button>
+                  
+                  <button
+                    onClick={handleSaveEditedOffer}
+                    disabled={deletingOffer}
+                    style={{
+                      flex: 1,
+                      padding: "14px",
+                      background: deletingOffer ? PINTEREST.textLight : PINTEREST.primary,
+                      color: "white",
+                      border: "none",
+                      borderRadius: "10px",
+                      fontSize: "14px",
+                      fontWeight: "600",
+                      cursor: deletingOffer ? "not-allowed" : "pointer",
+                    }}
+                  >
+                    {deletingOffer ? "Saving..." : "Save Changes"}
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+          </>
+        )}
+      </AnimatePresence>
+
       <style>{`
         @keyframes spin {
           to { transform: rotate(360deg); }
@@ -1852,6 +1968,10 @@ export default function ProfileScreen({ currentUser, onBack }: Props) {
         
         ::-webkit-scrollbar-thumb:hover {
           background: ${PINTEREST.textLight};
+        }
+        
+        div::-webkit-scrollbar {
+          display: none;
         }
       `}</style>
     </div>
