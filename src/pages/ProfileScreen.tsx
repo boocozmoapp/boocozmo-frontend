@@ -39,7 +39,7 @@ import {
 } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 
-const API_BASE = "/api";
+const API_BASE = "https://boocozmo-api.onrender.com";
 
 const GREEN = {
   dark: "#0F2415",
