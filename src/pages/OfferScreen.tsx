@@ -99,7 +99,6 @@ export default function OfferScreen({
   onAddPress,
 }: Props) {
   const navigate = useNavigate();
-
   const [description, setDescription] = useState("");
   const [condition, setCondition] = useState<"Excellent" | "Very Good" | "Good" | "Fair">("Excellent");
   const [action, setAction] = useState<"sell" | "trade">("sell");
@@ -113,18 +112,15 @@ export default function OfferScreen({
   const [showLocationPicker, setShowLocationPicker] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [mapExpanded, setMapExpanded] = useState(false);
-
   const [latitude, setLatitude] = useState<number | null>(null);
   const [longitude, setLongitude] = useState<number | null>(null);
   const [locationSet, setLocationSet] = useState(false);
   const [isLocating, setIsLocating] = useState(false);
   const [currentAddress, setCurrentAddress] = useState<string>("");
-
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstance = useRef<L.Map | null>(null);
   const markerInstance = useRef<L.Marker | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
   const navItems = [
     { icon: FaHome, label: "Home", onClick: () => navigate("/") },
     { icon: FaMapMarkedAlt, label: "Map", onClick: onMapPress || (() => navigate("/map")) },
@@ -136,17 +132,13 @@ export default function OfferScreen({
     { icon: FaBell, label: "Notifications", onClick: () => navigate("/notifications") },
     { icon: FaStar, label: "Top Picks", onClick: () => navigate("/top-picks") },
   ];
-
   const initializeMap = useCallback(() => {
     if (!mapRef.current) return;
-
     const defaultLat = latitude ?? 40.7128;
     const defaultLng = longitude ?? -74.006;
-
     if (mapInstance.current) {
       mapInstance.current.remove();
     }
-
     const map = L.map(mapRef.current, {
       center: [defaultLat, defaultLng],
       zoom: 15,
@@ -162,28 +154,21 @@ export default function OfferScreen({
       inertia: true,
       inertiaDeceleration: 3000,
     });
-
     mapInstance.current = map;
-
     L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
       attribution: '© OpenStreetMap contributors, © CARTO',
       subdomains: 'abcd',
       maxZoom: 20,
     }).addTo(map);
-
     L.control.scale({ imperial: true, metric: true, position: 'bottomleft' }).addTo(map);
-
     const customIcon = createCustomIcon();
-
     const marker = L.marker([defaultLat, defaultLng], {
       icon: customIcon,
       draggable: true,
       autoPan: true,
       riseOnHover: true,
     }).addTo(map);
-
     markerInstance.current = marker;
-
     marker.on("dragstart", () => marker.setOpacity(0.7));
     marker.on("dragend", async () => {
       const pos = marker.getLatLng();
@@ -193,7 +178,6 @@ export default function OfferScreen({
       marker.setOpacity(1);
       await reverseGeocode(pos.lat, pos.lng);
     });
-
     map.on("click", async (e: L.LeafletMouseEvent) => {
       const { lat, lng } = e.latlng;
       setLatitude(lat);
@@ -203,7 +187,6 @@ export default function OfferScreen({
       await reverseGeocode(lat, lng);
     });
   }, [latitude, longitude]);
-
   const reverseGeocode = async (lat: number, lng: number) => {
     try {
       const response = await fetch(
@@ -219,11 +202,9 @@ export default function OfferScreen({
       setCurrentAddress(`${lat.toFixed(6)}, ${lng.toFixed(6)}`);
     }
   };
-
   const detectLocation = useCallback(async () => {
     setIsLocating(true);
     setError(null);
-
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         async (pos) => {
@@ -232,12 +213,10 @@ export default function OfferScreen({
           setLongitude(longitude);
           setLocationSet(true);
           setIsLocating(false);
-
           if (mapInstance.current) {
             mapInstance.current.setView([latitude, longitude], 17, { animate: true, duration: 0.5 });
             if (markerInstance.current) markerInstance.current.setLatLng([latitude, longitude]);
           }
-
           await reverseGeocode(latitude, longitude);
         },
         () => {
@@ -251,20 +230,17 @@ export default function OfferScreen({
       setIsLocating(false);
     }
   }, []);
-
   useEffect(() => {
     if (showLocationPicker) {
       setTimeout(() => initializeMap(), 100);
     }
   }, [showLocationPicker, initializeMap]);
-
   useEffect(() => {
     if (mapInstance.current && latitude && longitude) {
       mapInstance.current.setView([latitude, longitude], 15, { animate: true, duration: 0.5 });
       if (markerInstance.current) markerInstance.current.setLatLng([latitude, longitude]);
     }
   }, [latitude, longitude]);
-
   useEffect(() => {
     return () => {
       if (mapInstance.current) {
@@ -273,41 +249,34 @@ export default function OfferScreen({
       }
     };
   }, []);
-
   const handleImagePick = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     if (file.size > 5 * 1024 * 1024) return setError("Image too large (max 5MB)");
     if (!file.type.startsWith('image/')) return setError("Please select an image file");
-
     setImage(file);
     const reader = new FileReader();
     reader.onload = () => setImagePreview(reader.result as string);
     reader.readAsDataURL(file);
   };
-
   const removeImage = () => {
     setImage(null);
     setImagePreview(null);
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
-
   const conditionOptions = [
     { value: "Excellent", color: GREEN.success, icon: "✨" },
     { value: "Very Good", color: GREEN.accentLight, icon: "👍" },
     { value: "Good", color: "#F59E0B", icon: "👌" },
     { value: "Fair", color: GREEN.textSecondary, icon: "📖" },
   ] as const;
-
   const handleSubmit = async () => {
     if (!description.trim()) return setError("Please describe the book");
     if (action === "sell" && (!price || isNaN(Number(price)) || Number(price) <= 0)) return setError("Enter a valid price");
     if (action === "trade" && !exchangeBook.trim()) return setError("Enter the book you want to trade for");
     if (!locationSet) return setError("Please set your location");
-
     setLoading(true);
     setError(null);
-
     try {
       let imageBase64: string | null = null;
       if (image) {
@@ -317,7 +286,6 @@ export default function OfferScreen({
           reader.readAsDataURL(image);
         });
       }
-
       const payload = {
         type: action === "sell" ? "sell" : "exchange",
         bookTitle: description.trim(),
@@ -328,9 +296,8 @@ export default function OfferScreen({
         image: imageBase64,
         condition,
         ownerEmail: currentUser.email,
-        address: currentAddress,
+        // Removed address from payload
       };
-
       const resp = await fetch(`${API_BASE}/submit-offer`, {
         method: "POST",
         headers: {
@@ -339,12 +306,10 @@ export default function OfferScreen({
         },
         body: JSON.stringify(payload),
       });
-
       if (!resp.ok) {
         const errData = await resp.json();
         throw new Error(errData.error || "Failed to post offer");
       }
-
       setSuccess(true);
       setTimeout(() => {
         setDescription("");
@@ -361,7 +326,6 @@ export default function OfferScreen({
       setLoading(false);
     }
   };
-
   const toggleMapExpansion = () => {
     setMapExpanded(!mapExpanded);
     setTimeout(() => {
@@ -373,13 +337,11 @@ export default function OfferScreen({
       }
     }, 50);
   };
-
   const centerOnLocation = () => {
     if (mapInstance.current && latitude && longitude) {
       mapInstance.current.setView([latitude, longitude], 17, { animate: true, duration: 0.5 });
     }
   };
-
   return (
     <div style={{
       height: "100vh",
@@ -428,7 +390,6 @@ export default function OfferScreen({
             </span>
           </div>
         </div>
-
         <motion.div
           whileHover={{ scale: 1.02 }}
           onClick={onProfilePress || (() => navigate("/profile"))}
@@ -464,7 +425,6 @@ export default function OfferScreen({
             <div style={{ fontSize: "12px", color: GREEN.textSecondary }}>View profile</div>
           </div>
         </motion.div>
-
         <nav style={{ flex: 1 }}>
           {navItems.map((item) => (
             <motion.button
@@ -497,7 +457,6 @@ export default function OfferScreen({
             </motion.button>
           ))}
         </nav>
-
         {onAddPress && (
           <motion.button
             whileHover={{ scale: 1.05 }}
@@ -527,7 +486,6 @@ export default function OfferScreen({
             <FaPlus /> Share a Book
           </motion.button>
         )}
-
         <motion.button
           whileHover={{ x: 4 }}
           onClick={() => setSidebarOpen(false)}
@@ -552,7 +510,6 @@ export default function OfferScreen({
           Settings
         </motion.button>
       </motion.aside>
-
       {/* Main Content */}
       <div style={{
         flex: 1,
@@ -586,7 +543,6 @@ export default function OfferScreen({
               >
                 {sidebarOpen ? <FaTimes size={20} color={GREEN.textPrimary} /> : <FaBars size={20} color={GREEN.textPrimary} />}
               </div>
-
               <button
                 onClick={onBack || (() => navigate(-1))}
                 style={{
@@ -603,7 +559,6 @@ export default function OfferScreen({
               >
                 <FaArrowLeft size={20} color={GREEN.textPrimary} />
               </button>
-
               <h1 style={{
                 fontSize: "20px",
                 fontWeight: "700",
@@ -615,15 +570,14 @@ export default function OfferScreen({
             </div>
           </div>
         </header>
-
         <main style={{
           flex: 1,
           overflowY: "auto",
           padding: "20px",
           position: "relative",
         }}>
-          <div style={{ 
-            maxWidth: "600px", 
+          <div style={{
+            maxWidth: "600px",
             margin: "0 auto",
             transition: "filter 0.3s ease",
             filter: mapExpanded ? "blur(4px)" : "none",
@@ -679,7 +633,6 @@ export default function OfferScreen({
                 {description.length}/500
               </div>
             </motion.div>
-
             {/* Condition */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -732,7 +685,6 @@ export default function OfferScreen({
                 ))}
               </div>
             </motion.div>
-
             {/* Action Type */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -779,7 +731,7 @@ export default function OfferScreen({
                   <FaDollarSign />
                   Sell
                 </motion.button>
-                
+               
                 <motion.button
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
@@ -805,7 +757,6 @@ export default function OfferScreen({
                 </motion.button>
               </div>
             </motion.div>
-
             {/* Price or Trade For */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -884,7 +835,6 @@ export default function OfferScreen({
                 </div>
               )}
             </motion.div>
-
             {/* Image Upload */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -907,7 +857,7 @@ export default function OfferScreen({
               }}>
                 Photo (Optional)
               </label>
-              
+             
               <div style={{
                 display: "flex",
                 flexDirection: "column",
@@ -986,7 +936,7 @@ export default function OfferScreen({
                     </div>
                   </motion.div>
                 )}
-                
+               
                 <input
                   ref={fileInputRef}
                   type="file"
@@ -994,7 +944,7 @@ export default function OfferScreen({
                   onChange={handleImagePick}
                   style={{ display: "none" }}
                 />
-                
+               
                 {image && (
                   <div style={{
                     display: "flex",
@@ -1014,7 +964,6 @@ export default function OfferScreen({
                 )}
               </div>
             </motion.div>
-
             {/* Location Picker */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -1046,7 +995,7 @@ export default function OfferScreen({
                   <FaMapMarkerAlt color={GREEN.accent} />
                   Location *
                 </label>
-                
+               
                 <motion.button
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
@@ -1069,7 +1018,6 @@ export default function OfferScreen({
                   {showLocationPicker ? "Hide Map" : "Set Location"}
                 </motion.button>
               </div>
-
               <div style={{
                 display: "flex",
                 alignItems: "center",
@@ -1088,12 +1036,12 @@ export default function OfferScreen({
                   display: "flex",
                   alignItems: "center",
                 }}>
-                  {currentAddress || (locationSet 
+                  {currentAddress || (locationSet
                     ? `${latitude?.toFixed(6)}, ${longitude?.toFixed(6)}`
                     : "Location not set - tap map or use detect"
                   )}
                 </div>
-                
+               
                 <motion.button
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
@@ -1136,7 +1084,6 @@ export default function OfferScreen({
                   )}
                 </motion.button>
               </div>
-
               <AnimatePresence>
                 {showLocationPicker && (
                   <motion.div
@@ -1183,7 +1130,6 @@ export default function OfferScreen({
                       >
                         {mapExpanded ? <FaCompress /> : <FaExpand />}
                       </motion.button>
-
                       {locationSet && (
                         <motion.button
                           whileHover={{ scale: 1.1 }}
@@ -1208,7 +1154,6 @@ export default function OfferScreen({
                         </motion.button>
                       )}
                     </div>
-
                     <div style={{
                       position: "absolute",
                       bottom: "12px",
@@ -1250,7 +1195,6 @@ export default function OfferScreen({
                         </motion.button>
                       )}
                     </div>
-
                     <div
                       ref={mapRef}
                       style={{
@@ -1263,7 +1207,6 @@ export default function OfferScreen({
                 )}
               </AnimatePresence>
             </motion.div>
-
             {/* Error / Success */}
             <AnimatePresence>
               {error && (
@@ -1285,7 +1228,6 @@ export default function OfferScreen({
                 </motion.div>
               )}
             </AnimatePresence>
-
             <AnimatePresence>
               {success && (
                 <motion.div
@@ -1312,7 +1254,6 @@ export default function OfferScreen({
             </AnimatePresence>
           </div>
         </main>
-
         {/* Submit Button */}
         <div style={{
           padding: "16px 20px",
@@ -1362,7 +1303,6 @@ export default function OfferScreen({
           </motion.button>
         </div>
       </div>
-
       {/* Expanded Map Overlay */}
       <AnimatePresence>
         {mapExpanded && (
@@ -1388,22 +1328,21 @@ export default function OfferScreen({
           />
         )}
       </AnimatePresence>
-
       <style>{`
         @keyframes spin {
           to { transform: rotate(360deg); }
         }
-        
+       
         .custom-offer-marker:hover {
           transform: scale(1.1);
         }
-        
+       
         .leaflet-control-zoom {
           border-radius: 8px !important;
           overflow: hidden !important;
           box-shadow: 0 2px 8px rgba(0,0,0,0.3) !important;
         }
-        
+       
         .leaflet-control-scale {
           background: rgba(26,58,42,0.9) !important;
           border-radius: 4px !important;
@@ -1411,7 +1350,7 @@ export default function OfferScreen({
           font-size: 11px !important;
           color: ${GREEN.textPrimary} !important;
         }
-        
+       
         .leaflet-container {
           font-family: 'Inter', -apple-system, sans-serif !important;
         }
