@@ -55,6 +55,17 @@ const fetchWithTimeout = async (url: string, options: RequestInit = {}, timeout 
   }
 };
 
+function getDistanceFromLatLonInKm(lat1: number, lon1: number, lat2: number, lon2: number) {
+  var R = 6371; 
+  var dLat = deg2rad(lat2-lat1);
+  var dLon = deg2rad(lon2-lon1); 
+  var a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) * Math.sin(dLon/2) * Math.sin(dLon/2); 
+  var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); 
+  return R * c;
+}
+
+function deg2rad(deg: number) { return deg * (Math.PI/180); }
+
 const createMarkerIcon = (() => {
   const iconCache = new Map<string, L.DivIcon>();
   return (type: string, isSelected: boolean = false) => {
@@ -99,9 +110,56 @@ export default function MapScreen({ currentUser }: Props) {
   const [selectedOffer, setSelectedOffer] = useState<Offer | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [, setLoading] = useState(true);
-  const [, setUserLocation] = useState<{lat: number, lng: number} | null>(null);
+  const [userLocation, setUserLocation] = useState<{lat: number, lng: number} | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);
+
+  const fetchProfile = useCallback(async () => {
+     try {
+        const response = await fetch(`${API_BASE}/profile/${currentUser.email}`, {
+           headers: { "Authorization": `Bearer ${currentUser.token}` }
+        });
+        if (response.ok) {
+           const data = await response.json();
+           let loc = null;
+           if (data.latitude && data.longitude) {
+              loc = { lat: parseFloat(data.latitude), lng: parseFloat(data.longitude) };
+           } else if (data.location) {
+              const match = data.location.match(/Lat:\s*(-?\d+(\.\d+)?),\s*Lng:\s*(-?\d+(\.\d+)?)/);
+              if (match) {
+                 loc = { lat: parseFloat(match[1]), lng: parseFloat(match[3]) };
+              }
+           }
+           if (loc) {
+              setUserLocation(loc);
+              if (mapInstance.current) {
+                 mapInstance.current.flyTo([loc.lat, loc.lng], 13);
+              }
+           } else {
+              // If no profile loc, try live geolocation
+              handleAutoDetect();
+           }
+        }
+     } catch (e) {
+        console.error("Failed to fetch profile for location", e);
+        handleAutoDetect();
+     }
+  }, [currentUser, currentUser.token]);
+
+  const handleAutoDetect = useCallback(() => {
+     if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+           (pos) => {
+              const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+              setUserLocation(loc);
+              if (mapInstance.current) {
+                 mapInstance.current.flyTo([loc.lat, loc.lng], 13);
+              }
+           },
+           () => console.log("Geolocation failed")
+        );
+     }
+  }, []);
 
   const fetchOffers = useCallback(async () => {
     if (abortControllerRef.current) abortControllerRef.current.abort();
@@ -136,18 +194,10 @@ export default function MapScreen({ currentUser }: Props) {
   }, [currentUser.token, searchQuery]);
 
   useEffect(() => {
+    fetchProfile();
     fetchOffers();
     return () => abortControllerRef.current?.abort();
-  }, [fetchOffers]);
-
-  useEffect(() => {
-     if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(
-           (pos) => setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-           () => setUserLocation({ lat: 40.7128, lng: -74.006 })
-        );
-     }
-  }, []);
+  }, [fetchProfile, fetchOffers]);
 
   const handleMarkerClick = useCallback((offer: Offer) => {
     setSelectedOffer(offer);
@@ -192,10 +242,17 @@ export default function MapScreen({ currentUser }: Props) {
   };
 
   useEffect(() => {
+    if (mapInstance.current && userLocation) {
+       mapInstance.current.setView([userLocation.lat, userLocation.lng], 13);
+    }
+  }, [userLocation]);
+
+  useEffect(() => {
     if (!mapRef.current) return;
 
     if (!mapInstance.current) {
-      const map = L.map(mapRef.current, { zoomControl: false, attributionControl: false }).setView([40.7128, -74.0060], 13);
+      const initialCenter: L.LatLngExpression = [40.7128, -74.006];
+      const map = L.map(mapRef.current, { zoomControl: false, attributionControl: false }).setView(initialCenter, 13);
       mapInstance.current = map;
       L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', { maxZoom: 19 }).addTo(map);
       L.control.zoom({ position: 'bottomright' }).addTo(map);
@@ -204,15 +261,38 @@ export default function MapScreen({ currentUser }: Props) {
     markersRef.current.forEach(marker => marker.remove());
     markersRef.current = [];
 
-    offers.forEach(offer => {
-       if (!offer.latitude || !offer.longitude) return;
-       const isSelected = selectedOffer?.id === offer.id;
-       const icon = createMarkerIcon(offer.type, isSelected);
-       const marker = L.marker([offer.latitude, offer.longitude], { icon })
-         .addTo(mapInstance.current!)
-         .on('click', () => handleMarkerClick(offer));
-       markersRef.current.push(marker);
-    });
+     offers.forEach(offer => {
+        if (!offer.latitude || !offer.longitude) return;
+        const isSelected = selectedOffer?.id === offer.id;
+        const icon = createMarkerIcon(offer.type, isSelected);
+
+        let distanceText = "Nearby";
+        if (userLocation && offer.latitude && offer.longitude) {
+           const d = getDistanceFromLatLonInKm(userLocation.lat, userLocation.lng, offer.latitude, offer.longitude);
+           distanceText = `${d.toFixed(1)} km`;
+        }
+
+        const marker = L.marker([offer.latitude, offer.longitude], { icon })
+          .addTo(mapInstance.current!)
+          .on('click', () => handleMarkerClick(offer));
+        
+        marker.bindTooltip(`
+           <div style="padding: 4px; min-width: 120px; text-align: center;">
+              <div style="font-weight: bold; font-family: serif; color: #382110; border-bottom: 1px solid #eee; padding-bottom: 4px; margin-bottom: 4px; font-size: 13px;">
+                 ${offer.bookTitle}
+              </div>
+              <div style="font-size: 11px; color: #b85c38; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 4px;">
+                 <span style="opacity: 0.8">📍</span> ${distanceText}
+              </div>
+           </div>
+        `, { 
+           direction: 'top', 
+           offset: [0, -15],
+           className: 'premium-map-tooltip'
+        });
+
+        markersRef.current.push(marker);
+     });
   }, [offers, selectedOffer, handleMarkerClick]);
 
   const navItems = [
@@ -262,9 +342,16 @@ export default function MapScreen({ currentUser }: Props) {
                <input 
                  value={searchQuery}
                  onChange={e => setSearchQuery(e.target.value)}
-                 className="w-full bg-white/90 backdrop-blur-md rounded-xl py-3 pl-12 pr-4 shadow-xl text-primary outline-none focus:ring-2 ring-secondary"
+                 className="w-full bg-white/90 backdrop-blur-md rounded-xl py-3 pl-12 pr-12 shadow-xl text-primary outline-none focus:ring-2 ring-secondary"
                  placeholder="Search books on map..."
                />
+               <button 
+                  onClick={handleAutoDetect}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-[#382110] hover:text-[#b85c38] transition-colors p-1"
+                  title="Auto Detect Location"
+               >
+                  <FaCompass size={20} />
+               </button>
             </div>
          </div>
 

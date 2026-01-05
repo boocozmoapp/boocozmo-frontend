@@ -118,20 +118,31 @@ export default function WelcomeScreen() {
                 initial={{ opacity: 0, y: 30 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.8 }}
-                className="relative bg-gradient-to-br from-[#2a1810] via-[#382110] to-[#4a2d1a] rounded-3xl p-8 md:p-12 overflow-hidden shadow-2xl border border-white/10"
+                className="relative bg-[#fdfaf5] rounded-[40px] p-8 md:p-16 overflow-hidden shadow-xl border border-[#eaddcf]"
              >
-                {/* Enhanced Decorative Elements */}
-                <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-br from-[#b85c38]/20 to-transparent rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 animate-pulse" />
-                <div className="absolute bottom-0 left-0 w-72 h-72 bg-gradient-to-tr from-[#d4a574]/10 to-transparent rounded-full blur-3xl translate-y-1/2 -translate-x-1/2" />
-                <div className="absolute top-1/2 left-1/2 w-64 h-64 bg-[#b85c38]/5 rounded-full blur-2xl -translate-x-1/2 -translate-y-1/2" />
+                {/* Creative Light Decorative Elements */}
+                <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-[#f4a261]/10 rounded-full blur-[100px] -translate-y-1/2 translate-x-1/2" />
+                <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-[#e76f51]/5 rounded-full blur-[80px] translate-y-1/2 -translate-x-1/2" />
+                <div className="absolute top-1/2 left-1/2 w-96 h-96 bg-[#382110]/5 rounded-full blur-[120px] -translate-x-1/2 -translate-y-1/2" />
                 
+                {/* Floating Book Icons for Creativity */}
+                <div className="absolute top-10 left-10 opacity-[0.03] rotate-12 -z-0"><FaBook size={120} /></div>
+                <div className="absolute bottom-10 right-10 opacity-[0.03] -rotate-12 -z-0"><FaGlobe size={150} /></div>
+
                 <div className="relative z-10">
-                   <div className="text-center mb-12">
+                   <div className="text-center mb-16">
+                      <motion.div
+                         initial={{ opacity: 0, scale: 0.8 }}
+                         whileInView={{ opacity: 1, scale: 1 }}
+                         className="inline-block px-4 py-1 bg-[#b85c38]/10 text-[#b85c38] rounded-full text-xs font-bold tracking-widest uppercase mb-4"
+                      >
+                         Simple Process
+                      </motion.div>
                       <motion.h3 
                          initial={{ opacity: 0, y: -20 }}
                          whileInView={{ opacity: 1, y: 0 }}
                          transition={{ delay: 0.2, duration: 0.6 }}
-                         className="text-4xl md:text-6xl font-serif font-bold mb-4 bg-gradient-to-r from-[#f4a261] via-[#e76f51] to-[#e9c46a] bg-clip-text text-transparent"
+                         className="text-4xl md:text-7xl font-serif font-bold mb-6 bg-gradient-to-r from-[#382110] via-[#b85c38] to-[#382110] bg-clip-text text-transparent"
                       >
                          How Boocozmo Works
                       </motion.h3>
@@ -139,14 +150,14 @@ export default function WelcomeScreen() {
                          initial={{ opacity: 0 }}
                          whileInView={{ opacity: 1 }}
                          transition={{ delay: 0.4, duration: 0.6 }}
-                         className="text-white/90 text-sm md:text-lg max-w-2xl mx-auto leading-relaxed"
+                         className="text-[#5c4033] text-base md:text-xl max-w-2xl mx-auto leading-relaxed font-light"
                       >
-                         Circulate knowledge through your community in <span className="text-[#f4a261] font-bold">physical form</span>. 
+                         Circulate knowledge through your community in <span className="text-[#b85c38] font-bold">physical form</span>. 
                          Every book has a story, and every exchange builds connections.
                       </motion.p>
                    </div>
 
-                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8">
+                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 md:gap-10">
                       {/* Step 1 */}
                       <motion.div 
                          initial={{ opacity: 0, y: 50 }}
@@ -155,17 +166,17 @@ export default function WelcomeScreen() {
                          className="group relative"
                       >
                          <motion.div 
-                            whileHover={{ scale: 1.05, rotate: 5 }}
-                            className="absolute -top-3 -left-3 w-14 h-14 bg-gradient-to-br from-[#f4a261] to-[#e76f51] rounded-full flex items-center justify-center text-white font-bold text-xl shadow-2xl"
+                            whileHover={{ scale: 1.1, rotate: -5 }}
+                            className="absolute -top-4 -left-4 w-16 h-16 bg-white border-4 border-[#fdfaf5] rounded-2xl flex items-center justify-center text-[#f4a261] font-bold text-2xl shadow-lg z-20"
                          >
-                            1
+                            01
                          </motion.div>
-                         <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-6 h-full hover:bg-white/20 hover:border-[#f4a261]/50 hover:shadow-2xl hover:shadow-[#f4a261]/20 transition-all duration-300 group-hover:scale-105">
-                            <div className="w-16 h-16 bg-gradient-to-br from-[#f4a261]/30 to-[#e76f51]/20 rounded-2xl flex items-center justify-center mb-4 mx-auto group-hover:rotate-12 transition-transform duration-300">
-                               <FaBook className="text-3xl text-[#f4a261]" />
+                         <div className="bg-white rounded-[32px] p-8 h-full shadow-sm border border-[#eaddcf] hover:border-[#f4a261] hover:shadow-2xl hover:shadow-[#f4a261]/10 transition-all duration-500 group-hover:-translate-y-2">
+                            <div className="w-16 h-16 bg-[#f4a261]/10 rounded-2xl flex items-center justify-center mb-6 text-[#f4a261] group-hover:scale-110 group-hover:bg-[#f4a261] group-hover:text-white transition-all duration-500">
+                               <FaBook className="text-3xl" />
                             </div>
-                            <h4 className="text-white font-bold text-lg mb-3 text-center">Create Your Library</h4>
-                            <p className="text-white/80 text-sm text-center leading-relaxed">
+                            <h4 className="text-[#382110] font-bold text-xl mb-4">Create Your Library</h4>
+                            <p className="text-[#5c4033]/80 text-sm leading-relaxed">
                                Transfer your physical collection into the app. Create libraries, add books—they stay <span className="text-[#f4a261] font-semibold">private</span> until you decide otherwise.
                             </p>
                          </div>
@@ -179,17 +190,17 @@ export default function WelcomeScreen() {
                          className="group relative"
                       >
                          <motion.div 
-                            whileHover={{ scale: 1.05, rotate: 5 }}
-                            className="absolute -top-3 -left-3 w-14 h-14 bg-gradient-to-br from-[#e76f51] to-[#d62828] rounded-full flex items-center justify-center text-white font-bold text-xl shadow-2xl"
+                            whileHover={{ scale: 1.1, rotate: -5 }}
+                            className="absolute -top-4 -left-4 w-16 h-16 bg-white border-4 border-[#fdfaf5] rounded-2xl flex items-center justify-center text-[#e76f51] font-bold text-2xl shadow-lg z-20"
                          >
-                            2
+                            02
                          </motion.div>
-                         <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-6 h-full hover:bg-white/20 hover:border-[#e76f51]/50 hover:shadow-2xl hover:shadow-[#e76f51]/20 transition-all duration-300 group-hover:scale-105">
-                            <div className="w-16 h-16 bg-gradient-to-br from-[#e76f51]/30 to-[#d62828]/20 rounded-2xl flex items-center justify-center mb-4 mx-auto group-hover:rotate-12 transition-transform duration-300">
-                               <FaGlobe className="text-3xl text-[#e76f51]" />
+                         <div className="bg-white rounded-[32px] p-8 h-full shadow-sm border border-[#eaddcf] hover:border-[#e76f51] hover:shadow-2xl hover:shadow-[#e76f51]/10 transition-all duration-500 group-hover:-translate-y-2">
+                            <div className="w-16 h-16 bg-[#e76f51]/10 rounded-2xl flex items-center justify-center mb-6 text-[#e76f51] group-hover:scale-110 group-hover:bg-[#e76f51] group-hover:text-white transition-all duration-500">
+                               <FaGlobe className="text-3xl" />
                             </div>
-                            <h4 className="text-white font-bold text-lg mb-3 text-center">Publish as Offers</h4>
-                            <p className="text-white/80 text-sm text-center leading-relaxed">
+                            <h4 className="text-[#382110] font-bold text-xl mb-4">Publish as Offers</h4>
+                            <p className="text-[#5c4033]/80 text-sm leading-relaxed">
                                Ready to sell or exchange? Publish any book as an offer. Set your price or what you'd trade for—visible to your <span className="text-[#e76f51] font-semibold">neighborhood</span>.
                             </p>
                          </div>
@@ -203,17 +214,17 @@ export default function WelcomeScreen() {
                          className="group relative"
                       >
                          <motion.div 
-                            whileHover={{ scale: 1.05, rotate: 5 }}
-                            className="absolute -top-3 -left-3 w-14 h-14 bg-gradient-to-br from-[#e9c46a] to-[#f4a261] rounded-full flex items-center justify-center text-white font-bold text-xl shadow-2xl"
+                            whileHover={{ scale: 1.1, rotate: -5 }}
+                            className="absolute -top-4 -left-4 w-16 h-16 bg-white border-4 border-[#fdfaf5] rounded-2xl flex items-center justify-center text-[#e9c46a] font-bold text-2xl shadow-lg z-20"
                          >
-                            3
+                            03
                          </motion.div>
-                         <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-6 h-full hover:bg-white/20 hover:border-[#e9c46a]/50 hover:shadow-2xl hover:shadow-[#e9c46a]/20 transition-all duration-300 group-hover:scale-105">
-                            <div className="w-16 h-16 bg-gradient-to-br from-[#e9c46a]/30 to-[#f4a261]/20 rounded-2xl flex items-center justify-center mb-4 mx-auto group-hover:rotate-12 transition-transform duration-300">
-                               <FaComments className="text-3xl text-[#e9c46a]" />
+                         <div className="bg-white rounded-[32px] p-8 h-full shadow-sm border border-[#eaddcf] hover:border-[#e9c46a] hover:shadow-2xl hover:shadow-[#e9c46a]/10 transition-all duration-500 group-hover:-translate-y-2">
+                            <div className="w-16 h-16 bg-[#e9c46a]/10 rounded-2xl flex items-center justify-center mb-6 text-[#e9c46a] group-hover:scale-110 group-hover:bg-[#e9c46a] group-hover:text-white transition-all duration-500">
+                               <FaComments className="text-3xl" />
                             </div>
-                            <h4 className="text-white font-bold text-lg mb-3 text-center">Community Discovers</h4>
-                            <p className="text-white/80 text-sm text-center leading-relaxed">
+                            <h4 className="text-[#382110] font-bold text-xl mb-4">Community Discovers</h4>
+                            <p className="text-[#5c4033]/80 text-sm leading-relaxed">
                                Neighbors browse offers, find hidden gems, and <span className="text-[#e9c46a] font-semibold">contact you</span> directly through the app to arrange the exchange.
                             </p>
                          </div>
@@ -227,17 +238,17 @@ export default function WelcomeScreen() {
                          className="group relative"
                       >
                          <motion.div 
-                            whileHover={{ scale: 1.05, rotate: 5 }}
-                            className="absolute -top-3 -left-3 w-14 h-14 bg-gradient-to-br from-[#2a9d8f] to-[#264653] rounded-full flex items-center justify-center text-white font-bold text-xl shadow-2xl"
+                            whileHover={{ scale: 1.1, rotate: -5 }}
+                            className="absolute -top-4 -left-4 w-16 h-16 bg-white border-4 border-[#fdfaf5] rounded-2xl flex items-center justify-center text-[#2a9d8f] font-bold text-2xl shadow-lg z-20"
                          >
-                            4
+                            04
                          </motion.div>
-                         <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-6 h-full hover:bg-white/20 hover:border-[#2a9d8f]/50 hover:shadow-2xl hover:shadow-[#2a9d8f]/20 transition-all duration-300 group-hover:scale-105">
-                            <div className="w-16 h-16 bg-gradient-to-br from-[#2a9d8f]/30 to-[#264653]/20 rounded-2xl flex items-center justify-center mb-4 mx-auto group-hover:rotate-12 transition-transform duration-300">
-                               <FaMapMarkedAlt className="text-3xl text-[#2a9d8f]" />
+                         <div className="bg-white rounded-[32px] p-8 h-full shadow-sm border border-[#eaddcf] hover:border-[#2a9d8f] hover:shadow-2xl hover:shadow-[#2a9d8f]/10 transition-all duration-500 group-hover:-translate-y-2">
+                            <div className="w-16 h-16 bg-[#2a9d8f]/10 rounded-2xl flex items-center justify-center mb-6 text-[#2a9d8f] group-hover:scale-110 group-hover:bg-[#2a9d8f] group-hover:text-white transition-all duration-500">
+                               <FaMapMarkedAlt className="text-3xl" />
                             </div>
-                            <h4 className="text-white font-bold text-lg mb-3 text-center">Physical Exchange</h4>
-                            <p className="text-white/80 text-sm text-center leading-relaxed">
+                            <h4 className="text-[#382110] font-bold text-xl mb-4">Physical Exchange</h4>
+                            <p className="text-[#5c4033]/80 text-sm leading-relaxed">
                                Meet locally, exchange books in person. Real connections, real books, real <span className="text-[#2a9d8f] font-semibold">community</span>—knowledge circulates physically.
                             </p>
                          </div>
@@ -249,11 +260,12 @@ export default function WelcomeScreen() {
                       initial={{ opacity: 0, scale: 0.9 }}
                       whileInView={{ opacity: 1, scale: 1 }}
                       transition={{ delay: 0.6, duration: 0.5 }}
-                      className="mt-12 text-center"
+                      className="mt-16 text-center"
                    >
-                      <div className="inline-block bg-gradient-to-r from-white/10 to-white/5 backdrop-blur-md border border-white/30 rounded-full px-8 py-4 hover:border-[#f4a261]/50 hover:shadow-lg hover:shadow-[#f4a261]/20 transition-all duration-300">
-                         <p className="text-white text-sm md:text-base font-medium">
-                            💡 <span className="font-bold text-[#f4a261]">No library yet?</span> Simply browse neighborhood offers and start collecting!
+                      <div className="inline-block bg-[#382110] rounded-full px-10 py-5 hover:scale-105 transition-all duration-300 shadow-xl group">
+                         <p className="text-white text-sm md:text-lg font-bold flex items-center gap-3">
+                            <span className="group-hover:rotate-12 transition-transform">💡</span> 
+                            <span>No library yet? <span className="text-[#f4a261]">Start browsing neighborhood offers!</span></span>
                          </p>
                       </div>
                    </motion.div>

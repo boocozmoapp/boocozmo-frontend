@@ -116,37 +116,60 @@ export default function HomeScreen({ currentUser }: Props) {
      }
   }, [currentUser]);
 
-  const fetchOffers = useCallback(async () => {
-    try {
-      const response = await fetch(`${API_BASE}/offers?limit=100`, {
-        headers: { "Authorization": `Bearer ${currentUser.token}` }
-      });
-      const data = await response.json();
-      const raw = Array.isArray(data) ? data : (data.offers || []);
-      
-      const processed: Offer[] = raw.map((o: any) => ({
-        id: o.id,
-        bookTitle: o.bookTitle || "Untitled Book",
-        author: o.author || "Unknown Author",
-        type: o.type || "sell",
-        imageUrl: o.imageUrl,
-        description: o.description,
-        price: o.price,
-        condition: o.condition,
-        ownerName: o.ownerName,
-        ownerEmail: o.ownerEmail,
-        publishedAt: o.publishedAt,
-        distance: "Unknown",
-        latitude: o.latitude,
-        longitude: o.longitude
-      }));
-      setOffers(processed);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  }, [currentUser.token]);
+   const fetchOffers = useCallback(async () => {
+     try {
+       const response = await fetch(`${API_BASE}/offers?limit=100`, {
+         headers: { "Authorization": `Bearer ${currentUser.token}` }
+       });
+       const data = await response.json();
+       const raw = Array.isArray(data) ? data : (data.offers || []);
+       
+       // Get unique owner emails to fetch profiles for
+       const uniqueEmails = [...new Set(raw.map((o: any) => o.ownerEmail).filter(Boolean))];
+       const profileCache: Record<string, { name: string; photo?: string }> = {};
+
+       // Fetch profiles in batches
+       await Promise.all(
+          uniqueEmails.map(async (email) => {
+             try {
+                const pResp = await fetch(`${API_BASE}/profile/${email}`, {
+                   headers: { "Authorization": `Bearer ${currentUser.token}` }
+                });
+                if (pResp.ok) {
+                   const pData = await pResp.json();
+                   profileCache[email as string] = { 
+                      name: pData.name || "Unknown", 
+                      photo: pData.profilePhotoURL || pData.photo || pData.profileImageUrl 
+                   };
+                }
+             } catch (err) { console.error("Profile fetch error", err); }
+          })
+       );
+
+       const processed: Offer[] = raw.map((o: any) => ({
+         id: o.id,
+         bookTitle: o.bookTitle || "Untitled Book",
+         author: o.author || "Unknown Author",
+         type: o.type || "sell",
+         imageUrl: o.imageUrl,
+         description: o.description,
+         price: o.price,
+         condition: o.condition,
+         ownerName: profileCache[o.ownerEmail]?.name || o.ownerName || "Unknown",
+         ownerEmail: o.ownerEmail,
+         ownerPhoto: profileCache[o.ownerEmail]?.photo,
+         publishedAt: o.publishedAt,
+         distance: "Unknown",
+         latitude: o.latitude,
+         longitude: o.longitude
+       }));
+       setOffers(processed);
+     } catch (err) {
+       console.error(err);
+     } finally {
+       setLoading(false);
+     }
+   }, [currentUser.token]);
 
   useEffect(() => {
     fetchProfile(); // Fetch user location first
@@ -295,13 +318,19 @@ export default function HomeScreen({ currentUser }: Props) {
                       <p className="text-lg text-[#555]">by <span className="font-bold underline decoration-[#382110]">{selectedOffer.author}</span></p>
                    </div>
 
-                   <div className="flex gap-4 mb-6 text-sm text-[#555] border-y border-[#eee] py-4">
-                      <div className="flex items-center gap-2">
-                         <div className="w-8 h-8 bg-[#382110] text-white rounded-full flex items-center justify-center font-bold text-xs">
-                            {selectedOffer.ownerName?.charAt(0) || "U"}
-                         </div>
-                         <span className="font-bold">{selectedOffer.ownerName || "User"}</span>
-                      </div>
+                    <div className="flex gap-4 mb-6 text-sm text-[#555] border-y border-[#eee] py-4">
+                       <div className="flex items-center gap-2">
+                          <div className="w-10 h-10 rounded-full overflow-hidden bg-[#382110]/10 border border-[#eee] flex-shrink-0">
+                             {selectedOffer.ownerPhoto ? (
+                                <img src={selectedOffer.ownerPhoto} className="w-full h-full object-cover" alt={selectedOffer.ownerName} />
+                             ) : (
+                                <div className="w-full h-full flex items-center justify-center bg-[#382110] text-white font-bold text-sm">
+                                   {selectedOffer.ownerName?.charAt(0) || "U"}
+                                </div>
+                             )}
+                          </div>
+                          <span className="font-bold text-[#382110] text-base">{selectedOffer.ownerName || "Community Member"}</span>
+                       </div>
                       <div className="border-l border-[#eee] pl-4 flex items-center gap-2">
                          <FaMapMarkerAlt className="text-[#999]" />
                          {selectedOffer.distance || "Nearby"}
@@ -426,6 +455,20 @@ export default function HomeScreen({ currentUser }: Props) {
                             </div>
                          </div>
                          <h3 className="font-serif font-bold text-[#382110] text-xs leading-tight truncate">{offer.bookTitle}</h3>
+                         <div className="flex items-center gap-1.5 opacity-80">
+                            <div className="w-4 h-4 rounded-full overflow-hidden bg-[#382110]/10 flex-shrink-0">
+                               {offer.ownerPhoto ? (
+                                  <img src={offer.ownerPhoto} className="w-full h-full object-cover" />
+                               ) : (
+                                  <div className="w-full h-full flex items-center justify-center text-[7px] font-bold text-[#382110]">
+                                     {offer.ownerName?.charAt(0).toUpperCase() || "U"}
+                                  </div>
+                               )}
+                            </div>
+                            <span className="text-[9px] font-bold text-[#382110] truncate">
+                               {offer.ownerName?.split(' ')[0] || "User"}
+                            </span>
+                         </div>
                       </div>
                    )) : <div className="text-sm text-[#777] italic">No books in your immediate radius yet.</div>}
                 </div>
@@ -465,6 +508,23 @@ export default function HomeScreen({ currentUser }: Props) {
                             {offer.bookTitle}
                          </h3>
                          <div className="text-xs text-[#555] mb-2 truncate">by {offer.author}</div>
+                         
+                         {/* Owner Info Section */}
+                         <div className="flex items-center gap-2 mb-3 pt-2 border-t border-[#f4f1ea]">
+                            <div className="w-6 h-6 rounded-full overflow-hidden bg-[#382110]/10 border border-[#eee] flex-shrink-0">
+                               {offer.ownerPhoto ? (
+                                  <img src={offer.ownerPhoto} className="w-full h-full object-cover" alt={offer.ownerName} />
+                               ) : (
+                                  <div className="w-full h-full flex items-center justify-center text-[10px] font-bold text-[#382110]">
+                                     {offer.ownerName?.charAt(0).toUpperCase() || "U"}
+                                  </div>
+                               )}
+                            </div>
+                            <span className="text-[10px] font-bold text-[#382110] truncate opacity-70">
+                               {offer.ownerName || "Community Member"}
+                            </span>
+                         </div>
+
                          <button 
                            onClick={() => setSelectedOffer(offer)}
                            className="w-full bg-[#f4f1ea] hover:bg-[#e9e6dd] text-[#382110] text-xs font-bold py-1.5 border border-[#d8d8d8] rounded-[2px]"
