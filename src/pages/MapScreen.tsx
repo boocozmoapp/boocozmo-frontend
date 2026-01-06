@@ -1,12 +1,12 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // src/pages/MapScreen.tsx - PREMIUM THEME WITH MODAL
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   FaTimes, FaSearch, FaMapMarkerAlt, FaHeart, FaHome, FaBookOpen, FaCompass, 
-  FaUsers, FaBars, FaMapMarkedAlt, FaComments, FaBookmark
+  FaUsers, FaBars, FaMapMarkedAlt, FaComments, FaBookmark, FaLocationArrow
 } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 
@@ -25,6 +25,7 @@ type Offer = {
   latitude: number | null;
   longitude: number | null;
   ownerName?: string;
+  ownerPhoto?: string;
   distance?: string | null;
   description?: string;
   genre?: string;
@@ -179,13 +180,41 @@ export default function MapScreen({ currentUser }: Props) {
       const data = await response.json();
       const rawOffers = Array.isArray(data) ? data : (data.offers || data.data || []);
       
+      // Get unique owner emails to fetch profiles for
+      const uniqueEmails = [...new Set(rawOffers.map((o: any) => o.ownerEmail).filter(Boolean))];
+      const profileCache: Record<string, { name: string; photo?: string }> = {};
+
+      // Fetch profiles in batches
+      await Promise.all(
+         uniqueEmails.map(async (email) => {
+            try {
+               const pResp = await fetch(`${API_BASE}/profile/${email}`, {
+                  headers: { "Authorization": `Bearer ${currentUser.token}` }
+               });
+               if (pResp.ok) {
+                  const pData = await pResp.json();
+                  profileCache[email as string] = { 
+                     name: pData.name || "Unknown", 
+                     photo: pData.profilePhotoURL || pData.photo || pData.profileImageUrl 
+                  };
+               }
+            } catch (err) { console.error("Profile fetch error", err); }
+         })
+      );
+
       const processed = rawOffers
         .filter((o: any) => o.visibility === "public" && o.state === "open" && o.latitude && o.longitude)
         .map((o: any) => ({
           ...o,
-          id: o.id, type: o.type, bookTitle: o.bookTitle, price: o.price, 
-          latitude: parseFloat(o.latitude), longitude: parseFloat(o.longitude),
+          id: o.id, 
+          type: o.type, 
+          bookTitle: o.bookTitle, 
+          price: o.price, 
+          latitude: parseFloat(o.latitude), 
+          longitude: parseFloat(o.longitude),
           imageUrl: o.imageUrl || null,
+          ownerName: profileCache[o.ownerEmail]?.name || o.ownerName || "Unknown",
+          ownerPhoto: profileCache[o.ownerEmail]?.photo,
           distance: "Nearby"
         }));
       setOffers(processed);
@@ -304,6 +333,20 @@ export default function MapScreen({ currentUser }: Props) {
     { icon: FaUsers, label: "Following", onClick: () => {} },
     { icon: FaComments, label: "Messages", onClick: () => navigate("/chat") },
   ];
+
+  const nearestOffers = useMemo(() => {
+     if (!userLocation) return [];
+     return [...offers]
+        .map(o => {
+           if (o.latitude && o.longitude) {
+              const d = getDistanceFromLatLonInKm(userLocation.lat, userLocation.lng, o.latitude, o.longitude);
+              return { ...o, distanceNum: d, distance: `${d.toFixed(1)} km` };
+           }
+           return { ...o, distanceNum: 9999, distance: "Nearby" };
+        })
+        .sort((a, b) => a.distanceNum - b.distanceNum)
+        .slice(0, 10);
+  }, [offers, userLocation]);
   
   return (
     <div className="h-screen w-full bg-primary flex overflow-hidden font-sans">
@@ -357,6 +400,52 @@ export default function MapScreen({ currentUser }: Props) {
 
          <div ref={mapRef} className="w-full h-full z-0" />
 
+         {/* Nearest Books Slider Overlay - Professional & Minimal */}
+         {userLocation && nearestOffers.length > 0 && (
+            <div className="absolute bottom-6 left-4 right-4 z-[900] pointer-events-none">
+               <div className="max-w-4xl mx-auto">
+                  <div className="flex items-center gap-2 mb-2 ml-1">
+                     <div className="bg-[#d37e2f] w-1.5 h-1.5 rounded-full animate-pulse" />
+                     <span className="text-[10px] font-bold uppercase tracking-wider text-[#382110] bg-white/80 backdrop-blur-sm px-2 py-0.5 rounded-full shadow-sm">Nearest Books</span>
+                  </div>
+                  <div className="flex gap-3 overflow-x-auto pb-2 px-1 scrollbar-hide pointer-events-auto">
+                     {nearestOffers.map(offer => (
+                        <motion.div 
+                           key={`near-${offer.id}`}
+                           whileHover={{ y: -5 }}
+                           onClick={() => handleMarkerClick(offer)}
+                           className="flex-shrink-0 w-[110px] bg-white rounded-xl shadow-lg border border-[#eee] overflow-hidden cursor-pointer group"
+                        >
+                           <div className="h-[120px] relative">
+                              <img src={offer.imageUrl || "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=200&q=80"} className="w-full h-full object-cover transition-transform group-hover:scale-110" />
+                              <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-1.5">
+                                 <p className="text-[8px] font-bold text-white flex items-center gap-1">
+                                    <FaLocationArrow size={6} /> {offer.distance}
+                                 </p>
+                              </div>
+                           </div>
+                           <div className="p-2 bg-white">
+                              <h4 className="text-[9px] font-bold text-[#382110] truncate mb-1">{offer.bookTitle}</h4>
+                              <div className="flex items-center gap-1 opacity-80">
+                                 <div className="w-3.5 h-3.5 rounded-full overflow-hidden bg-[#382110]/10 flex-shrink-0">
+                                    {offer.ownerPhoto ? (
+                                       <img src={offer.ownerPhoto} className="w-full h-full object-cover" />
+                                    ) : (
+                                       <div className="w-full h-full flex items-center justify-center text-[6px] font-bold text-[#382110]">
+                                          {offer.ownerName?.charAt(0)}
+                                       </div>
+                                    )}
+                                 </div>
+                                 <span className="text-[7px] font-bold text-[#555] truncate">{offer.ownerName?.split(' ')[0]}</span>
+                              </div>
+                           </div>
+                        </motion.div>
+                     ))}
+                  </div>
+               </div>
+            </div>
+         )}
+
          {/* Full Screen/Large Modal for Offer Details (HomeScreen Style) */}
          <AnimatePresence>
            {selectedOffer && (
@@ -398,8 +487,16 @@ export default function MapScreen({ currentUser }: Props) {
 
                      <div className="flex gap-4 mb-6 text-sm text-[#555] border-y border-[#eee] py-4">
                         <div className="flex items-center gap-2">
-                           <div className="w-8 h-8 bg-[#382110] text-white rounded-full flex items-center justify-center font-bold text-xs">U</div>
-                           <span className="font-bold">{selectedOffer.ownerName || "User"}</span>
+                           <div className="w-10 h-10 rounded-full overflow-hidden bg-[#382110]/10 border border-[#eee] flex-shrink-0">
+                              {selectedOffer.ownerPhoto ? (
+                                 <img src={selectedOffer.ownerPhoto} className="w-full h-full object-cover" alt={selectedOffer.ownerName} />
+                              ) : (
+                                 <div className="w-full h-full flex items-center justify-center bg-[#382110] text-white font-bold text-sm">
+                                    {selectedOffer.ownerName?.charAt(0) || "U"}
+                                 </div>
+                              )}
+                           </div>
+                           <span className="font-bold text-[#382110] text-base">{selectedOffer.ownerName || "Community Member"}</span>
                         </div>
                         <div className="border-l border-[#eee] pl-4 flex items-center gap-2">
                            <FaMapMarkerAlt className="text-[#999]" />

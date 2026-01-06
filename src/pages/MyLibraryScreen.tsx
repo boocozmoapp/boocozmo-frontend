@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   FaBook, FaPlus, FaFolder, FaTrash, FaSearch, FaArrowLeft, 
   FaGlobe, FaImage, FaMapMarkerAlt, FaHome, FaMapMarkedAlt, 
-  FaComments, FaBookmark, FaTimes, FaBars, FaEye, FaEyeSlash
+  FaBookOpen, FaComments, FaBookmark, FaTimes, FaBars, FaEye, FaEyeSlash
 } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import { MapContainer, TileLayer, Marker, useMapEvents } from "react-leaflet";
@@ -313,124 +313,137 @@ export default function MyLibraryScreen({
   return (
     <div className="h-screen w-full bg-primary text-text-main flex flex-col overflow-hidden font-sans">
       {/* Header */}
-      <header className="h-20 px-6 flex items-center justify-between border-b border-white/5 bg-primary/80 backdrop-blur-md sticky top-0 z-30">
+      <header className="h-20 px-6 flex items-center justify-between border-b border-[#eee] bg-[#f4f1ea] sticky top-0 z-30">
         <div className="flex items-center gap-4">
-           <button onClick={() => navigate("/")} className="p-2 text-white hover:text-secondary transition-colors">
-              <FaArrowLeft size={20} />
+           <button onClick={() => navigate("/home")} className="p-2 text-[#382110] hover:bg-white/50 rounded-full transition-colors">
+              <FaArrowLeft size={18} />
            </button>
-           <h1 className="text-2xl font-serif font-bold text-white">My Library</h1>
+           <h1 className="text-2xl font-serif font-bold text-[#382110]">My Library</h1>
         </div>
         <button 
            onClick={() => setShowCreateStoreModal(true)}
-           className="px-4 py-2 bg-secondary text-white rounded-xl shadow-lg hover:bg-secondary-hover transition-all flex items-center gap-2 font-medium"
+           className="px-5 py-2.5 bg-[#00635d] text-white rounded-[4px] shadow-sm hover:bg-[#004d48] transition-all flex items-center gap-2 font-bold text-sm"
         >
-           <FaPlus /> New Library
+           <FaPlus /> New Collection
         </button>
       </header>
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-         {/* Artistic Guide Poster (Responsive) */}
-         <div className="p-6 pb-2">
-            <div className="w-full bg-gradient-to-r from-[#382110] to-[#5a3a20] rounded-2xl p-6 relative overflow-hidden shadow-lg flex flex-col md:flex-row items-center justify-between gap-6">
-                <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none" />
-                <div className="z-10 text-center md:text-left">
-                   <h2 className="text-2xl font-serif font-bold text-white mb-2">Build Your Community Library</h2>
-                   <p className="text-white/80 text-sm max-w-lg leading-relaxed">
-                      Transform your personal collection into a public treasure. Publish books to the marketplace to sell or exchange with neighbors. 
-                      Every book you share strengthens the Boocozmo network.
-                   </p>
+      <div className="flex-1 flex flex-col overflow-hidden bg-[#fdfaf5]">
+         {/* Aesthetic Instructional Poster */}
+         <div className="p-4 pb-2">
+            <div className="w-full bg-white border border-[#e8e0d5] rounded-lg p-5 relative overflow-hidden shadow-sm flex flex-col md:flex-row items-center gap-5">
+                {/* Decorative Painting-style background element */}
+                <div className="absolute top-0 right-0 w-1/4 h-full opacity-10 pointer-events-none grayscale">
+                   <img src="https://images.unsplash.com/photo-1512820790803-83ca734da794?w=800&q=80" className="w-full h-full object-cover" />
                 </div>
-                <div className="z-10 flex-shrink-0">
-                    <button onClick={() => setShowAddBookModal(true)} className="px-6 py-3 bg-white text-[#382110] rounded-xl font-bold shadow-md hover:bg-gray-100 transition-colors flex items-center gap-2">
-                       <FaPlus /> Add a Book
-                    </button>
+                
+                <div className="w-16 h-16 md:w-20 md:h-20 bg-[#f4f1ea] rounded-full flex-shrink-0 flex items-center justify-center text-[#382110] shadow-inner border border-[#e8e0d5]">
+                   <FaBook size={24} className="opacity-40" />
+                </div>
+
+                <div className="z-10 text-center md:text-left flex-1">
+                   <h2 className="text-xl font-serif font-bold text-[#382110] mb-1">Digitize Your Physical Bookshelf</h2>
+                   <div className="text-[#5c4a3c] text-xs leading-snug max-w-2xl space-y-1">
+                      <p>Catalog your collection, mimic your shelves, and set any book to <strong>Public</strong> to share with the Boocozmo network.</p>
+                      <p className="italic opacity-60">Select or create a shelf below to start.</p>
+                   </div>
                 </div>
             </div>
          </div>
 
          {/* Libraries List */}
-         <div className="p-6 bg-primary-light/10 border-b border-white/5">
+         <div className="p-6 bg-white border-b border-[#eee]">
             <div className="flex overflow-x-auto gap-4 pb-2 custom-scrollbar">
-               {loading ? <div className="text-text-muted">Loading libraries...</div> : 
+               {loading ? <div className="text-[#999]">Loading libraries...</div> : 
                   stores.map(store => (
                      <motion.div
                        key={store.id}
                        onClick={() => setSelectedStore(store)}
-                       className={`min-w-[200px] p-4 rounded-2xl cursor-pointer border transition-all
+                       className={`min-w-[200px] p-4 rounded-xl cursor-pointer border transition-all
                           ${selectedStore?.id === store.id 
-                             ? 'bg-secondary/20 border-secondary' 
-                             : 'bg-primary-light/30 border-white/5 hover:border-white/20'}`}
+                             ? 'bg-[#f4f1ea] border-[#382110]/30 shadow-sm' 
+                             : 'bg-white border-[#eee] hover:border-[#382110]/20'}`}
                        whileHover={{ y: -2 }}
                      >
-                        <div className="flex items-center gap-3 mb-3">
-                           <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-lg
-                              ${selectedStore?.id === store.id ? 'bg-secondary text-white' : 'bg-primary text-text-muted'}`}>
-                              <FaFolder />
+                        <div className="flex items-center gap-3 mb-1">
+                           <div className={`w-8 h-8 rounded-lg flex items-center justify-center
+                              ${selectedStore?.id === store.id ? 'bg-[#382110] text-white' : 'bg-[#f4f1ea] text-[#382110]'}`}>
+                              <FaFolder size={14} />
                            </div>
-                           <div>
-                              <h3 className="font-bold text-white truncate max-w-[120px]">{store.name}</h3>
-                              <p className="text-xs text-text-muted">{store.offerIds?.length || 0} books</p>
+                           <div className="min-w-0">
+                              <h3 className="font-bold text-[#382110] text-sm truncate">{store.name}</h3>
+                              <p className="text-[10px] text-[#777] uppercase font-bold tracking-tighter">{store.offerIds?.length || 0} books</p>
                            </div>
                         </div>
                      </motion.div>
                   ))
                }
-               {stores.length === 0 && !loading && <div className="text-text-muted italic">No libraries yet. Create one!</div>}
+               {stores.length === 0 && !loading && <div className="text-[#999] italic text-sm">No collections yet. Create one!</div>}
             </div>
          </div>
 
          {/* Books Grid */}
-         <div className="flex-1 overflow-y-auto p-6 bg-primary">
+         <div className="flex-1 overflow-y-auto p-6 bg-white">
             {selectedStore ? (
                <>
                   <div className="flex justify-between items-center mb-6">
-                     <h2 className="text-xl font-bold text-white">{selectedStore.name} <span className="text-text-muted text-sm font-normal">({storeOffers.length} items)</span></h2>
-                     <button 
-                       onClick={() => setShowAddBookModal(true)} 
-                       className="px-4 py-2 border border-white/10 rounded-lg text-sm hover:bg-white/5 transition-colors text-white"
-                     >
-                        Add Book to Library
-                     </button>
+                     <h2 className="text-xl font-serif font-bold text-[#382110]">{selectedStore.name} <span className="text-[#999] text-sm font-sans font-normal ml-2">({storeOffers.length} items)</span></h2>
                   </div>
                   
-                  {loadingOffers ? <div className="text-text-muted">Loading books...</div> : (
+                  {loadingOffers ? <div className="text-[#999]">Loading items...</div> : (
                      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6">
+                        {/* Add Book Placeholder Card */}
+                        <motion.div 
+                           whileHover={{ scale: 1.02 }}
+                           onClick={() => setShowAddBookModal(true)}
+                           className="aspect-[2/3] border-2 border-dashed border-[#ddd] rounded-xl flex flex-col items-center justify-center gap-3 cursor-pointer hover:border-[#382110]/30 hover:bg-[#fdfaf5] transition-all bg-[#f9f9f9]"
+                        >
+                           <div className="w-12 h-12 rounded-full bg-white shadow-sm flex items-center justify-center text-[#999]">
+                              <FaPlus size={20} />
+                           </div>
+                           <span className="text-xs font-bold text-[#777] uppercase tracking-wider">Add to shelf</span>
+                        </motion.div>
                         {storeOffers.map(offer => (
-                           <div key={offer.id} className="group relative rounded-xl overflow-hidden bg-primary-light/20 border border-white/5 hover:border-secondary/50 transition-all">
+                           <div key={offer.id} className="group relative rounded-xl overflow-hidden bg-white border border-[#eee] hover:border-[#382110]/30 transition-all shadow-sm">
                               <div className="aspect-[2/3] relative">
                                  <img src={getImageSource(offer)} className="w-full h-full object-cover" />
                                  <div className="absolute top-2 right-2">
-                                     <span className={`w-3 h-3 block rounded-full shadow-sm ${offer.visibility === 'public' ? 'bg-green-500' : 'bg-red-500/80'}`} />
+                                     <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded shadow-sm text-white ${offer.visibility === 'public' ? 'bg-[#00635d]' : 'bg-[#777]'}`}>
+                                        {offer.visibility === 'public' ? 'PUBLIC' : 'PRIVATE'}
+                                     </span>
                                  </div>
-                                 <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-3 flex items-center justify-center gap-3">
+                                 <div className="absolute inset-0 bg-black/20 flex items-center justify-center gap-4 transition-opacity group-hover:bg-black/40">
                                     <button 
                                       onClick={() => handlePublishToggle(offer)}
-                                      className="p-2.5 bg-white text-[#382110] rounded-full hover:scale-110 transition-transform shadow-lg"
-                                      title={offer.visibility === 'public' ? "Unpublish" : "Publish"}
+                                      className="w-10 h-10 bg-white text-[#382110] rounded-full flex items-center justify-center hover:scale-110 transition-transform shadow-lg"
+                                      title={offer.visibility === 'public' ? "Make Private" : "Make Public"}
                                     >
-                                       {offer.visibility === 'public' ? <FaEyeSlash size={16} /> : <FaEye size={16} />}
+                                       {offer.visibility === 'public' ? <FaEye size={16} /> : <FaEyeSlash size={16} />}
                                     </button>
                                     <button 
                                       onClick={() => handleRemove(offer.id)}
-                                      className="p-2.5 bg-red-500 text-white rounded-full hover:scale-110 transition-transform shadow-lg"
-                                      title="Remove from Library"
+                                      className="w-10 h-10 bg-[#e74c3c] text-white rounded-full flex items-center justify-center hover:scale-110 transition-transform shadow-lg"
+                                      title="Remove"
                                     >
                                        <FaTrash size={16} />
                                     </button>
                                  </div>
                               </div>
                               <div className="p-3">
-                                 <h3 className="text-white font-medium text-sm truncate">{offer.bookTitle}</h3>
-                                 <p className="text-text-muted text-xs truncate">{offer.author}</p>
+                                 <h3 className="text-[#382110] font-bold text-sm truncate">{offer.bookTitle}</h3>
+                                 <p className="text-[#777] text-xs truncate">{offer.author}</p>
                               </div>
                            </div>
                         ))}
                      </div>
                   )}
-                  {storeOffers.length === 0 && !loadingOffers && <div className="text-text-muted text-center mt-10">Empty library. Add some books!</div>}
+                  {storeOffers.length === 0 && !loadingOffers && <div className="text-[#999] text-center mt-10 italic">No books in this shelf yet.</div>}
                </>
-            ) : <div className="flex items-center justify-center h-full text-text-muted">Select a library to view books</div>}
+            ) : <div className="flex flex-col items-center justify-center h-full text-[#999] gap-4">
+                 <FaBookOpen size={48} className="opacity-20" />
+                 <p className="font-serif italic">Select a shelf to view your books</p>
+            </div>}
          </div>
       </div>
 

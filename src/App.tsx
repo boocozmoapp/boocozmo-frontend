@@ -47,6 +47,7 @@ function GoodreadsHeader({ user, onLogout }: { user: User; onLogout: () => void 
             <nav className="hidden md:flex items-center gap-1 text-[#382110] text-[14px]">
               <button onClick={() => navigate("/home")} className="px-3 py-2 font-sans hover:bg-white/50 rounded-sm">Home</button>
               <button onClick={() => navigate("/my-library")} className="px-3 py-2 font-sans hover:bg-white/50 rounded-sm">My Books</button>
+              <button onClick={() => navigate("/offer")} className="px-3 py-2 font-sans hover:bg-white/50 rounded-sm">Offers</button>
               <div className="relative group">
                  <button className="px-3 py-2 font-sans hover:bg-white/50 rounded-sm flex items-center gap-1">
                    Browse <FaCaretDown size={10} className="text-[#999]" />
@@ -126,6 +127,7 @@ function GoodreadsHeader({ user, onLogout }: { user: User; onLogout: () => void 
       {/* Mobile Subheader (Like Screenshot) */}
       <div className="md:hidden bg-white border-b border-[#eee] py-2 px-4 shadow-sm flex justify-between text-[13px] font-sans font-medium text-[#382110] overflow-x-auto whitespace-nowrap">
          <span onClick={() => navigate("/my-library")} className="cursor-pointer">My Books</span>
+         <span onClick={() => navigate("/offer")} className="cursor-pointer border-l border-[#eee] pl-4">Offers</span>
          <span onClick={() => navigate("/map")} className="cursor-pointer border-l border-[#eee] pl-4">Browse</span>
          <span onClick={() => navigate("/community")} className="cursor-pointer border-l border-[#eee] pl-4">Community</span>
       </div>

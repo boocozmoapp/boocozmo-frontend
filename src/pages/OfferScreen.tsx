@@ -172,6 +172,24 @@ export default function OfferScreen({ onBack, currentUser }: Props) {
        </header>
 
        <main className="max-w-3xl mx-auto p-4 md:p-8">
+          {/* Instructional Poster */}
+          <div className="mb-6 w-full bg-white border border-[#e8e0d5] rounded-lg p-5 relative overflow-hidden shadow-sm flex flex-col md:flex-row items-center gap-5">
+              <div className="absolute top-0 right-0 w-1/4 h-full opacity-10 pointer-events-none grayscale">
+                 <img src="https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=800&q=80" className="w-full h-full object-cover" />
+              </div>
+              
+              <div className="w-16 h-16 md:w-20 md:h-20 bg-[#f4f1ea] rounded-full flex-shrink-0 flex items-center justify-center text-[#382110] shadow-inner border border-[#e8e0d5]">
+                 <FaPaperPlane size={24} className="opacity-40" />
+              </div>
+
+              <div className="z-10 text-center md:text-left flex-1">
+                 <h2 className="text-xl font-serif font-bold text-[#382110] mb-1">Direct Community Posting</h2>
+                 <div className="text-[#5c4a3c] text-xs leading-snug max-w-2xl">
+                    <p>Post a book offer directly to the public without needing a library catalog first. Your offer will be immediately visible on the Home and Map screens.</p>
+                 </div>
+              </div>
+          </div>
+
           <div className="bg-white rounded border border-[#d8d8d8] p-6 md:p-8 shadow-sm">
              
              {/* Photo Upload */}

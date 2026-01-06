@@ -256,8 +256,23 @@ export default function ProfileScreen({ currentUser, onAddPress, onMapPress }: P
   };
 
   const filteredOffers = useMemo(() => {
-    let result = myOffers;
-    if (filterType !== "all") result = result.filter(o => filterType === "public" ? o.visibility === "public" : o.visibility === "private");
+    // Deduplicate by bookTitle and author
+    const uniqueMap = new Map<string, Offer>();
+    
+    myOffers.forEach(o => {
+       const key = `${o.bookTitle?.toLowerCase() || ''}-${o.author?.toLowerCase() || ''}`;
+       const existing = uniqueMap.get(key);
+       
+       // If public version exists, keep it. If current is public, overwrite.
+       if (!existing || o.visibility === 'public') {
+          uniqueMap.set(key, o);
+       }
+    });
+
+    let result = Array.from(uniqueMap.values());
+    if (filterType !== "all") {
+       result = result.filter(o => filterType === "public" ? o.visibility === "public" : o.visibility === "private");
+    }
     return result;
   }, [myOffers, filterType]);
 
@@ -408,7 +423,7 @@ export default function ProfileScreen({ currentUser, onAddPress, onMapPress }: P
                                              className="p-2 rounded-full bg-white text-[#382110] hover:scale-110 transition-transform shadow-md"
                                              title={offer.visibility === 'public' ? "Unpublish" : "Publish"}
                                           >
-                                             {offer.visibility === 'public' ? <FaEyeSlash size={14} /> : <FaEye size={14} />}
+                                             {offer.visibility === 'public' ? <FaEye size={14} /> : <FaEyeSlash size={14} />}
                                           </button>
                                           <button 
                                              onClick={() => handleDeleteOffer(offer.id)} 
