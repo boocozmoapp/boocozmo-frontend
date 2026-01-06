@@ -117,7 +117,7 @@ export default function ProfileScreen({ currentUser, wishlist = [], toggleWishli
     location: "",
   });
 
-  const [activeTab, setActiveTab] = useState<"offers" | "libraries" | "stats">("offers");
+  const [activeTab, setActiveTab] = useState<"offers" | "libraries" | "wishlist" | "stats">("offers");
   const [filterType, setFilterType] = useState<"all" | "public" | "private">("all");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const photoInputRef = useRef<HTMLInputElement>(null);
