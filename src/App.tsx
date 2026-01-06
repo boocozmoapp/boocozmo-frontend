@@ -50,7 +50,7 @@ function GoodreadsHeader({ user, onLogout }: { user: User; onLogout: () => void 
               <button onClick={() => navigate("/offer")} className="px-3 py-2 font-sans hover:bg-white/50 rounded-sm">Offers</button>
               <div className="relative group">
                  <button className="px-3 py-2 font-sans hover:bg-white/50 rounded-sm flex items-center gap-1">
-                   Browse <FaCaretDown size={10} className="text-[#999]" />
+                   Map <FaCaretDown size={10} className="text-[#999]" />
                  </button>
                  <div className="absolute top-full left-0 w-40 bg-white border border-[#d8d8d8] shadow-lg rounded-[3px] py-1 hidden group-hover:block z-50">
                      <button onClick={() => navigate("/map")} className="w-full text-left px-4 py-2 hover:bg-[#f4f1ea]">Map View</button>
@@ -128,7 +128,7 @@ function GoodreadsHeader({ user, onLogout }: { user: User; onLogout: () => void 
       <div className="md:hidden bg-white border-b border-[#eee] py-2 px-4 shadow-sm flex justify-between text-[13px] font-sans font-medium text-[#382110] overflow-x-auto whitespace-nowrap">
          <span onClick={() => navigate("/my-library")} className="cursor-pointer">My Books</span>
          <span onClick={() => navigate("/offer")} className="cursor-pointer border-l border-[#eee] pl-4">Offers</span>
-         <span onClick={() => navigate("/map")} className="cursor-pointer border-l border-[#eee] pl-4">Browse</span>
+         <span onClick={() => navigate("/map")} className="cursor-pointer border-l border-[#eee] pl-4">Map</span>
          <span onClick={() => navigate("/community")} className="cursor-pointer border-l border-[#eee] pl-4">Community</span>
       </div>
     </>
