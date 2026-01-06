@@ -450,17 +450,17 @@ export default function MyLibraryScreen({
       {/* Modals (Create Store, Add Book, Publish) */}
       <AnimatePresence>
          {showCreateStoreModal && (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
-               <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} className="bg-primary border border-white/10 rounded-2xl p-6 w-full max-w-sm">
-                  <h3 className="text-xl font-bold text-white mb-4">New Library</h3>
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+               <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} className="bg-white border border-[#eee] rounded-xl p-6 w-full max-w-sm shadow-xl">
+                  <h3 className="text-xl font-serif font-bold text-[#382110] mb-4">New Collection</h3>
                   <input 
                      value={newStoreName} onChange={e => setNewStoreName(e.target.value)}
-                     placeholder="Library Name (e.g. My Sci-Fi Collection)"
-                     className="w-full bg-primary-light/50 border border-white/10 rounded-xl p-3 text-white mb-4 focus:border-secondary outline-none"
+                     placeholder="Collection Name (e.g. My Sci-Fi Box)"
+                     className="w-full bg-[#f9f9f9] border border-[#ddd] rounded-lg p-3 text-[#333] mb-4 focus:border-[#382110] outline-none placeholder:text-black/50"
                   />
                   <div className="flex justify-end gap-3">
-                     <button onClick={() => setShowCreateStoreModal(false)} className="text-text-muted hover:text-white">Cancel</button>
-                     <button onClick={handleCreateStore} disabled={creatingStore} className="px-4 py-2 bg-secondary text-white rounded-xl font-medium">
+                     <button onClick={() => setShowCreateStoreModal(false)} className="text-[#777] hover:text-[#382110] text-sm font-medium">Cancel</button>
+                     <button onClick={handleCreateStore} disabled={creatingStore} className="px-5 py-2 bg-[#382110] text-white rounded-lg font-bold text-sm">
                         {creatingStore ? "Creating..." : "Create"}
                      </button>
                   </div>
@@ -469,15 +469,15 @@ export default function MyLibraryScreen({
          )}
 
          {showAddBookModal && (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
-               <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} className="bg-primary border border-white/10 rounded-2xl p-6 w-full max-w-md max-h-[85vh] overflow-y-auto">
-                  <h3 className="text-xl font-bold text-white mb-4">Add Book</h3>
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+               <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} className="bg-white border border-[#eee] rounded-xl p-6 w-full max-w-md max-h-[85vh] overflow-y-auto shadow-xl">
+                  <h3 className="text-xl font-serif font-bold text-[#382110] mb-4">Add Book to Shelf</h3>
                   <div className="space-y-3">
-                     <input value={newBookForm.bookTitle} onChange={e => setNewBookForm({...newBookForm, bookTitle: e.target.value})} placeholder="Book Title" className="input-field w-full bg-primary-light/50 border border-white/10 rounded-xl p-3 text-white" />
-                     <input value={newBookForm.author} onChange={e => setNewBookForm({...newBookForm, author: e.target.value})} placeholder="Author" className="input-field w-full bg-primary-light/50 border border-white/10 rounded-xl p-3 text-white" />
-                     <textarea value={newBookForm.description} onChange={e => setNewBookForm({...newBookForm, description: e.target.value})} placeholder="Description" className="input-field w-full bg-primary-light/50 border border-white/10 rounded-xl p-3 text-white h-24" />
+                     <input value={newBookForm.bookTitle} onChange={e => setNewBookForm({...newBookForm, bookTitle: e.target.value})} placeholder="Book Title" className="w-full bg-[#f9f9f9] border border-[#ddd] rounded-lg p-3 text-[#333] placeholder:text-black/50 outline-none" />
+                     <input value={newBookForm.author} onChange={e => setNewBookForm({...newBookForm, author: e.target.value})} placeholder="Author" className="w-full bg-[#f9f9f9] border border-[#ddd] rounded-lg p-3 text-[#333] placeholder:text-black/50 outline-none" />
+                     <textarea value={newBookForm.description} onChange={e => setNewBookForm({...newBookForm, description: e.target.value})} placeholder="Description (Optional)" className="w-full bg-[#f9f9f9] border border-[#ddd] rounded-lg p-3 text-[#333] placeholder:text-black/50 outline-none h-24" />
                      
-                     <div className="border-2 border-dashed border-white/10 rounded-xl p-4 text-center cursor-pointer hover:border-secondary transition-colors relative">
+                     <div className="border-2 border-dashed border-[#ddd] rounded-xl p-4 text-center cursor-pointer hover:border-[#382110]/30 transition-colors relative bg-[#f9f9f9]">
                         <input type="file" accept="image/*" className="absolute inset-0 opacity-0 cursor-pointer" 
                            onChange={e => {
                               const file = e.target.files?.[0];
@@ -502,26 +502,26 @@ export default function MyLibraryScreen({
          )}
 
          {showPublishModal && (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
-               <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} className="bg-primary border border-white/10 rounded-2xl p-6 w-full max-w-md">
-                   <h3 className="text-xl font-bold text-white mb-2">Publish "{bookToPublish?.bookTitle}"</h3>
-                   <p className="text-text-muted text-sm mb-4">Make this book available to the community.</p>
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+               <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} className="bg-white border border-[#eee] rounded-xl p-6 w-full max-w-md shadow-xl">
+                   <h3 className="text-xl font-serif font-bold text-[#382110] mb-2">Publish "{bookToPublish?.bookTitle}"</h3>
+                   <p className="text-[#777] text-sm mb-4">Make this book available to the community.</p>
                    
-                   <div className="bg-primary-light/20 p-3 rounded-lg mb-4 text-xs text-text-muted flex items-start gap-2">
-                       <FaGlobe className="mt-0.5 text-secondary" />
+                   <div className="bg-[#fdfaf5] border border-[#e8e0d5] p-3 rounded-lg mb-4 text-xs text-[#5c4a3c] flex items-start gap-2">
+                       <FaGlobe className="mt-0.5 text-[#00635d]" />
                        <p>Publishing will reveal the approximate location of this book on the map so buyers can find it.</p>
                    </div>
-
+ 
                    <div className="flex gap-4 mb-4">
-                      <button onClick={() => setPublishForm({...publishForm, type: "sell"})} className={`flex-1 py-2 rounded-lg border ${publishForm.type === "sell" ? "bg-secondary border-secondary text-white" : "border-white/10 text-text-muted"}`}>Sell</button>
-                      <button onClick={() => setPublishForm({...publishForm, type: "exchange"})} className={`flex-1 py-2 rounded-lg border ${publishForm.type === "exchange" ? "bg-secondary border-secondary text-white" : "border-white/10 text-text-muted"}`}>Exchange</button>
+                      <button onClick={() => setPublishForm({...publishForm, type: "sell"})} className={`flex-1 py-2 rounded-lg font-bold text-sm border transition-all ${publishForm.type === "sell" ? "bg-[#d37e2f] text-white border-[#d37e2f]" : "border-[#ddd] text-[#777] hover:bg-gray-50"}`}>Sell</button>
+                      <button onClick={() => setPublishForm({...publishForm, type: "exchange"})} className={`flex-1 py-2 rounded-lg font-bold text-sm border transition-all ${publishForm.type === "exchange" ? "bg-[#00635d] text-white border-[#00635d]" : "border-[#ddd] text-[#777] hover:bg-gray-50"}`}>Exchange</button>
                    </div>
-
+ 
                    {publishForm.type === "sell" && (
-                      <input type="number" value={publishForm.price} onChange={e => setPublishForm({...publishForm, price: e.target.value})} placeholder="Price ($)" className="w-full bg-primary-light/50 border border-white/10 rounded-xl p-3 text-white mb-3" />
+                      <input type="number" value={publishForm.price} onChange={e => setPublishForm({...publishForm, price: e.target.value})} placeholder="Price ($)" className="w-full bg-[#f9f9f9] border border-[#ddd] rounded-lg p-3 text-[#333] mb-3 focus:border-[#382110] outline-none placeholder:text-black font-bold" />
                    )}
                    {publishForm.type === "exchange" && (
-                      <input value={publishForm.exchangeBook} onChange={e => setPublishForm({...publishForm, exchangeBook: e.target.value})} placeholder="Trading for (e.g. Sci-Fi books)" className="w-full bg-primary-light/50 border border-white/10 rounded-xl p-3 text-white mb-3" />
+                      <input value={publishForm.exchangeBook} onChange={e => setPublishForm({...publishForm, exchangeBook: e.target.value})} placeholder="Trading for (e.g. Sci-Fi books)" className="w-full bg-[#f9f9f9] border border-[#ddd] rounded-lg p-3 text-[#333] mb-3 focus:border-[#382110] outline-none placeholder:text-black" />
                    )}
 
                    <div className="mb-4">

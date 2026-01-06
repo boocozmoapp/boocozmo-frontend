@@ -14,6 +14,7 @@ import ChatScreen from "./pages/ChatScreen";
 import SingleChat from "./pages/SingleChat";
 import OfferDetailScreen from "./pages/OfferDetailScreen";
 import MyLibraryScreen from "./pages/MyLibraryScreen";
+import DiscoverScreen from "./pages/DiscoverScreen";
 import CommunityScreen from "./pages/CommunityScreen";
 import WelcomeScreen from "./pages/WelcomeScreen";
 import "leaflet/dist/leaflet.css";
@@ -75,11 +76,12 @@ function GoodreadsHeader({ user, onLogout }: { user: User; onLogout: () => void 
 
           {/* Search Bar - Desktop */}
           <div className="hidden md:flex flex-1 max-w-[350px] mx-4">
-             <div className="relative w-full">
+             <div className="relative w-full" onClick={() => navigate("/discover")}>
                 <input 
                   type="text" 
-                  placeholder="Search books"
-                  className="w-full bg-white border border-[#d8d8d8] rounded-[3px] py-1.5 px-3 text-sm focus:outline-none focus:border-[#00635d] focus:ring-1 focus:ring-[#00635d] shadow-inner"
+                  readOnly
+                  placeholder="Search books, authors, regions..."
+                  className="w-full bg-white border border-[#d8d8d8] rounded-[3px] py-1.5 px-3 text-sm focus:outline-none focus:border-[#00635d] cursor-pointer shadow-inner"
                 />
                 <button className="absolute right-0 top-0 bottom-0 px-3 text-[#555] hover:bg-[#eee] transition-colors rounded-r-[3px]">
                   <FaSearch />
@@ -89,7 +91,7 @@ function GoodreadsHeader({ user, onLogout }: { user: User; onLogout: () => void 
 
           {/* Icons / Profile */}
           <div className="flex items-center gap-3 md:gap-4 text-[#382110]">
-             <button className="md:hidden"><FaSearch size={18} /></button>
+             <button className="md:hidden" onClick={() => navigate("/discover")}><FaSearch size={18} /></button>
              
              {/* Icons - Visible on Mobile too */}
              <div className="flex items-center gap-3 border-r border-[#ccc] pr-4 mr-1">
@@ -126,7 +128,8 @@ function GoodreadsHeader({ user, onLogout }: { user: User; onLogout: () => void 
       
       {/* Mobile Subheader (Like Screenshot) */}
       <div className="md:hidden bg-white border-b border-[#eee] py-2 px-4 shadow-sm flex justify-between text-[13px] font-sans font-medium text-[#382110] overflow-x-auto whitespace-nowrap">
-         <span onClick={() => navigate("/my-library")} className="cursor-pointer">My Books</span>
+         <span onClick={() => navigate("/home")} className="cursor-pointer">Home</span>
+         <span onClick={() => navigate("/my-library")} className="cursor-pointer border-l border-[#eee] pl-4">My Books</span>
          <span onClick={() => navigate("/offer")} className="cursor-pointer border-l border-[#eee] pl-4">Offers</span>
          <span onClick={() => navigate("/map")} className="cursor-pointer border-l border-[#eee] pl-4">Map</span>
          <span onClick={() => navigate("/community")} className="cursor-pointer border-l border-[#eee] pl-4">Community</span>
@@ -194,6 +197,7 @@ function AppContent() {
               <Route path="/map" element={<MapScreen {...authProps} />} />
               <Route path="/chat" element={<ChatScreen {...authProps} />} />
               <Route path="/chat/:chatId" element={<SingleChat {...authProps} />} />
+              <Route path="/discover" element={<DiscoverScreen {...authProps} />} />
               <Route path="/my-library" element={<MyLibraryScreen {...authProps} onBack={() => navigate("/home")} onAddPress={() => navigate("/offer")} onProfilePress={() => navigate("/profile")} onMapPress={() => navigate("/map")} />} />
               <Route path="/community" element={<CommunityScreen />} />
               <Route path="*" element={<HomeScreen {...authProps} />} />

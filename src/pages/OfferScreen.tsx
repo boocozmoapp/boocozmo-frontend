@@ -206,7 +206,7 @@ export default function OfferScreen({ onBack, currentUser }: Props) {
              <div className="space-y-4">
                 <div>
                    <label className="block text-xs font-bold uppercase text-[#555] mb-1">Book Title & Description</label>
-                   <textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="e.g. The Great Gatsby, decent condition..." className="w-full bg-white border border-[#d8d8d8] rounded p-3 text-[#333] placeholder-gray-400 focus:border-[#382110] focus:ring-1 focus:ring-[#382110] outline-none min-h-[100px]" />
+                   <textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="e.g. The Great Gatsby, decent condition..." className="w-full bg-white border border-[#d8d8d8] rounded p-3 text-[#333] placeholder-black focus:border-[#382110] focus:ring-1 focus:ring-[#382110] outline-none min-h-[100px]" />
                 </div>
 
                 <div>
@@ -229,12 +229,12 @@ export default function OfferScreen({ onBack, currentUser }: Props) {
                 {action === 'sell' ? (
                    <div>
                       <label className="block text-xs font-bold uppercase text-[#555] mb-1">Price ($)</label>
-                      <input type="number" value={price} onChange={e => setPrice(e.target.value)} placeholder="0.00" className="w-full bg-white border border-[#d8d8d8] rounded p-3 text-[#333] placeholder-gray-400 focus:border-[#382110] focus:ring-1 focus:ring-[#382110] outline-none font-bold text-lg" />
+                      <input type="number" value={price} onChange={e => setPrice(e.target.value)} placeholder="0.00" className="w-full bg-white border border-[#d8d8d8] rounded p-3 text-[#333] placeholder-black focus:border-[#382110] focus:ring-1 focus:ring-[#382110] outline-none font-bold text-lg" />
                    </div>
                 ) : (
                    <div>
                       <label className="block text-xs font-bold uppercase text-[#555] mb-1">Trading For</label>
-                      <input value={exchangeBook} onChange={e => setExchangeBook(e.target.value)} placeholder="What book do you want?" className="w-full bg-white border border-[#d8d8d8] rounded p-3 text-[#333] placeholder-gray-400 focus:border-[#382110] focus:ring-1 focus:ring-[#382110] outline-none" />
+                      <input value={exchangeBook} onChange={e => setExchangeBook(e.target.value)} placeholder="What book do you want?" className="w-full bg-white border border-[#d8d8d8] rounded p-3 text-[#333] placeholder-black focus:border-[#382110] focus:ring-1 focus:ring-[#382110] outline-none" />
                    </div>
                 )}
              </div>

@@ -459,14 +459,14 @@ export default function ProfileScreen({ currentUser, onAddPress, onMapPress }: P
       {/* Edit Profile Modal */}
       <AnimatePresence>
          {showEditModal && (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
-               <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} className="bg-primary border border-white/10 rounded-2xl p-6 w-full max-w-md">
-                  <h3 className="text-xl font-bold text-white mb-6">Edit Profile</h3>
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+               <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} className="bg-white border border-[#eee] rounded-xl p-6 w-full max-w-sm shadow-xl">
+                  <h3 className="text-xl font-serif font-bold text-[#382110] mb-6">Edit Profile</h3>
                   
                   <div className="flex justify-center mb-6">
-                     <div className="relative w-24 h-24 rounded-full overflow-hidden border-2 border-dashed border-white/20 hover:border-secondary cursor-pointer"
+                     <div className="relative w-24 h-24 rounded-full overflow-hidden border-2 border-dashed border-[#ddd] hover:border-[#382110]/30 cursor-pointer bg-[#f9f9f9]"
                         onClick={() => photoInputRef.current?.click()}>
-                        {editForm.profilePhotoPreview ? <img src={editForm.profilePhotoPreview} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-gray-500"><FaCamera /></div>}
+                        {editForm.profilePhotoPreview ? <img src={editForm.profilePhotoPreview} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-[#999]"><FaCamera size={24} /></div>}
                         <input ref={photoInputRef} type="file" hidden accept="image/*" onChange={(e: any) => {
                            const file = e.target.files[0];
                            if(file) {
@@ -478,12 +478,14 @@ export default function ProfileScreen({ currentUser, onAddPress, onMapPress }: P
                      </div>
                   </div>
 
-                  <input value={editForm.bio} onChange={e => setEditForm({...editForm, bio: e.target.value})} placeholder="Bio" className="w-full bg-primary-light/50 border border-white/10 rounded-xl p-3 text-white mb-3" />
-                  <input value={editForm.location} onChange={e => setEditForm({...editForm, location: e.target.value})} placeholder="Location" className="w-full bg-primary-light/50 border border-white/10 rounded-xl p-3 text-white mb-6" />
+                  <input value={editForm.bio} onChange={e => setEditForm({...editForm, bio: e.target.value})} placeholder="Bio" className="w-full bg-[#f9f9f9] border border-[#ddd] rounded-lg p-3 text-[#333] mb-3 focus:border-[#382110] outline-none placeholder:text-black/40" />
+                  <input value={editForm.location} onChange={e => setEditForm({...editForm, location: e.target.value})} placeholder="Location" className="w-full bg-[#f9f9f9] border border-[#ddd] rounded-lg p-3 text-[#333] mb-6 focus:border-[#382110] outline-none placeholder:text-black/40" />
 
                   <div className="flex justify-end gap-3">
-                     <button onClick={() => setShowEditModal(false)} className="text-gray-400 hover:text-white">Cancel</button>
-                     <button onClick={handleUpdateProfile} disabled={editingProfile} className="px-4 py-2 bg-secondary text-white rounded-xl font-medium">Save</button>
+                     <button onClick={() => setShowEditModal(false)} className="text-[#777] hover:text-[#382110] text-sm font-medium">Cancel</button>
+                     <button onClick={handleUpdateProfile} disabled={editingProfile} className="px-5 py-2 bg-[#382110] text-white rounded-lg font-bold text-sm shadow-md">
+                        {editingProfile ? "Saving..." : "Save Changes"}
+                     </button>
                   </div>
                </motion.div>
             </motion.div>
@@ -492,29 +494,29 @@ export default function ProfileScreen({ currentUser, onAddPress, onMapPress }: P
       {/* Publish Modal */}
       <AnimatePresence>
           {showPublishModal && (
-             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
-                <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} className="bg-primary border border-white/10 rounded-2xl p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
-                    <h3 className="text-xl font-bold text-white mb-2">Publish "{bookToPublish?.bookTitle}"</h3>
-                    <p className="text-text-muted text-sm mb-4">Set visibility details and location.</p>
+             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+                <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} className="bg-white border border-[#eee] rounded-xl p-6 w-full max-w-md shadow-xl overflow-y-auto max-h-[90vh]">
+                    <h3 className="text-xl font-serif font-bold text-[#382110] mb-2">Publish "{bookToPublish?.bookTitle}"</h3>
+                    <p className="text-[#777] text-sm mb-4">Set visibility details and location.</p>
 
                     <div className="flex gap-4 mb-4">
-                       <button onClick={() => setPublishForm({...publishForm, type: "sell"})} className={`flex-1 py-2 rounded-lg border ${publishForm.type === "sell" ? "bg-secondary border-secondary text-white" : "border-white/10 text-text-muted"}`}>Sell</button>
-                       <button onClick={() => setPublishForm({...publishForm, type: "exchange"})} className={`flex-1 py-2 rounded-lg border ${publishForm.type === "exchange" ? "bg-secondary border-secondary text-white" : "border-white/10 text-text-muted"}`}>Exchange</button>
+                       <button onClick={() => setPublishForm({...publishForm, type: "sell"})} className={`flex-1 py-2 rounded-lg font-bold text-sm border transition-all ${publishForm.type === "sell" ? "bg-[#d37e2f] text-white border-[#d37e2f]" : "border-[#ddd] text-[#777] hover:bg-gray-50"}`}>Sell</button>
+                       <button onClick={() => setPublishForm({...publishForm, type: "exchange"})} className={`flex-1 py-2 rounded-lg font-bold text-sm border transition-all ${publishForm.type === "exchange" ? "bg-[#00635d] text-white border-[#00635d]" : "border-[#ddd] text-[#777] hover:bg-gray-50"}`}>Exchange</button>
                     </div>
 
                     {publishForm.type === "sell" && (
-                       <input type="number" value={publishForm.price} onChange={e => setPublishForm({...publishForm, price: e.target.value})} placeholder="Price ($)" className="w-full bg-primary-light/50 border border-white/10 rounded-xl p-3 text-white mb-3" />
+                       <input type="number" value={publishForm.price} onChange={e => setPublishForm({...publishForm, price: e.target.value})} placeholder="Price ($)" className="w-full bg-[#f9f9f9] border border-[#ddd] rounded-lg p-3 text-[#333] mb-3 focus:border-[#382110] outline-none placeholder:text-black font-bold" />
                     )}
                     {publishForm.type === "exchange" && (
-                       <input value={publishForm.exchangeBook} onChange={e => setPublishForm({...publishForm, exchangeBook: e.target.value})} placeholder="Trading for (e.g. Sci-Fi)" className="w-full bg-primary-light/50 border border-white/10 rounded-xl p-3 text-white mb-3" />
+                       <input value={publishForm.exchangeBook} onChange={e => setPublishForm({...publishForm, exchangeBook: e.target.value})} placeholder="Trading for (e.g. Sci-Fi)" className="w-full bg-[#f9f9f9] border border-[#ddd] rounded-lg p-3 text-[#333] mb-3 focus:border-[#382110] outline-none placeholder:text-black" />
                     )}
 
                     <div className="mb-4">
                         <div className="flex justify-between items-center mb-2">
-                           <label className="text-xs font-bold uppercase text-text-muted">Confirm Location</label>
-                           <button onClick={handleAutoDetect} className="text-xs text-secondary hover:underline">Auto Detect</button>
+                           <label className="text-xs font-bold uppercase text-[#777]">Confirm Location</label>
+                           <button onClick={handleAutoDetect} className="text-xs text-[#00635d] hover:underline">Auto Detect</button>
                         </div>
-                        <div className="h-48 border border-white/10 rounded-xl overflow-hidden relative z-0">
+                        <div className="h-48 border border-[#ddd] rounded-xl overflow-hidden relative z-0">
                              <MapContainer center={[publishForm.latitude, publishForm.longitude]} zoom={13} style={{ height: "100%", width: "100%" }}>
                                 <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
                                 <LocationMarker 
@@ -523,12 +525,12 @@ export default function ProfileScreen({ currentUser, onAddPress, onMapPress }: P
                                 />
                              </MapContainer>
                         </div>
-                        <p className="text-[10px] text-text-muted mt-1">Tap map to pinpoint exact location.</p>
+                        <p className="text-[10px] text-[#999] mt-1 italic">Tap map to pinpoint exact location.</p>
                     </div>
 
                     <div className="flex justify-end gap-3 mt-4">
-                       <button onClick={() => setShowPublishModal(false)} className="text-text-muted hover:text-white">Cancel</button>
-                       <button onClick={handlePublishConfirm} disabled={publishing} className="px-4 py-2 bg-secondary text-white rounded-xl font-medium">
+                       <button onClick={() => setShowPublishModal(false)} className="text-[#777] hover:text-[#382110] text-sm font-medium">Cancel</button>
+                       <button onClick={handlePublishConfirm} disabled={publishing} className="px-5 py-2 bg-[#382110] text-white rounded-lg font-bold text-sm shadow-md">
                           {publishing ? "Publishing..." : "Publish Now"}
                        </button>
                     </div>
