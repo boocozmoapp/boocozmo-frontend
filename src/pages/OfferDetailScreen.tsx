@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { 
   FaArrowLeft, FaMapMarkerAlt, FaComments, FaHeart, 
-  FaBook, FaLeaf, FaClock, FaShieldAlt
+  FaBook, FaLeaf, FaClock, FaShieldAlt, FaBookmark
 } from "react-icons/fa";
 import { useParams, useNavigate } from "react-router-dom";
 import { motion, useScroll, useTransform } from "framer-motion";
@@ -31,9 +31,11 @@ type Offer = {
 
 type Props = {
   currentUser: { email: string; name: string; id: string };
+  wishlist: string[];
+  toggleWishlist: (title: string) => void;
 };
 
-export default function OfferDetailScreen({ currentUser }: Props) {
+export default function OfferDetailScreen({ currentUser, wishlist, toggleWishlist }: Props) {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [offer, setOffer] = useState<Offer | null>(null);
@@ -41,6 +43,8 @@ export default function OfferDetailScreen({ currentUser }: Props) {
   const { scrollY } = useScroll();
   const heroOpacity = useTransform(scrollY, [0, 300], [1, 0]);
   const heroScale = useTransform(scrollY, [0, 300], [1, 1.05]);
+
+  const isInWishlist = offer ? wishlist.includes(offer.bookTitle) : false;
 
   useEffect(() => {
     const fetchOffer = async () => {
@@ -125,15 +129,15 @@ export default function OfferDetailScreen({ currentUser }: Props) {
          <div className="space-y-8 bg-white p-6 md:p-8 rounded shadow-sm border border-[#e8e8e8]">
             <div>
                <div className="flex gap-2 mb-3">
-                 <span className={`px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-white rounded-[2px]
-                    ${offer.type === 'sell' ? 'bg-[#d37e2f]' : offer.type === 'exchange' ? 'bg-[#00635d]' : 'bg-[#764d91]'}`}>
-                    {offer.type}
-                 </span>
-                 {offer.genre && (
-                   <span className="px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-[#555] bg-[#f4f1ea] rounded-[2px]">
-                     {offer.genre}
-                   </span>
-                 )}
+                  <span className={`px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-white rounded-[2px]
+                     ${offer.type === 'sell' ? 'bg-[#d37e2f]' : offer.type === 'exchange' ? 'bg-[#00635d]' : 'bg-[#764d91]'}`}>
+                     {offer.type}
+                  </span>
+                  {offer.genre && (
+                    <span className="px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-[#555] bg-[#f4f1ea] rounded-[2px]">
+                      {offer.genre}
+                    </span>
+                  )}
                </div>
                
                <h1 className="text-3xl md:text-5xl font-serif font-bold text-[#382110] mb-2 leading-tight">
@@ -176,14 +180,17 @@ export default function OfferDetailScreen({ currentUser }: Props) {
                  <span className="text-[#333] font-bold">Hardcover</span>
                </div>
                <div className="flex flex-col gap-1 p-3 rounded bg-[#f9f9f9] border border-[#eee]">
-                 <FaLeaf className="text-[#409d69] mb-1" />
+                 <div className="flex items-center gap-1 mb-1">
+                    <FaLeaf className="text-[#409d69]" />
+                    <span className="text-[10px] text-[#409d69] font-bold uppercase tracking-widest">+1.5 XP</span>
+                 </div>
                  <span className="text-[10px] text-[#777] uppercase tracking-wider">Eco-Impact</span>
                  <span className="text-[#333] font-bold">Rescued</span>
                </div>
                <div className="flex flex-col gap-1 p-3 rounded bg-[#f9f9f9] border border-[#eee]">
                  <FaClock className="text-[#764d91] mb-1" />
                  <span className="text-[10px] text-[#777] uppercase tracking-wider">Posted</span>
-                 <span className="text-[#333] font-bold">2d ago</span>
+                 <span className="text-[#333] font-bold">Just Now</span>
                </div>
             </div>
          </div>
@@ -203,15 +210,23 @@ export default function OfferDetailScreen({ currentUser }: Props) {
 
                    <button 
                      onClick={handleChat}
-                     className="w-full py-3 bg-[#409d69] hover:bg-[#358759] text-white rounded-[3px] font-bold text-md shadow-sm transition-colors flex items-center justify-center gap-2 mb-3"
+                     className="w-full py-3 bg-[#409d69] hover:bg-[#358759] text-white rounded-[3px] font-bold text-md shadow-sm transition-all active:scale-95 flex items-center justify-center gap-2 mb-3"
                    >
                       <FaComments /> 
                       Message {offer.type === 'sell' ? 'Seller' : 'Owner'}
                    </button>
                    
-                   <button className="w-full py-3 bg-[#f4f1ea] hover:bg-[#ebe6db] text-[#382110] rounded-[3px] font-bold border border-[#d8d8d8] transition-colors flex items-center justify-center gap-2">
-                      <FaHeart /> Save for Later
+                   <button 
+                      onClick={() => toggleWishlist(offer.bookTitle)}
+                      className={`w-full py-3 rounded-[3px] font-bold border transition-all flex items-center justify-center gap-2
+                         ${isInWishlist 
+                            ? 'bg-[#382110] text-white border-[#382110]' 
+                            : 'bg-white text-[#382110] border-[#d8d8d8] hover:bg-[#f4f1ea]'}`}
+                   >
+                      {isInWishlist ? <FaBookmark /> : <FaHeart />}
+                      {isInWishlist ? 'Tracking in Wishlist' : 'Add to Wishlist'}
                    </button>
+                   <p className="text-[9px] text-center text-[#999] mt-3 uppercase tracking-widest">Ignite the wildfire. Swap, don't buy.</p>
                 </div>
 
                 <div className="p-4 rounded bg-[#f4f1ea] border border-[#d8d8d8]">
@@ -227,16 +242,19 @@ export default function OfferDetailScreen({ currentUser }: Props) {
       </div>
 
        {/* Floating Mobile Action Bar */}
-       <div className="md:hidden fixed bottom-16 left-0 right-0 bg-[#f4f1ea] border-t border-[#d8d8d8] p-3 flex items-center justify-between z-40 px-4">
+       <div className="md:hidden fixed bottom-16 left-0 right-0 bg-[#f4f1ea] border-t border-[#d8d8d8] p-3 flex items-center justify-between z-40 px-4 shadow-2xl">
           <div>
              <span className="text-xs text-[#777] block">Price</span>
              <span className="text-xl font-serif font-bold text-[#d37e2f]">
                 {offer.type === 'sell' ? `$${offer.price}` : 'Trade'}
              </span>
           </div>
-          <button onClick={handleChat} className="px-8 py-2.5 bg-[#409d69] text-white rounded-[3px] font-bold shadow-sm">
-             Contact
-          </button>
+          <div className="flex gap-2">
+             <button onClick={() => toggleWishlist(offer.bookTitle)} className={`p-2.5 rounded ${isInWishlist ? 'bg-[#382110] text-white' : 'bg-white border border-[#d8d8d8]'}`}><FaBookmark /></button>
+             <button onClick={handleChat} className="px-8 py-2.5 bg-[#409d69] text-white rounded-[3px] font-bold shadow-sm">
+                Contact
+             </button>
+          </div>
        </div>
     </div>
   );

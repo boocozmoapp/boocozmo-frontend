@@ -2,7 +2,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { FaSearch, FaMapMarkerAlt, FaTimes, FaArrowLeft, FaFilter, FaComments } from "react-icons/fa";
+import { FaSearch, FaMapMarkerAlt, FaTimes, FaArrowLeft, FaFilter, FaComments, FaHeart, FaBookmark, FaRegHeart } from "react-icons/fa";
 
 const API_BASE = "https://boocozmo-api.onrender.com";
 
@@ -26,24 +26,24 @@ type Offer = {
 
 type Props = {
   currentUser: { email: string; name: string; id: string; token: string };
+  wishlist?: string[];
+  toggleWishlist?: (title: string) => void;
 };
 
 // Haversine Distance Helper
 function getDistanceFromLatLonInKm(lat1: number, lon1: number, lat2: number, lon2: number) {
   const R = 6371;
-  const dLat = deg2rad(lat2-lat1);
-  const dLon = deg2rad(lon2-lon1); 
+  const dLat = (lat2-lat1) * (Math.PI/180);
+  const dLon = (lon2-lon1) * (Math.PI/180); 
   const a = 
     Math.sin(dLat/2) * Math.sin(dLat/2) +
-    Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) * 
+    Math.cos(lat1*(Math.PI/180)) * Math.cos(lat2*(Math.PI/180)) * 
     Math.sin(dLon/2) * Math.sin(dLon/2); 
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); 
   return R * c;
 }
 
-function deg2rad(deg: number) { return deg * (Math.PI/180); }
-
-export default function DiscoverScreen({ currentUser }: Props) {
+export default function DiscoverScreen({ currentUser, wishlist = [], toggleWishlist }: Props) {
   const navigate = useNavigate();
   const [allOffers, setAllOffers] = useState<Offer[]>([]);
   const [discoveryFeed, setDiscoveryFeed] = useState<Offer[]>([]);
@@ -101,6 +101,8 @@ export default function DiscoverScreen({ currentUser }: Props) {
     const shuffled = [...offersList].sort(() => Math.random() - 0.5);
     setDiscoveryFeed(shuffled);
   }, []);
+
+  const isWishlisted = (title: string) => wishlist?.includes(title);
 
   useEffect(() => {
     fetchOffers();
@@ -236,9 +238,22 @@ export default function DiscoverScreen({ currentUser }: Props) {
              <div className="w-16 h-16 bg-[#f4f1ea] rounded-full flex items-center justify-center text-[#382110] mb-4">
                 <FaSearch size={24} />
              </div>
-             <h3 className="text-lg font-serif font-bold text-[#382110]">Nothing found</h3>
-             <p className="text-[#777] text-sm mt-1">Try a different title or neighborhood.</p>
-             <button onClick={() => {setSearchQuery(""); mixDiscovery(allOffers);}} className="mt-6 px-5 py-2 bg-[#382110] text-white rounded-full font-bold text-sm">Refresh Discovery</button>
+             <h3 className="text-xl font-serif font-bold text-[#382110]">Nothing found nearby</h3>
+             <p className="text-[#777] text-sm mt-1 mb-8">We couldn't find matches for this search. Add it to your wishlist and we'll notify you when it appears!</p>
+             
+             {searchQuery.trim() && (
+               <button 
+                  onClick={() => {
+                    toggleWishlist?.(searchQuery);
+                    alert(`"${searchQuery}" added to wishlist!`);
+                  }}
+                  className="px-8 py-3 bg-[#382110] text-white rounded-full font-bold text-xs uppercase tracking-widest shadow-xl flex items-center gap-2"
+               >
+                  <FaBookmark /> Track "{searchQuery}"
+               </button>
+             )}
+             
+             <button onClick={() => {setSearchQuery(""); mixDiscovery(allOffers);}} className="mt-4 text-[#382110] text-xs font-bold uppercase opacity-50 underline">Refresh Discovery</button>
           </div>
         ) : (
           <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-1 md:gap-4">
@@ -248,15 +263,27 @@ export default function DiscoverScreen({ currentUser }: Props) {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ duration: 0.3 }}
-                className="group relative cursor-pointer aspect-square bg-[#f9f9f9] overflow-hidden"
+                className="group relative cursor-pointer aspect-square bg-[#f9f9f9] overflow-hidden rounded-lg shadow-sm"
                 onClick={() => setSelectedOffer(offer)}
               >
                 <img 
                   src={offer.imageUrl || "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=600&q=80"}
-                  className="w-full h-full object-cover group-hover:opacity-90 transition-opacity"
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                   alt={offer.bookTitle}
                 />
                 <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity" />
+                
+                {/* Wishlist toggle on card */}
+                <button 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    toggleWishlist?.(offer.bookTitle);
+                  }}
+                  className={`absolute top-2 right-2 p-1.5 rounded-full shadow-lg transition-all
+                    ${isWishlisted(offer.bookTitle) ? 'bg-[#d37e2f] text-white' : 'bg-white text-[#382110] opacity-0 group-hover:opacity-100'}`}
+                >
+                  <FaHeart size={12} />
+                </button>
               </motion.div>
             ))}
           </div>
@@ -328,12 +355,24 @@ export default function DiscoverScreen({ currentUser }: Props) {
                               <p className="text-xs opacity-70 mt-1 uppercase tracking-tighter">Management available in Profile</p>
                            </div>
                         ) : (
-                           <button 
-                              onClick={() => handleContact(selectedOffer)}
-                              className="w-full bg-[#409d69] hover:bg-[#358759] text-white font-bold py-3.5 rounded-lg shadow-sm flex items-center justify-center gap-2 transition-all active:scale-95"
-                           >
-                              <FaComments /> Contact Neighbor
-                           </button>
+                           <div className="flex gap-2">
+                              <button 
+                                 onClick={() => handleContact(selectedOffer)}
+                                 className="flex-1 bg-[#409d69] hover:bg-[#358759] text-white font-bold py-3.5 rounded-lg shadow-sm flex items-center justify-center gap-2 transition-all active:scale-95"
+                              >
+                                 <FaComments /> Contact Neighbor
+                              </button>
+                              <button 
+                                 onClick={() => toggleWishlist?.(selectedOffer.bookTitle)}
+                                 className={`p-3.5 rounded-lg border transition-all active:scale-90
+                                    ${isWishlisted(selectedOffer.bookTitle) 
+                                       ? 'bg-[#d37e2f] text-white border-[#d37e2f]' 
+                                       : 'bg-white text-[#382110] border-[#d8d8d8] hover:bg-[#f4f1ea]'}`}
+                                 title="Add to Wishlist"
+                              >
+                                 <FaHeart />
+                              </button>
+                           </div>
                         )}
                      </div>
                   </div>

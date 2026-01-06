@@ -79,6 +79,8 @@ type UserProfile = {
 
 type Props = {
   currentUser: { email: string; name: string; token: string };
+  wishlist?: string[];
+  toggleWishlist?: (title: string) => void;
   onAddPress?: () => void;
   onMapPress?: () => void;
 };
@@ -96,7 +98,7 @@ const fetchWithTimeout = async (url: string, options: RequestInit = {}, timeout 
   }
 };
 
-export default function ProfileScreen({ currentUser, onAddPress, onMapPress }: Props) {
+export default function ProfileScreen({ currentUser, wishlist = [], toggleWishlist, onAddPress, onMapPress }: Props) {
   const navigate = useNavigate();
 
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -131,6 +133,7 @@ export default function ProfileScreen({ currentUser, onAddPress, onMapPress }: P
     longitude: -74.0060,
   });
   const [publishing, setPublishing] = useState(false);
+  const [wishlistInput, setWishlistInput] = useState("");
 
   const handleAutoDetect = () => {
      if ("geolocation" in navigator) {
@@ -254,6 +257,13 @@ export default function ProfileScreen({ currentUser, onAddPress, onMapPress }: P
         await fetchMyOffers();
      } catch(e) { alert("Failed delete"); }
   };
+
+  const viralStats = useMemo(() => ({
+    treesSaved: (profile?.dealsCompleted || 0) * 0.45 + (myOffers.length * 0.12),
+    moneySaved: (profile?.dealsCompleted || 0) * 18 + (myOffers.length * 4),
+    honorLevel: (profile?.dealsCompleted || 0) > 10 ? "Community Pillar" : (profile?.dealsCompleted || 0) > 3 ? "Trusted Neighbor" : "Eco Explorer",
+    honorStars: Math.min(5, Math.floor((profile?.dealsCompleted || 0) / 2) + 1)
+  }), [profile, myOffers]);
 
   const filteredOffers = useMemo(() => {
     // Deduplicate by bookTitle and author
@@ -379,7 +389,7 @@ export default function ProfileScreen({ currentUser, onAddPress, onMapPress }: P
 
                {/* Tabs */}
                <div className="flex gap-4 border-b border-white/5 pb-1">
-                  {['offers', 'libraries', 'stats'].map((t: any) => (
+                  {['offers', 'libraries', 'wishlist', 'stats'].map((t: any) => (
                      <button 
                         key={t}
                         onClick={() => setActiveTab(t)}
@@ -440,15 +450,97 @@ export default function ProfileScreen({ currentUser, onAddPress, onMapPress }: P
                         </div>
                      </div>
                   )}
-                  {activeTab === 'libraries' && (
-                     <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-                        {stores.map(store => (
-                           <div key={store.id} className="bg-primary-light/10 border border-white/5 rounded-2xl p-6 hover:bg-primary-light/20 transition-colors cursor-pointer text-center">
-                              <FaFolder className="text-4xl text-secondary mx-auto mb-4" />
-                              <h3 className="font-bold text-white">{store.name}</h3>
-                              <p className="text-xs text-gray-500">{store.offers?.length || 0} books</p>
+                  {activeTab === 'wishlist' && (
+                     <div className="space-y-6">
+                        <div className="flex gap-2">
+                           <input 
+                              value={wishlistInput}
+                              onChange={e => setWishlistInput(e.target.value)}
+                              placeholder="Add book title to hunting list..."
+                              className="flex-1 bg-primary-light/50 border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-secondary transition-colors"
+                           />
+                           <button 
+                              onClick={() => {
+                                 if(wishlistInput.trim()) {
+                                    toggleWishlist?.(wishlistInput.trim());
+                                    setWishlistInput("");
+                                 }
+                              }}
+                              className="bg-secondary text-white px-6 py-3 rounded-xl text-[10px] font-bold uppercase tracking-widest hover:opacity-90 transition-opacity"
+                           >
+                              Add
+                           </button>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                           {wishlist.length === 0 ? (
+                              <div className="col-span-full py-20 text-center flex flex-col items-center">
+                                 <div className="w-20 h-20 bg-primary-light/20 rounded-full flex items-center justify-center text-white/10 mb-6"><FaBookmark size={30}/></div>
+                                 <h3 className="text-xl font-serif font-bold text-white mb-2">Shelf Anticipation</h3>
+                                 <p className="text-gray-500 text-xs max-w-xs leading-relaxed">Add books you're hunting for, and we'll ignite a notification the second a neighbor lists them.</p>
+                              </div>
+                           ) : (
+                              wishlist.map((title, idx) => (
+                                 <div key={idx} className="bg-primary-light/10 border border-white/5 rounded-xl p-5 flex items-center justify-between group hover:bg-primary-light/20 transition-all">
+                                    <div className="flex items-center gap-4">
+                                       <div className="w-8 h-8 bg-secondary/10 rounded-lg flex items-center justify-center text-secondary font-serif font-bold text-xs">{idx + 1}</div>
+                                       <span className="font-bold text-white text-sm">{title}</span>
+                                    </div>
+                                    <button onClick={() => toggleWishlist?.(title)} className="p-2 text-gray-500 hover:text-red-500 transition-colors"><FaTrash size={14}/></button>
+                                 </div>
+                              ))
+                           )}
+                        </div>
+                     </div>
+                  )}
+                  {activeTab === 'stats' && (
+                     <div className="space-y-8">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                           <div className="bg-gradient-to-br from-[#00635d] to-[#004a46] p-8 rounded-3xl shadow-xl relative overflow-hidden group border border-white/5">
+                              <FaBook className="absolute -right-6 -bottom-6 text-[120px] text-white/5 group-hover:rotate-12 transition-transform duration-1000" />
+                              <div className="relative z-10">
+                                 <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center text-white mb-6 shadow-xl"><FaChartLine size={24}/></div>
+                                 <h3 className="text-2xl font-serif font-bold text-white mb-2">Eco Spotlight</h3>
+                                 <p className="text-white/60 text-xs leading-relaxed mb-6 max-w-xs">By circulating artifacts instead of buying new, you're preserving our common soil.</p>
+                                 <div className="flex items-end gap-2 mb-2">
+                                    <span className="text-4xl font-black text-white">{viralStats.treesSaved.toFixed(1)}</span>
+                                    <span className="text-[10px] uppercase font-black tracking-widest text-white/40 mb-1.5">Trees Saved</span>
+                                 </div>
+                                 <div className="flex items-end gap-2">
+                                    <span className="text-2xl font-black text-white">${viralStats.moneySaved.toFixed(0)}</span>
+                                    <span className="text-[10px] uppercase font-black tracking-widest text-white/40 mb-1">Capital Retained</span>
+                                 </div>
+                              </div>
                            </div>
-                        ))}
+
+                           <div className="bg-gradient-to-br from-secondary to-[#b56b25] p-8 rounded-3xl shadow-xl relative overflow-hidden group border border-white/5">
+                              <FaUsers className="absolute -right-6 -bottom-6 text-[120px] text-white/5 group-hover:scale-110 transition-transform duration-1000" />
+                              <div className="relative z-10">
+                                 <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center text-white mb-6 shadow-xl"><FaStar size={24}/></div>
+                                 <h3 className="text-2xl font-serif font-bold text-white mb-2">Honor Ledger</h3>
+                                 <p className="text-white/60 text-xs leading-relaxed mb-6 max-w-xs">Your standing in the Boocozmo circle. Higher honor unlocks neighborhood perks.</p>
+                                 <div className="inline-block px-4 py-1.5 bg-white/10 border border-white/20 rounded-xl mb-6">
+                                    <span className="text-[10px] font-black uppercase tracking-widest text-white">{viralStats.honorLevel}</span>
+                                 </div>
+                                 <div className="flex gap-1.5">
+                                    {[...Array(5)].map((_, i) => (
+                                       <FaStar key={i} className={`text-lg ${i < viralStats.honorStars ? "text-white" : "text-white/10"}`} />
+                                    ))}
+                                 </div>
+                              </div>
+                           </div>
+                        </div>
+
+                        <div className="bg-primary-light/30 backdrop-blur-xl border border-white/10 rounded-3xl p-8 flex flex-col md:flex-row items-center justify-between gap-8 group">
+                           <div className="flex items-center gap-6">
+                              <div className="w-16 h-16 bg-secondary rounded-2xl flex items-center justify-center text-white shadow-xl group-hover:rotate-[360deg] transition-transform duration-1000"><FaBookOpen size={24}/></div>
+                              <div>
+                                 <h4 className="text-xl font-serif font-bold text-white mb-1">Ignite the Wildfire</h4>
+                                 <p className="text-xs text-text-muted uppercase tracking-widest">Share your impact card to inspire neighbors</p>
+                              </div>
+                           </div>
+                           <button className="whitespace-nowrap px-8 py-4 bg-secondary text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl hover:scale-105 active:scale-95 transition-all">Generate Social Card</button>
+                        </div>
                      </div>
                   )}
                </div>
@@ -459,14 +551,14 @@ export default function ProfileScreen({ currentUser, onAddPress, onMapPress }: P
       {/* Edit Profile Modal */}
       <AnimatePresence>
          {showEditModal && (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
-               <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} className="bg-white border border-[#eee] rounded-xl p-6 w-full max-w-sm shadow-xl">
-                  <h3 className="text-xl font-serif font-bold text-[#382110] mb-6">Edit Profile</h3>
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
+               <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} className="bg-primary border border-white/10 rounded-2xl p-6 w-full max-w-md">
+                  <h3 className="text-xl font-bold text-white mb-6">Edit Profile</h3>
                   
                   <div className="flex justify-center mb-6">
-                     <div className="relative w-24 h-24 rounded-full overflow-hidden border-2 border-dashed border-[#ddd] hover:border-[#382110]/30 cursor-pointer bg-[#f9f9f9]"
+                     <div className="relative w-24 h-24 rounded-full overflow-hidden border-2 border-dashed border-white/20 hover:border-secondary cursor-pointer"
                         onClick={() => photoInputRef.current?.click()}>
-                        {editForm.profilePhotoPreview ? <img src={editForm.profilePhotoPreview} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-[#999]"><FaCamera size={24} /></div>}
+                        {editForm.profilePhotoPreview ? <img src={editForm.profilePhotoPreview} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-gray-500"><FaCamera /></div>}
                         <input ref={photoInputRef} type="file" hidden accept="image/*" onChange={(e: any) => {
                            const file = e.target.files[0];
                            if(file) {
@@ -478,14 +570,12 @@ export default function ProfileScreen({ currentUser, onAddPress, onMapPress }: P
                      </div>
                   </div>
 
-                  <input value={editForm.bio} onChange={e => setEditForm({...editForm, bio: e.target.value})} placeholder="Bio" className="w-full bg-[#f9f9f9] border border-[#ddd] rounded-lg p-3 text-[#333] mb-3 focus:border-[#382110] outline-none placeholder:text-black/40" />
-                  <input value={editForm.location} onChange={e => setEditForm({...editForm, location: e.target.value})} placeholder="Location" className="w-full bg-[#f9f9f9] border border-[#ddd] rounded-lg p-3 text-[#333] mb-6 focus:border-[#382110] outline-none placeholder:text-black/40" />
+                  <input value={editForm.bio} onChange={e => setEditForm({...editForm, bio: e.target.value})} placeholder="Bio" className="w-full bg-primary-light/50 border border-white/10 rounded-xl p-3 text-white mb-3" />
+                  <input value={editForm.location} onChange={e => setEditForm({...editForm, location: e.target.value})} placeholder="Location" className="w-full bg-primary-light/50 border border-white/10 rounded-xl p-3 text-white mb-6" />
 
                   <div className="flex justify-end gap-3">
-                     <button onClick={() => setShowEditModal(false)} className="text-[#777] hover:text-[#382110] text-sm font-medium">Cancel</button>
-                     <button onClick={handleUpdateProfile} disabled={editingProfile} className="px-5 py-2 bg-[#382110] text-white rounded-lg font-bold text-sm shadow-md">
-                        {editingProfile ? "Saving..." : "Save Changes"}
-                     </button>
+                     <button onClick={() => setShowEditModal(false)} className="text-gray-400 hover:text-white">Cancel</button>
+                     <button onClick={handleUpdateProfile} disabled={editingProfile} className="px-4 py-2 bg-secondary text-white rounded-xl font-medium">Save</button>
                   </div>
                </motion.div>
             </motion.div>
@@ -494,29 +584,29 @@ export default function ProfileScreen({ currentUser, onAddPress, onMapPress }: P
       {/* Publish Modal */}
       <AnimatePresence>
           {showPublishModal && (
-             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
-                <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} className="bg-white border border-[#eee] rounded-xl p-6 w-full max-w-md shadow-xl overflow-y-auto max-h-[90vh]">
-                    <h3 className="text-xl font-serif font-bold text-[#382110] mb-2">Publish "{bookToPublish?.bookTitle}"</h3>
-                    <p className="text-[#777] text-sm mb-4">Set visibility details and location.</p>
+             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
+                <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} className="bg-primary border border-white/10 rounded-2xl p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
+                    <h3 className="text-xl font-bold text-white mb-2">Publish "{bookToPublish?.bookTitle}"</h3>
+                    <p className="text-text-muted text-sm mb-4">Set visibility details and location.</p>
 
                     <div className="flex gap-4 mb-4">
-                       <button onClick={() => setPublishForm({...publishForm, type: "sell"})} className={`flex-1 py-2 rounded-lg font-bold text-sm border transition-all ${publishForm.type === "sell" ? "bg-[#d37e2f] text-white border-[#d37e2f]" : "border-[#ddd] text-[#777] hover:bg-gray-50"}`}>Sell</button>
-                       <button onClick={() => setPublishForm({...publishForm, type: "exchange"})} className={`flex-1 py-2 rounded-lg font-bold text-sm border transition-all ${publishForm.type === "exchange" ? "bg-[#00635d] text-white border-[#00635d]" : "border-[#ddd] text-[#777] hover:bg-gray-50"}`}>Exchange</button>
+                       <button onClick={() => setPublishForm({...publishForm, type: "sell"})} className={`flex-1 py-2 rounded-lg border ${publishForm.type === "sell" ? "bg-secondary border-secondary text-white" : "border-white/10 text-text-muted"}`}>Sell</button>
+                       <button onClick={() => setPublishForm({...publishForm, type: "exchange"})} className={`flex-1 py-2 rounded-lg border ${publishForm.type === "exchange" ? "bg-secondary border-secondary text-white" : "border-white/10 text-text-muted"}`}>Exchange</button>
                     </div>
 
                     {publishForm.type === "sell" && (
-                       <input type="number" value={publishForm.price} onChange={e => setPublishForm({...publishForm, price: e.target.value})} placeholder="Price ($)" className="w-full bg-[#f9f9f9] border border-[#ddd] rounded-lg p-3 text-[#333] mb-3 focus:border-[#382110] outline-none placeholder:text-black font-bold" />
+                       <input type="number" value={publishForm.price} onChange={e => setPublishForm({...publishForm, price: e.target.value})} placeholder="Price ($)" className="w-full bg-primary-light/50 border border-white/10 rounded-xl p-3 text-white mb-3" />
                     )}
                     {publishForm.type === "exchange" && (
-                       <input value={publishForm.exchangeBook} onChange={e => setPublishForm({...publishForm, exchangeBook: e.target.value})} placeholder="Trading for (e.g. Sci-Fi)" className="w-full bg-[#f9f9f9] border border-[#ddd] rounded-lg p-3 text-[#333] mb-3 focus:border-[#382110] outline-none placeholder:text-black" />
+                       <input value={publishForm.exchangeBook} onChange={e => setPublishForm({...publishForm, exchangeBook: e.target.value})} placeholder="Trading for (e.g. Sci-Fi)" className="w-full bg-primary-light/50 border border-white/10 rounded-xl p-3 text-white mb-3" />
                     )}
 
                     <div className="mb-4">
                         <div className="flex justify-between items-center mb-2">
-                           <label className="text-xs font-bold uppercase text-[#777]">Confirm Location</label>
-                           <button onClick={handleAutoDetect} className="text-xs text-[#00635d] hover:underline">Auto Detect</button>
+                           <label className="text-xs font-bold uppercase text-text-muted">Confirm Location</label>
+                           <button onClick={handleAutoDetect} className="text-xs text-secondary hover:underline">Auto Detect</button>
                         </div>
-                        <div className="h-48 border border-[#ddd] rounded-xl overflow-hidden relative z-0">
+                        <div className="h-48 border border-white/10 rounded-xl overflow-hidden relative z-0">
                              <MapContainer center={[publishForm.latitude, publishForm.longitude]} zoom={13} style={{ height: "100%", width: "100%" }}>
                                 <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
                                 <LocationMarker 
@@ -525,12 +615,12 @@ export default function ProfileScreen({ currentUser, onAddPress, onMapPress }: P
                                 />
                              </MapContainer>
                         </div>
-                        <p className="text-[10px] text-[#999] mt-1 italic">Tap map to pinpoint exact location.</p>
+                        <p className="text-[10px] text-text-muted mt-1">Tap map to pinpoint exact location.</p>
                     </div>
 
                     <div className="flex justify-end gap-3 mt-4">
-                       <button onClick={() => setShowPublishModal(false)} className="text-[#777] hover:text-[#382110] text-sm font-medium">Cancel</button>
-                       <button onClick={handlePublishConfirm} disabled={publishing} className="px-5 py-2 bg-[#382110] text-white rounded-lg font-bold text-sm shadow-md">
+                       <button onClick={() => setShowPublishModal(false)} className="text-text-muted hover:text-white">Cancel</button>
+                       <button onClick={handlePublishConfirm} disabled={publishing} className="px-4 py-2 bg-secondary text-white rounded-xl font-medium">
                           {publishing ? "Publishing..." : "Publish Now"}
                        </button>
                     </div>

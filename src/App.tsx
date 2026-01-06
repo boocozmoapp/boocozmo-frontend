@@ -2,7 +2,8 @@
 // src/App.tsx - GOODREADS EXACT REPLICA
 import React, { useEffect, useState } from "react";
 import { BrowserRouter, Routes, Route, useNavigate, useLocation } from "react-router-dom";
-import { FaSearch, FaUserCircle, FaCaretDown, FaBell, FaEnvelope, FaBookOpen, FaHome, FaSignOutAlt } from "react-icons/fa";
+import { motion, AnimatePresence } from "framer-motion";
+import { FaSearch, FaUserCircle, FaCaretDown, FaBell, FaEnvelope, FaBookOpen, FaHome, FaSignOutAlt, FaTimes } from "react-icons/fa";
 import SplashScreen from "./pages/SplashScreen";
 import HomeScreen from "./pages/HomeScreen";
 import OfferScreen from "./pages/OfferScreen";
@@ -143,8 +144,22 @@ function AppContent() {
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
+  const [wishlist, setWishlist] = useState<string[]>([]);
+  const [activeNotification, setActiveNotification] = useState<{ id: string, title: string, owner: string, distance?: string, type: 'wishlist' | 'nearby' } | null>(null);
+  const [seenOffers, setSeenOffers] = useState<Set<number>>(new Set());
+
+  // Proximity Helper
+  const getDist = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+    const R = 6371;
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  };
+
   useEffect(() => {
     const saved = localStorage.getItem("user");
+    const savedWish = localStorage.getItem("wishlist");
     if (saved) {
       try {
         const u = JSON.parse(saved);
@@ -153,8 +168,69 @@ function AppContent() {
         console.error(e);
       }
     }
+    if (savedWish) setWishlist(JSON.parse(savedWish));
     setLoading(false);
   }, []);
+
+  useEffect(() => {
+    localStorage.setItem("wishlist", JSON.stringify(wishlist));
+  }, [wishlist]);
+
+  // Viral Notification Engine (FOMO)
+  useEffect(() => {
+    if (!user) return;
+
+    const checkNewOffers = async () => {
+       try {
+          const resp = await fetch(`https://boocozmo-api.onrender.com/offers?limit=100`, {
+             headers: { "Authorization": `Bearer ${user.token}` }
+          });
+          const data = await resp.json();
+          const offers = Array.isArray(data) ? data : (data.offers || []);
+          
+          // Get user location for proximity check
+          const pResp = await fetch(`https://boocozmo-api.onrender.com/profile/${user.email}`, {
+             headers: { "Authorization": `Bearer ${user.token}` }
+          });
+          const pData = await pResp.json();
+          const userLat = pData.latitude;
+          const userLon = pData.longitude;
+
+          for (const offer of offers) {
+             if (offer.ownerEmail === user.email) continue;
+             if (seenOffers.has(offer.id)) continue;
+
+             const isWishMatch = wishlist.some(w => offer.bookTitle.toLowerCase().includes(w.toLowerCase()));
+             let isSuperNear = false;
+             let distText = "";
+
+             if (userLat && userLon && offer.latitude && offer.longitude) {
+                const dist = getDist(userLat, userLon, offer.latitude, offer.longitude);
+                if (dist < 2) { // Within 2km
+                   isSuperNear = true;
+                   distText = dist < 0.5 ? "Just around the corner!" : `${dist.toFixed(1)}km away`;
+                }
+             }
+
+             if (isWishMatch || isSuperNear) {
+                setActiveNotification({
+                   id: offer.id,
+                   title: offer.bookTitle,
+                   owner: offer.ownerName || "A neighbor",
+                   distance: distText,
+                   type: isWishMatch ? 'wishlist' : 'nearby'
+                });
+                setSeenOffers(prev => new Set(prev).add(offer.id));
+                break; // Show one at a time
+             }
+          }
+       } catch (err) { console.error("Viral Engine Error", err); }
+    };
+
+    const interval = setInterval(checkNewOffers, 45000); // Check every 45s for FOMO effect
+    checkNewOffers(); // Initial check
+    return () => clearInterval(interval);
+  }, [user, wishlist, seenOffers]);
 
   const handleAuth = (u: any) => {
     const fullUser = { ...u, id: u.id.toString() };
@@ -168,9 +244,17 @@ function AppContent() {
     navigate("/login");
   };
 
+  const toggleWishlist = (title: string) => {
+     setWishlist(prev => prev.includes(title) ? prev.filter(t => t !== title) : [...prev, title]);
+  };
+
   if (loading) return <div className="h-screen bg-[#f4f1ea] flex items-center justify-center">Loading...</div>;
 
-  const authProps = { currentUser: user! };
+  const authProps = { 
+     currentUser: user!, 
+     wishlist, 
+     toggleWishlist 
+  };
 
   if (!user) {
      return (
@@ -186,10 +270,46 @@ function AppContent() {
   return (
     <div className="min-h-screen bg-white font-sans text-[#333]">
       <GoodreadsHeader user={user} onLogout={handleLogout} />
-      <div className="bg-[#f4f1ea] pb-10"> {/* Global Background */}
+      
+      {/* FOMO Notification Toast */}
+      <AnimatePresence>
+         {activeNotification && (
+            <motion.div 
+               initial={{ x: 300, opacity: 0 }}
+               animate={{ x: 0, opacity: 1 }}
+               exit={{ x: 300, opacity: 0 }}
+               className="fixed bottom-6 right-6 z-[9999] w-80 bg-[#382110] text-white p-4 rounded-xl shadow-2xl border-l-4 border-[#d37e2f] cursor-pointer"
+               onClick={() => {
+                  navigate(`/offer/${activeNotification.id}`);
+                  setActiveNotification(null);
+               }}
+            >
+               <div className="flex justify-between items-start mb-2">
+                  <span className="bg-[#d37e2f] text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-widest">
+                     {activeNotification.type === 'wishlist' ? '✨ Wishlist Match' : '📍 Super Nearby'}
+                  </span>
+                  <button onClick={(e) => { e.stopPropagation(); setActiveNotification(null); }} className="text-white/50 hover:text-white"><FaTimes size={14}/></button>
+               </div>
+               <h4 className="font-serif font-bold text-sm leading-tight">{activeNotification.title}</h4>
+               <p className="text-[11px] text-white/70 mt-1">
+                  {activeNotification.type === 'wishlist' 
+                    ? `Someone just posted a book from your wishlist!` 
+                    : `Someone just posted a gem only ${activeNotification.distance}!`}
+               </p>
+               <div className="mt-3 flex items-center gap-2">
+                  <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center text-[10px] font-bold">
+                     {activeNotification.owner.charAt(0)}
+                  </div>
+                  <span className="text-[10px] font-medium italic opacity-80">Posted by {activeNotification.owner}</span>
+               </div>
+            </motion.div>
+         )}
+      </AnimatePresence>
+
+      <div className="bg-[#f4f1ea] pb-10">
          <div className="max-w-[1100px] mx-auto bg-white min-h-[calc(100vh-120px)] shadow-[0_0_10px_rgba(0,0,0,0.02)] border-x border-[#ebebeb]">
             <Routes>
-              <Route path="/" element={<HomeScreen {...authProps} />} /> {/* Redirect to home effectively */}
+              <Route path="/" element={<HomeScreen {...authProps} />} />
               <Route path="/home" element={<HomeScreen {...authProps} />} />
               <Route path="/offer" element={<OfferScreen {...authProps} onBack={() => navigate("/home")} onProfilePress={() => navigate("/profile")} onMapPress={() => navigate("/map")} onAddPress={() => navigate("/offer")} />} />
               <Route path="/offer/:id" element={<OfferDetailScreen {...authProps} />} />
