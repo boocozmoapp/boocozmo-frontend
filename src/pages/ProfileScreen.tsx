@@ -507,7 +507,7 @@ export default function ProfileScreen({ currentUser, wishlist = [], toggleWishli
                                     <span className="text-[10px] uppercase font-black tracking-widest text-white/40 mb-1.5">Trees Saved</span>
                                  </div>
                                  <div className="flex items-end gap-2">
-                                    <span className="text-2xl font-black text-white">${viralStats.moneySaved.toFixed(0)}</span>
+                                    <span className="text-2xl font-black text-white">PKR {viralStats.moneySaved.toFixed(0)}</span>
                                     <span className="text-[10px] uppercase font-black tracking-widest text-white/40 mb-1">Capital Retained</span>
                                  </div>
                               </div>
@@ -595,7 +595,7 @@ export default function ProfileScreen({ currentUser, wishlist = [], toggleWishli
                     </div>
 
                     {publishForm.type === "sell" && (
-                       <input type="number" value={publishForm.price} onChange={e => setPublishForm({...publishForm, price: e.target.value})} placeholder="Price ($)" className="w-full bg-primary-light/50 border border-white/10 rounded-xl p-3 text-white mb-3" />
+                       <input type="number" value={publishForm.price} onChange={e => setPublishForm({...publishForm, price: e.target.value})} placeholder="Price (PKR)" className="w-full bg-primary-light/50 border border-white/10 rounded-xl p-3 text-white mb-3" />
                     )}
                     {publishForm.type === "exchange" && (
                        <input value={publishForm.exchangeBook} onChange={e => setPublishForm({...publishForm, exchangeBook: e.target.value})} placeholder="Trading for (e.g. Sci-Fi)" className="w-full bg-primary-light/50 border border-white/10 rounded-xl p-3 text-white mb-3" />

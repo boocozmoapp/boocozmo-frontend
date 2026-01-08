@@ -183,6 +183,9 @@ export default function MyLibraryScreen({
         price: o.price ? parseFloat(o.price) : null,
         latitude: o.latitude ? parseFloat(o.latitude) : null,
         longitude: o.longitude ? parseFloat(o.longitude) : null,
+        // Ensure visibility and state are correctly mapped from backend
+        visibility: o.visibility,
+        state: o.state
       }));
       setStoreOffers(processed);
     } catch (err) {
@@ -518,7 +521,7 @@ export default function MyLibraryScreen({
                    </div>
  
                    {publishForm.type === "sell" && (
-                      <input type="number" value={publishForm.price} onChange={e => setPublishForm({...publishForm, price: e.target.value})} placeholder="Price ($)" className="w-full bg-[#f9f9f9] border border-[#ddd] rounded-lg p-3 text-[#333] mb-3 focus:border-[#382110] outline-none placeholder:text-black font-bold" />
+                      <input type="number" value={publishForm.price} onChange={e => setPublishForm({...publishForm, price: e.target.value})} placeholder="Price (PKR)" className="w-full bg-[#f9f9f9] border border-[#ddd] rounded-lg p-3 text-[#333] mb-3 focus:border-[#382110] outline-none placeholder:text-black font-bold" />
                    )}
                    {publishForm.type === "exchange" && (
                       <input value={publishForm.exchangeBook} onChange={e => setPublishForm({...publishForm, exchangeBook: e.target.value})} placeholder="Trading for (e.g. Sci-Fi books)" className="w-full bg-[#f9f9f9] border border-[#ddd] rounded-lg p-3 text-[#333] mb-3 focus:border-[#382110] outline-none placeholder:text-black" />

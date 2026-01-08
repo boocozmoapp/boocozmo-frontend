@@ -16,7 +16,6 @@ import SingleChat from "./pages/SingleChat";
 import OfferDetailScreen from "./pages/OfferDetailScreen";
 import MyLibraryScreen from "./pages/MyLibraryScreen";
 import DiscoverScreen from "./pages/DiscoverScreen";
-import CommunityScreen from "./pages/CommunityScreen";
 import WelcomeScreen from "./pages/WelcomeScreen";
 import "leaflet/dist/leaflet.css";
 
@@ -63,15 +62,7 @@ function GoodreadsHeader({ user, onLogout }: { user: User; onLogout: () => void 
                      <button onClick={() => navigate("/home")} className="w-full text-left px-4 py-2 hover:bg-[#f4f1ea]">Non-Fiction</button>
                  </div>
               </div>
-              <div className="relative group">
-                 <button className="px-3 py-2 font-sans hover:bg-white/50 rounded-sm flex items-center gap-1">
-                   Community <FaCaretDown size={10} className="text-[#999]" />
-                 </button>
-                 <div className="absolute top-full left-0 w-40 bg-white border border-[#d8d8d8] shadow-lg rounded-[3px] py-1 hidden group-hover:block z-50">
-                     <button onClick={() => navigate("/community")} className="w-full text-left px-4 py-2 hover:bg-[#f4f1ea]">Discussions</button>
-                     <button onClick={() => navigate("/chat")} className="w-full text-left px-4 py-2 hover:bg-[#f4f1ea]">Messages</button>
-                 </div>
-              </div>
+              {/* ========== COMMUNITY SECTION REMOVED FROM HERE ========== */}
             </nav>
           </div>
 
@@ -133,7 +124,7 @@ function GoodreadsHeader({ user, onLogout }: { user: User; onLogout: () => void 
          <span onClick={() => navigate("/my-library")} className="cursor-pointer border-l border-[#eee] pl-4">My Books</span>
          <span onClick={() => navigate("/offer")} className="cursor-pointer border-l border-[#eee] pl-4">Offers</span>
          <span onClick={() => navigate("/map")} className="cursor-pointer border-l border-[#eee] pl-4">Map</span>
-         <span onClick={() => navigate("/community")} className="cursor-pointer border-l border-[#eee] pl-4">Community</span>
+         {/* ========== MOBILE COMMUNITY LINK REMOVED FROM HERE ========== */}
       </div>
     </>
   );
@@ -319,7 +310,6 @@ function AppContent() {
               <Route path="/chat/:chatId" element={<SingleChat {...authProps} />} />
               <Route path="/discover" element={<DiscoverScreen {...authProps} />} />
               <Route path="/my-library" element={<MyLibraryScreen {...authProps} onBack={() => navigate("/home")} onAddPress={() => navigate("/offer")} onProfilePress={() => navigate("/profile")} onMapPress={() => navigate("/map")} />} />
-              <Route path="/community" element={<CommunityScreen />} />
               <Route path="*" element={<HomeScreen {...authProps} />} />
             </Routes>
          </div>

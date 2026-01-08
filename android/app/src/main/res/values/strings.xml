@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Boocozmo</string>
+    <string name="title_activity_main">Boocozmo</string>
+    <string name="package_name">com.boocozmo.app</string>
+    <string name="custom_url_scheme">com.boocozmo.app</string>
+</resources>

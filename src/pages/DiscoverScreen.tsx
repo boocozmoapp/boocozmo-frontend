@@ -345,7 +345,7 @@ export default function DiscoverScreen({ currentUser, wishlist = [], toggleWishl
                         <div className="flex items-end justify-between mb-6">
                            <span className="text-xs uppercase text-[#999] font-bold">Offer Preference</span>
                            <span className="text-3xl font-serif font-bold text-[#d37e2f]">
-                              {selectedOffer.price ? `$${selectedOffer.price}` : selectedOffer.type === 'exchange' ? 'Exchange' : 'ISO'}
+                              {selectedOffer.price ? `PKR ${selectedOffer.price}` : selectedOffer.type === 'exchange' ? 'Exchange' : 'ISO'}
                            </span>
                         </div>
                         
@@ -383,5 +383,3 @@ export default function DiscoverScreen({ currentUser, wishlist = [], toggleWishl
     </div>
   );
 }
-
-

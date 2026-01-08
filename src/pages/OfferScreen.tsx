@@ -173,7 +173,7 @@ export default function OfferScreen({ onBack, currentUser }: Props) {
 
        <main className="max-w-3xl mx-auto p-4 md:p-8">
           {/* Instructional Poster */}
-          <div className="mb-6 w-full bg-white border border-[#e8e0d5] rounded-lg p-5 relative overflow-hidden shadow-sm flex flex-col md:flex-row items-center gap-5">
+          <div className="mb-6 w-full bg-white border border-[#e8e0d5] rounded-lg p-5 relative overflow-hidden flex flex-col md:flex-row items-center gap-5">
               <div className="absolute top-0 right-0 w-1/4 h-full opacity-10 pointer-events-none grayscale">
                  <img src="https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=800&q=80" className="w-full h-full object-cover" />
               </div>
@@ -221,15 +221,15 @@ export default function OfferScreen({ onBack, currentUser }: Props) {
                 <div>
                     <label className="block text-xs font-bold uppercase text-[#555] mb-1">I want to</label>
                     <div className="flex gap-4">
-                       <button onClick={() => setAction('sell')} className={`flex-1 py-3 rounded-[3px] flex items-center justify-center gap-2 font-bold border ${action === 'sell' ? 'bg-[#d37e2f] text-white border-[#d37e2f]' : 'bg-white text-[#555] border-[#d8d8d8]'}`}><FaDollarSign /> Sell</button>
+                       <button onClick={() => setAction('sell')} className={`flex-1 py-3 rounded-[3px] flex items-center justify-center gap-2 font-bold border ${action === 'sell' ? 'bg-[#d37e2f] text-white border-[#d37e2f]' : 'bg-white text-[#555] border-[#d8d8d8]'}`}><FaDollarSign /> Sell (PKR)</button>
                        <button onClick={() => setAction('trade')} className={`flex-1 py-3 rounded-[3px] flex items-center justify-center gap-2 font-bold border ${action === 'trade' ? 'bg-[#00635d] text-white border-[#00635d]' : 'bg-white text-[#555] border-[#d8d8d8]'}`}><FaExchangeAlt /> Trade/Exchange</button>
                     </div>
                 </div>
 
                 {action === 'sell' ? (
                    <div>
-                      <label className="block text-xs font-bold uppercase text-[#555] mb-1">Price ($)</label>
-                      <input type="number" value={price} onChange={e => setPrice(e.target.value)} placeholder="0.00" className="w-full bg-white border border-[#d8d8d8] rounded p-3 text-[#333] placeholder-black focus:border-[#382110] focus:ring-1 focus:ring-[#382110] outline-none font-bold text-lg" />
+                      <label className="block text-xs font-bold uppercase text-[#555] mb-1">Price (PKR)</label>
+                      <input type="number" value={price} onChange={e => setPrice(e.target.value)} placeholder="0" className="w-full bg-white border border-[#d8d8d8] rounded p-3 text-[#333] placeholder-black focus:border-[#382110] focus:ring-1 focus:ring-[#382110] outline-none font-bold text-lg" />
                    </div>
                 ) : (
                    <div>

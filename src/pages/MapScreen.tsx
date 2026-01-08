@@ -517,7 +517,7 @@ export default function MapScreen({ currentUser }: Props) {
                         <div className="flex items-end justify-between mb-4">
                            <span className="text-xs uppercase text-[#777] font-bold">Price</span>
                            <span className="text-3xl font-serif font-bold text-[#d37e2f]">
-                              {selectedOffer.price ? `$${selectedOffer.price}` : selectedOffer.type === 'exchange' ? 'Trade' : 'ISO'}
+                              {selectedOffer.price ? `PKR ${selectedOffer.price}` : selectedOffer.type === 'exchange' ? 'Trade' : 'ISO'}
                            </span>
                         </div>
                         <div className="flex gap-3">
