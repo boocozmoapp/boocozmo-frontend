@@ -22,8 +22,8 @@
   --color-gr-border: #d8d8d8;
   /* Borders */
 
-  --font-serif: "Merriweather", "Georgia", serif;
-  --font-sans: "Lato", "Helvetica Neue", "Helvetica", Arial, sans-serif;
+  --font-serif: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 }
 
 @theme {
@@ -44,6 +44,7 @@ body {
   color: var(--color-gr-text-main);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 h1,
@@ -53,7 +54,8 @@ h4,
 h5,
 h6 {
   color: var(--color-gr-text-dark);
-  font-family: var(--font-serif);
+  font-family: var(--font-sans);
+  font-weight: 600;
 }
 
 a {

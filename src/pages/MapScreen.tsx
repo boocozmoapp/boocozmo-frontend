@@ -6,7 +6,7 @@ import "leaflet/dist/leaflet.css";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   FaTimes, FaSearch, FaMapMarkerAlt, FaHeart, FaHome, FaBookOpen, FaCompass, 
-  FaUsers, FaBars, FaMapMarkedAlt, FaComments, FaBookmark, FaLocationArrow
+  FaUsers, FaBars, FaMapMarkedAlt, FaComments, FaBookmark, FaLocationArrow, FaFolder
 } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 
@@ -26,6 +26,7 @@ type Offer = {
   longitude: number | null;
   ownerName?: string;
   ownerPhoto?: string;
+  ownerBadges?: string[];
   distance?: string | null;
   description?: string;
   genre?: string;
@@ -35,6 +36,18 @@ type Offer = {
   liked?: boolean;
   visibility: "public" | "private";
   state: "open" | "closed";
+};
+
+type Store = {
+  id: number;
+  name: string;
+  ownerEmail: string;
+  ownerName?: string;
+  location?: string;
+  latitude?: number;
+  longitude?: number;
+  visibility: "public" | "private";
+  bookCount?: number;
 };
 
 type Props = {
@@ -101,6 +114,43 @@ const createMarkerIcon = (() => {
   };
 })();
 
+const createStoreIcon = (() => {
+  const iconCache = new Map<string, L.DivIcon>();
+  return (isSelected: boolean = false) => {
+    const cacheKey = `store_${isSelected}`;
+    if (iconCache.has(cacheKey)) return iconCache.get(cacheKey)!;
+
+    const size = isSelected ? 52 : 44;
+    const goldenColor = "#d4af37"; // Golden color
+    
+    const icon = L.divIcon({
+      className: 'custom-store-marker',
+      html: `
+        <div style="
+          width: ${size}px; height: ${size}px; border-radius: 50%;
+          background: linear-gradient(135deg, #d4af37 0%, #f4d03f 50%, #d4af37 100%);
+          border: 4px solid white;
+          display: flex; align-items: center; justify-content: center;
+          box-shadow: 0 4px 16px rgba(212, 175, 55, 0.4);
+          transition: all 0.2s;
+        ">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M4 4H20C21.1 4 22 4.9 22 6V18C22 19.1 21.1 20 20 20H4C2.9 20 2 19.1 2 18V6C2 4.9 2.9 4 4 4Z" stroke="#382110" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M4 8H20" stroke="#382110" stroke-width="2" stroke-linecap="round"/>
+            <path d="M8 4V8" stroke="#382110" stroke-width="2" stroke-linecap="round"/>
+            <path d="M16 4V8" stroke="#382110" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+        </div>
+      `,
+      iconSize: [size, size],
+      iconAnchor: [size / 2, size / 2],
+      popupAnchor: [0, -size / 2]
+    });
+    iconCache.set(cacheKey, icon);
+    return icon;
+  };
+})();
+
 export default function MapScreen({ currentUser }: Props) {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstance = useRef<L.Map | null>(null);
@@ -108,7 +158,9 @@ export default function MapScreen({ currentUser }: Props) {
   const navigate = useNavigate();
   
   const [offers, setOffers] = useState<Offer[]>([]);
+  const [stores, setStores] = useState<Store[]>([]);
   const [selectedOffer, setSelectedOffer] = useState<Offer | null>(null);
+  const [selectedStore, setSelectedStore] = useState<Store | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [, setLoading] = useState(true);
   const [userLocation, setUserLocation] = useState<{lat: number, lng: number} | null>(null);
@@ -182,7 +234,15 @@ export default function MapScreen({ currentUser }: Props) {
       
       // Get unique owner emails to fetch profiles for
       const uniqueEmails = [...new Set(rawOffers.map((o: any) => o.ownerEmail).filter(Boolean))];
-      const profileCache: Record<string, { name: string; photo?: string }> = {};
+      const profileCache: Record<string, { name: string; photo?: string; badges?: string[] }> = {};
+
+      // Helper to calculate badges from stats
+      const calculateBadges = (offersPosted: number): string[] => {
+         const badges: string[] = [];
+         if (offersPosted >= 3) badges.push("Contributor");
+         if (offersPosted >= 20) badges.push("Verified");
+         return badges;
+      };
 
       // Fetch profiles in batches
       await Promise.all(
@@ -193,9 +253,19 @@ export default function MapScreen({ currentUser }: Props) {
                });
                if (pResp.ok) {
                   const pData = await pResp.json();
-                  profileCache[email as string] = { 
-                     name: pData.name || "Unknown", 
-                     photo: pData.profilePhotoURL || pData.photo || pData.profileImageUrl 
+                  // Parse badges if string, or calculate from offersPosted
+                  let badges: string[] = [];
+                  if (pData.badges) {
+                     badges = typeof pData.badges === 'string' ? JSON.parse(pData.badges) : pData.badges;
+                  }
+                  // If no badges stored, calculate from offersPosted
+                  if (!badges.length && pData.offersPosted) {
+                     badges = calculateBadges(pData.offersPosted);
+                  }
+                  profileCache[email as string] = {
+                     name: pData.name || "Unknown",
+                     photo: pData.profilePhotoURL || pData.photo || pData.profileImageUrl,
+                     badges
                   };
                }
             } catch (err) { console.error("Profile fetch error", err); }
@@ -215,6 +285,7 @@ export default function MapScreen({ currentUser }: Props) {
           imageUrl: o.imageUrl || null,
           ownerName: profileCache[o.ownerEmail]?.name || o.ownerName || "Unknown",
           ownerPhoto: profileCache[o.ownerEmail]?.photo,
+          ownerBadges: profileCache[o.ownerEmail]?.badges || [],
           distance: "Nearby"
         }));
       setOffers(processed);
@@ -222,16 +293,75 @@ export default function MapScreen({ currentUser }: Props) {
     finally { setLoading(false); }
   }, [currentUser.token, searchQuery]);
 
+  const fetchPublicStores = useCallback(async () => {
+    try {
+      const response = await fetch(`${API_BASE}/public-stores?limit=50`, {
+        headers: { "Authorization": `Bearer ${currentUser.token}` }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        const storesList = data.stores || data || [];
+        
+        // Process stores and extract location coordinates
+        const processedStores = storesList
+          .filter((s: any) => s.visibility === "public" && s.location)
+          .map((s: any) => {
+            let lat = null;
+            let lng = null;
+            
+            // Parse location string "Lat: X, Lng: Y" or check for latitude/longitude fields
+            if (s.latitude && s.longitude) {
+              lat = parseFloat(s.latitude);
+              lng = parseFloat(s.longitude);
+            } else if (s.location) {
+              const match = s.location.match(/Lat:\s*(-?\d+(\.\d+)?),\s*Lng:\s*(-?\d+(\.\d+)?)/);
+              if (match) {
+                lat = parseFloat(match[1]);
+                lng = parseFloat(match[3]);
+              }
+            }
+            
+            return {
+              id: s.id,
+              name: s.name,
+              ownerEmail: s.ownerEmail,
+              ownerName: s.ownerName || "Store Owner",
+              location: s.location,
+              latitude: lat,
+              longitude: lng,
+              visibility: s.visibility || "public",
+              bookCount: s.offerIds?.length || 0
+            };
+          })
+          .filter((s: Store) => s.latitude !== null && s.longitude !== null);
+        
+        setStores(processedStores);
+      }
+    } catch (err) {
+      console.error("Error fetching public stores:", err);
+    }
+  }, [currentUser.token]);
+
   useEffect(() => {
     fetchProfile();
     fetchOffers();
+    fetchPublicStores();
     return () => abortControllerRef.current?.abort();
-  }, [fetchProfile, fetchOffers]);
+  }, [fetchProfile, fetchOffers, fetchPublicStores]);
 
   const handleMarkerClick = useCallback((offer: Offer) => {
     setSelectedOffer(offer);
+    setSelectedStore(null);
     if (mapInstance.current && offer.latitude && offer.longitude) {
       mapInstance.current.setView([offer.latitude, offer.longitude], 15, { animate: true, duration: 0.5 });
+    }
+  }, []);
+
+  const handleStoreMarkerClick = useCallback((store: Store) => {
+    setSelectedStore(store);
+    setSelectedOffer(null);
+    if (mapInstance.current && store.latitude && store.longitude) {
+      mapInstance.current.setView([store.latitude, store.longitude], 15, { animate: true, duration: 0.5 });
     }
   }, []);
 
@@ -290,6 +420,7 @@ export default function MapScreen({ currentUser }: Props) {
     markersRef.current.forEach(marker => marker.remove());
     markersRef.current = [];
 
+     // Add offer markers
      offers.forEach(offer => {
         if (!offer.latitude || !offer.longitude) return;
         const isSelected = selectedOffer?.id === offer.id;
@@ -322,7 +453,44 @@ export default function MapScreen({ currentUser }: Props) {
 
         markersRef.current.push(marker);
      });
-  }, [offers, selectedOffer, handleMarkerClick]);
+
+     // Add store markers with golden library icons
+     stores.forEach(store => {
+        if (!store.latitude || !store.longitude) return;
+        const isSelected = selectedStore?.id === store.id;
+        const icon = createStoreIcon(isSelected);
+
+        let distanceText = "Nearby";
+        if (userLocation && store.latitude && store.longitude) {
+           const d = getDistanceFromLatLonInKm(userLocation.lat, userLocation.lng, store.latitude, store.longitude);
+           distanceText = `${d.toFixed(1)} km`;
+        }
+
+        const marker = L.marker([store.latitude, store.longitude], { icon })
+          .addTo(mapInstance.current!)
+          .on('click', () => handleStoreMarkerClick(store));
+        
+        marker.bindTooltip(`
+           <div style="padding: 6px; min-width: 140px; text-align: center; background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border-radius: 8px; border: 2px solid #d4af37;">
+              <div style="font-weight: bold; font-family: serif; color: #382110; font-size: 14px; margin-bottom: 4px;">
+                 📚 ${store.name}
+              </div>
+              <div style="font-size: 11px; color: #78350f; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 4px;">
+                 <span>📍</span> ${distanceText}
+              </div>
+              <div style="font-size: 10px; color: #78350f; margin-top: 2px;">
+                 ${store.bookCount || 0} books
+              </div>
+           </div>
+        `, { 
+           direction: 'top', 
+           offset: [0, -20],
+           className: 'premium-store-tooltip'
+        });
+
+        markersRef.current.push(marker);
+     });
+  }, [offers, stores, selectedOffer, selectedStore, handleMarkerClick, handleStoreMarkerClick, userLocation]);
 
   const navItems = [
     { icon: FaHome, label: "Home", onClick: () => navigate("/") },
@@ -437,6 +605,11 @@ export default function MapScreen({ currentUser }: Props) {
                                     )}
                                  </div>
                                  <span className="text-[7px] font-bold text-[#555] truncate">{offer.ownerName?.split(' ')[0]}</span>
+                                 {offer.ownerBadges && offer.ownerBadges.length > 0 && (
+                                    <span className="px-1 py-0.5 rounded text-[5px] font-bold bg-[#d37e2f]/20 text-[#d37e2f] border border-[#d37e2f]/30 whitespace-nowrap">
+                                       {offer.ownerBadges[offer.ownerBadges.length - 1]}
+                                    </span>
+                                 )}
                               </div>
                            </div>
                         </motion.div>
@@ -445,6 +618,73 @@ export default function MapScreen({ currentUser }: Props) {
                </div>
             </div>
          )}
+
+         {/* Store Detail Modal */}
+         <AnimatePresence>
+           {selectedStore && (
+             <motion.div
+               initial={{ opacity: 0 }}
+               animate={{ opacity: 1 }}
+               exit={{ opacity: 0 }}
+               onClick={() => setSelectedStore(null)}
+               className="fixed inset-0 z-[1000] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto"
+             >
+               <motion.div
+                 initial={{ scale: 0.95, opacity: 0, y: 20 }}
+                 animate={{ scale: 1, opacity: 1, y: 0 }}
+                 exit={{ scale: 0.95, opacity: 0, y: 20 }}
+                 onClick={(e) => e.stopPropagation()}
+                 className="bg-white w-full max-w-md rounded-xl shadow-2xl overflow-hidden relative"
+               >
+                 <button
+                   onClick={() => setSelectedStore(null)}
+                   className="absolute top-4 right-4 z-10 text-[#333] bg-gray-100 p-2 rounded-full hover:bg-gray-200 transition-colors"
+                 >
+                   <FaTimes size={16} />
+                 </button>
+
+                 <div className="p-6">
+                   <div className="flex items-center gap-4 mb-4">
+                     <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[#d4af37] via-[#f4d03f] to-[#d4af37] flex items-center justify-center shadow-lg">
+                       <FaFolder size={24} className="text-[#382110]" />
+                     </div>
+                     <div className="flex-1">
+                       <h2 className="text-xl font-serif font-bold text-[#382110] mb-1">{selectedStore.name}</h2>
+                       <p className="text-sm text-[#777]">{selectedStore.ownerName || "Store Owner"}</p>
+                     </div>
+                   </div>
+
+                   {selectedStore.location && (
+                     <div className="flex items-center gap-2 text-sm text-[#555] mb-4">
+                       <FaMapMarkerAlt />
+                       <span>{selectedStore.location}</span>
+                     </div>
+                   )}
+
+                   <div className="bg-[#f4f1ea] rounded-lg p-4 mb-4">
+                     <p className="text-sm text-[#382110] font-medium mb-2">
+                       {selectedStore.bookCount || 0} {selectedStore.bookCount === 1 ? 'book' : 'books'} available
+                     </p>
+                     <p className="text-xs text-[#777]">
+                       Browse this collection to see all available books
+                     </p>
+                   </div>
+
+                   <button
+                     onClick={() => {
+                       setSelectedStore(null);
+                       navigate(`/store/${selectedStore.id}`, { state: { store: selectedStore } });
+                     }}
+                     className="w-full bg-[#409d69] hover:bg-[#358759] text-white font-bold py-3 rounded-lg shadow-sm flex items-center justify-center gap-2 transition-transform active:scale-[0.99]"
+                   >
+                     <FaBookOpen />
+                     View Collection
+                   </button>
+                 </div>
+               </motion.div>
+             </motion.div>
+           )}
+         </AnimatePresence>
 
          {/* Full Screen/Large Modal for Offer Details (HomeScreen Style) */}
          <AnimatePresence>
@@ -497,6 +737,11 @@ export default function MapScreen({ currentUser }: Props) {
                               )}
                            </div>
                            <span className="font-bold text-[#382110] text-base">{selectedOffer.ownerName || "Community Member"}</span>
+                           {selectedOffer.ownerBadges && selectedOffer.ownerBadges.length > 0 && (
+                              <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-[#d37e2f]/20 text-[#d37e2f] border border-[#d37e2f]/30 whitespace-nowrap">
+                                 {selectedOffer.ownerBadges[selectedOffer.ownerBadges.length - 1]}
+                              </span>
+                           )}
                         </div>
                         <div className="border-l border-[#eee] pl-4 flex items-center gap-2">
                            <FaMapMarkerAlt className="text-[#999]" />

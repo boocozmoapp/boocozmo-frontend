@@ -75,6 +75,7 @@ type UserProfile = {
   joinedAt: string;
   offersPosted: number;
   dealsCompleted: number;
+  badges?: string[];
 };
 
 type Props = {
@@ -143,18 +144,24 @@ export default function ProfileScreen({ currentUser, wishlist = [], toggleWishli
      } else { alert("Geolocation not supported"); }
   };
 
+  // Track if initial fetch has been done
+  const hasFetchedRef = useRef(false);
+
   const fetchProfile = useCallback(async () => {
     setLoadingProfile(true);
     try {
       const response = await fetchWithTimeout(`${API_BASE}/profile/${currentUser.email}`, { headers: { "Authorization": `Bearer ${currentUser.token}` } });
       if (!response.ok) throw new Error("Failed");
       const data = await response.json();
-      setProfile(data);
+      setProfile({
+        ...data,
+        badges: data.badges || []
+      });
       setEditForm({ profilePhotoFile: null, profilePhotoPreview: data.profilePhoto || "", bio: data.bio || "", location: data.location || "" });
     } catch {
-       setProfile({ name: currentUser.name, profilePhoto: null, bio: "No bio yet", location: "Unknown", joinedAt: new Date().toISOString(), offersPosted: 0, dealsCompleted: 0 });
+       setProfile({ name: currentUser.name, profilePhoto: null, bio: "No bio yet", location: "Unknown", joinedAt: new Date().toISOString(), offersPosted: 0, dealsCompleted: 0, badges: [] });
     } finally { setLoadingProfile(false); }
-  }, [currentUser]);
+  }, [currentUser.email, currentUser.token, currentUser.name]);
 
   const fetchMyOffers = useCallback(async () => {
     setLoadingOffers(true);
@@ -164,23 +171,49 @@ export default function ProfileScreen({ currentUser, wishlist = [], toggleWishli
       const data = await response.json();
       setMyOffers(Array.isArray(data.offers) ? data.offers : []);
     } catch { setMyOffers([]); } finally { setLoadingOffers(false); }
-  }, [currentUser]);
+  }, [currentUser.token]);
 
   const fetchStores = useCallback(async () => {
     setLoadingStores(true);
     try {
-      const response = await fetchWithTimeout(`${API_BASE}/stores?includeOffers=true`, { headers: { "Authorization": `Bearer ${currentUser.token}` } });
+      const response = await fetchWithTimeout(`${API_BASE}/stores?includeOffers=false`, { headers: { "Authorization": `Bearer ${currentUser.token}` } });
       if (!response.ok) throw new Error("Failed");
       const data = await response.json();
-      setStores(Array.isArray(data) ? data : []);
+      // Filter to only show user's stores
+      const userStores = (Array.isArray(data) ? data : []).filter((s: Store) => s.ownerEmail === currentUser.email);
+      setStores(userStores);
     } catch { setStores([]); } finally { setLoadingStores(false); }
-  }, [currentUser]);
+  }, [currentUser.token, currentUser.email]);
 
+  // Initial fetch - only once
   useEffect(() => {
+    if (hasFetchedRef.current) return;
+    hasFetchedRef.current = true;
+    
     fetchProfile();
     fetchMyOffers();
     fetchStores();
   }, [fetchProfile, fetchMyOffers, fetchStores]);
+
+  // Recalculate badges when offers or stores change
+  useEffect(() => {
+    const offersCount = myOffers.length;
+    const publicLibrariesCount = stores.filter(s => (s as any).visibility === 'public').length;
+    
+    const badges: string[] = [];
+    if (offersCount >= 3) badges.push("Contributor");
+    if (publicLibrariesCount >= 1) badges.push("Librarian");
+    if (offersCount >= 20) badges.push("Verified");
+    
+    setProfile(prev => {
+      if (!prev) return prev;
+      const currentBadges = prev.badges || [];
+      if (JSON.stringify([...badges].sort()) !== JSON.stringify([...currentBadges].sort())) {
+        return { ...prev, badges };
+      }
+      return prev;
+    });
+  }, [myOffers.length, stores.length]);
 
   const handleUpdateProfile = async () => {
     setEditingProfile(true);
@@ -266,7 +299,7 @@ export default function ProfileScreen({ currentUser, wishlist = [], toggleWishli
   }), [profile, myOffers]);
 
   const filteredOffers = useMemo(() => {
-    // Deduplicate by bookTitle and author
+    // Deduplicate by bookTitle and author - show all books, no filtering
     const uniqueMap = new Map<string, Offer>();
     
     myOffers.forEach(o => {
@@ -279,12 +312,8 @@ export default function ProfileScreen({ currentUser, wishlist = [], toggleWishli
        }
     });
 
-    let result = Array.from(uniqueMap.values());
-    if (filterType !== "all") {
-       result = result.filter(o => filterType === "public" ? o.visibility === "public" : o.visibility === "private");
-    }
-    return result;
-  }, [myOffers, filterType]);
+    return Array.from(uniqueMap.values());
+  }, [myOffers]);
 
   const getImageSource = (offer: Offer) => {
     if (offer.imageUrl) return offer.imageUrl;
@@ -364,7 +393,18 @@ export default function ProfileScreen({ currentUser, wishlist = [], toggleWishli
                   </div>
 
                   <div className="flex-1 text-center md:text-left z-10">
-                     <h2 className="text-3xl font-serif font-bold text-white mb-2">{profile?.name}</h2>
+                     <div className="flex items-center gap-3 justify-center md:justify-start flex-wrap mb-2">
+                        <h2 className="text-3xl font-serif font-bold text-white">{profile?.name}</h2>
+                        {profile?.badges && Array.isArray(profile.badges) && profile.badges.length > 0 && (
+                           <div className="flex items-center gap-2 flex-wrap">
+                              {profile.badges.map((badge, idx) => (
+                                 <span key={idx} className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-[#d37e2f]/20 text-[#d37e2f] border border-[#d37e2f]/30 whitespace-nowrap">
+                                    {badge}
+                                 </span>
+                              ))}
+                           </div>
+                        )}
+                     </div>
                      <p className="text-text-muted mb-4 max-w-lg mx-auto md:mx-0">{profile?.bio || "No bio yet."}</p>
                      
                      <div className="flex flex-wrap justify-center md:justify-start gap-4 text-sm text-gray-400 mb-6">
@@ -405,22 +445,19 @@ export default function ProfileScreen({ currentUser, wishlist = [], toggleWishli
                <div className="min-h-[300px]">
                   {activeTab === 'offers' && (
                      <div className="space-y-6">
-                        <div className="flex gap-2">
-                           {['all', 'public', 'private'].map((f: any) => (
-                              <button key={f} onClick={() => setFilterType(f)} className={`px-3 py-1 rounded-full text-xs font-bold border ${filterType === f ? 'bg-white text-primary' : 'border-white/10 text-gray-400'}`}>
-                                 {f.toUpperCase()}
-                              </button>
-                           ))}
-                        </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                            {filteredOffers.map(offer => (
                               <div key={offer.id} className="bg-primary-light/10 border border-white/5 rounded-2xl p-4 hover:border-white/20 transition-all group">
                                  <div className="flex gap-4">
                                     <div className="w-20 h-28 flex-shrink-0 bg-black rounded-lg overflow-hidden relative">
                                        <img src={getImageSource(offer)} className="w-full h-full object-cover" />
-                                       <div className="absolute top-1 right-1">
-                                          <span className={`w-2.5 h-2.5 block rounded-full shadow-sm ${offer.visibility === 'public' ? 'bg-green-500' : 'bg-red-500'}`} />
-                                       </div>
+                                       {offer.visibility === 'public' && (
+                                          <div className="absolute top-1 right-1">
+                                             <span className="text-[8px] font-bold px-1.5 py-0.5 rounded shadow-sm text-white bg-[#d37e2f]">
+                                                QUEUED
+                                             </span>
+                                          </div>
+                                       )}
                                     </div>
                                     <div className="flex-1 min-w-0">
                                        <div className="flex justify-between items-start mb-1">
@@ -448,6 +485,58 @@ export default function ProfileScreen({ currentUser, wishlist = [], toggleWishli
                               </div>
                            ))}
                         </div>
+                     </div>
+                  )}
+                  {activeTab === 'libraries' && (
+                     <div className="space-y-6">
+                        {loadingStores ? (
+                           <div className="text-center py-20">
+                              <div className="w-16 h-16 bg-primary-light/20 rounded-full flex items-center justify-center text-white/10 mx-auto mb-4">
+                                 <FaFolder size={24} />
+                              </div>
+                              <p className="text-gray-500 text-sm">Loading libraries...</p>
+                           </div>
+                        ) : stores.length === 0 ? (
+                           <div className="text-center py-20 flex flex-col items-center">
+                              <div className="w-16 h-16 bg-primary-light/20 rounded-full flex items-center justify-center text-white/10 mb-6">
+                                 <FaFolder size={30} />
+                              </div>
+                              <h3 className="text-xl font-serif font-bold text-white mb-2">No Collections Yet</h3>
+                              <p className="text-gray-500 text-xs max-w-xs leading-relaxed mb-6">Create your first collection to organize your books.</p>
+                              <button 
+                                 onClick={() => navigate("/my-library")}
+                                 className="px-8 py-3 bg-secondary text-white rounded-xl text-xs font-bold uppercase tracking-widest hover:opacity-90 transition-opacity"
+                              >
+                                 Go to My Library
+                              </button>
+                           </div>
+                        ) : (
+                           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                              {stores.map(store => (
+                                 <div key={store.id} className="bg-primary-light/10 border border-white/5 rounded-2xl p-6 hover:border-white/20 transition-all group cursor-pointer" onClick={() => navigate("/my-library")}>
+                                    <div className="flex items-center gap-4 mb-4">
+                                       <div className="w-12 h-12 bg-secondary/20 rounded-xl flex items-center justify-center text-secondary group-hover:scale-110 transition-transform">
+                                          <FaFolder size={20} />
+                                       </div>
+                                       <div className="flex-1 min-w-0">
+                                          <h3 className="font-bold text-white truncate mb-1">{store.name}</h3>
+                                          <p className="text-xs text-gray-500">{store.offerIds?.length || 0} {store.offerIds?.length === 1 ? 'book' : 'books'}</p>
+                                       </div>
+                                    </div>
+                                    <div className="flex items-center justify-between text-xs text-gray-500">
+                                       <span>{new Date(store.created_at).toLocaleDateString()}</span>
+                                       <span className={`px-2 py-1 rounded-full text-[10px] font-bold ${
+                                          store.visibility === 'public' 
+                                             ? 'bg-[#00635d]/20 text-[#00635d]' 
+                                             : 'bg-white/5 text-gray-500'
+                                       }`}>
+                                          {store.visibility === 'public' ? 'PUBLIC' : 'PRIVATE'}
+                                       </span>
+                                    </div>
+                                 </div>
+                              ))}
+                           </div>
+                        )}
                      </div>
                   )}
                   {activeTab === 'wishlist' && (

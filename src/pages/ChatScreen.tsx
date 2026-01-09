@@ -1,13 +1,14 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // src/pages/ChatScreen.tsx - PREMIUM THEME
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
-  FaHome, FaMapMarkedAlt, FaPlus, FaComments, FaBell,
-  FaBookmark, FaCompass, FaBookOpen, FaStar, FaUsers, 
-  FaCog, FaBars, FaTimes, FaSearch
+  FaHome, FaMapMarkedAlt, FaComments,
+  FaBookmark, FaCompass, FaBookOpen, FaUsers, 
+  FaBars, FaTimes, FaSearch
 } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
+import { useNotifications } from "../context/NotificationContext";
 
 const API_BASE = "https://boocozmo-api.onrender.com";
 
@@ -32,37 +33,83 @@ type Props = {
   onAddPress?: () => void;
 };
 
-export default function ChatScreen({ currentUser, onProfilePress }: Props) {
+export default function ChatScreen({ currentUser }: Props) {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const navigate = useNavigate();
+  
+  // Use notification context
+  const { refreshUnreadCount, markChatAsRead, socket } = useNotifications();
 
+  const fetchChats = useCallback(async () => {
+    setLoading(true);
+    try {
+      const resp = await fetch(`${API_BASE}/chats?user=${encodeURIComponent(currentUser.email)}`, {
+        headers: { "Authorization": `Bearer ${currentUser.token}` },
+      });
+      if (!resp.ok) throw new Error();
+      const chats = await resp.json();
+      setConversations(chats);
+      setError(null);
+    } catch (err: any) {
+      setError("Could not load chats");
+      setConversations([]);
+    } finally { 
+      setLoading(false); 
+    }
+  }, [currentUser.email, currentUser.token]);
+
+  // Initial fetch
   useEffect(() => {
-    const fetchChats = async () => {
-      setLoading(true);
-      try {
-        const resp = await fetch(`${API_BASE}/chats?user=${encodeURIComponent(currentUser.email)}`, {
-          headers: { "Authorization": `Bearer ${currentUser.token}` },
-        });
-        if (!resp.ok) throw new Error();
-        setConversations(await resp.json());
-      } catch (err: any) {
-        // Fallback or error handling
-        setError("Could not load chats");
-        // Use mock data for demo
-        setConversations([
-           { id: 1, other_user_name: "John Doe", offer_title: "Great Gatsby", last_message_at: new Date().toISOString(), created_at: new Date().toISOString(), user1: currentUser.email, user2: "john@example.com", offer_id: 1, unread_user2: true },
-           { id: 2, other_user_name: "Jane Smith", offer_title: "1984", last_message_at: new Date(Date.now()-3600000).toISOString(), created_at: new Date().toISOString(), user1: "jane@example.com", user2: currentUser.email, offer_id: 2, unread_user1: true }
-        ]);
-      } finally { setLoading(false); }
-    };
     fetchChats();
-  }, [currentUser]);
+  }, [fetchChats]);
 
-  const handleChatClick = (conv: Conversation) => {
+  // Refresh unread count when screen mounts
+  useEffect(() => {
+    refreshUnreadCount();
+  }, [refreshUnreadCount]);
+
+  // Listen for new messages to refresh chat list
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleNewMessage = () => {
+      // Refresh chat list when new message arrives
+      fetchChats();
+    };
+
+    socket.on("new_notification", handleNewMessage);
+    
+    return () => {
+      socket.off("new_notification", handleNewMessage);
+    };
+  }, [socket, fetchChats]);
+
+  const handleChatClick = async (conv: Conversation) => {
+    // Check if this chat has unread messages for current user
+    const hasUnread = (conv.user1 === currentUser.email && conv.unread_user1) || 
+                      (conv.user2 === currentUser.email && conv.unread_user2);
+    
+    if (hasUnread) {
+      // Mark chat as read
+      await markChatAsRead(conv.id);
+      
+      // Update local state
+      setConversations(prev => prev.map(c => {
+        if (c.id === conv.id) {
+          if (c.user1 === currentUser.email) {
+            return { ...c, unread_user1: false };
+          } else {
+            return { ...c, unread_user2: false };
+          }
+        }
+        return c;
+      }));
+    }
+    
     navigate(`/chat/${conv.id}`, { state: { chat: conv } });
   };
 

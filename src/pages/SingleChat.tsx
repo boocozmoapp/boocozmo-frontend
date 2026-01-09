@@ -1,15 +1,17 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // src/pages/SingleChat.tsx - PREMIUM THEME
 import { useState, useEffect, useRef, useCallback } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { FaArrowLeft, FaPaperPlane, FaCheck, FaCheckDouble } from "react-icons/fa";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
+import { useNotifications } from "../context/NotificationContext";
 
 const API_BASE = "https://boocozmo-api.onrender.com";
 
 type Message = {
   id: number;
-  senderEmail: string;
+  senderEmail?: string;
+  sender_email?: string; // Backend might use snake_case
   content: string;
   created_at: string;
   is_read: boolean;
@@ -33,6 +35,50 @@ export default function SingleChat({ currentUser }: Props) {
   const [sending, setSending] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatInfo = location.state?.chat;
+  
+  // Use notification context
+  const { markChatAsRead, socket, refreshUnreadCount } = useNotifications();
+
+  // Mark chat as read when opened
+  useEffect(() => {
+    if (activeChatId && typeof activeChatId === "number") {
+      markChatAsRead(activeChatId);
+    }
+  }, [activeChatId, markChatAsRead]);
+
+  // Listen for new messages in this chat via socket
+  useEffect(() => {
+    if (!socket || !activeChatId) return;
+
+    const handleNewMessage = (data: any) => {
+      // If message is for this chat, refresh messages
+      if (data.chatId === activeChatId || data.chat_id === activeChatId) {
+        // Add the new message to the list
+        const msgSenderEmail = data.senderEmail || data.sender_email || '';
+        const newMsg: Message = {
+          id: data.messageId || Date.now(),
+          senderEmail: msgSenderEmail,
+          sender_email: msgSenderEmail,
+          content: data.message || data.content,
+          created_at: new Date().toISOString(),
+          is_read: false
+        };
+        
+        // Only add if not from current user (to avoid duplicates with optimistic updates)
+        if (msgSenderEmail.toLowerCase() !== currentUser.email.toLowerCase()) {
+          setMessages(prev => [...prev, newMsg]);
+          // Mark as read immediately since user is viewing the chat
+          markChatAsRead(activeChatId as number);
+        }
+      }
+    };
+
+    socket.on("new_notification", handleNewMessage);
+    
+    return () => {
+      socket.off("new_notification", handleNewMessage);
+    };
+  }, [socket, activeChatId, currentUser.email, markChatAsRead]);
 
   const fetchMessages = useCallback(async () => {
     if (!activeChatId) return;
@@ -56,7 +102,7 @@ export default function SingleChat({ currentUser }: Props) {
   const handleSend = async () => {
     if (!newMessage.trim() || sending) return;
     const tempId = Date.now();
-    const optimisticMsg: Message = { id: tempId, senderEmail: currentUser.email, content: newMessage, created_at: new Date().toISOString(), is_read: false };
+    const optimisticMsg: Message = { id: tempId, senderEmail: currentUser.email, sender_email: currentUser.email, content: newMessage, created_at: new Date().toISOString(), is_read: false };
     
     setMessages(prev => [...prev, optimisticMsg]);
     setNewMessage("");
@@ -107,17 +153,19 @@ export default function SingleChat({ currentUser }: Props) {
       <main className="flex-1 overflow-y-auto p-4 space-y-3 bg-[#f4f1ea]">
          {messages.length === 0 && <div className="text-center text-[#999] py-10">Start the conversation!</div>}
          {messages.map((m, i) => {
-            const isMe = m.senderEmail === currentUser.email;
+            // Handle both camelCase and snake_case from backend
+            const senderEmail = m.senderEmail || m.sender_email || '';
+            const isMe = senderEmail.toLowerCase() === currentUser.email.toLowerCase();
             return (
                <motion.div 
                   key={m.id || i} 
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}
+                  className={`flex ${isMe ? 'justify-start' : 'justify-end'}`}
                >
-                  <div className={`max-w-[75%] px-4 py-3 rounded-2xl shadow-sm ${isMe ? 'bg-[#382110] text-white rounded-br-sm' : 'bg-white border border-[#d8d8d8] text-[#333] rounded-bl-sm'}`}>
+                  <div className={`max-w-[75%] px-4 py-3 rounded-2xl shadow-sm ${isMe ? 'bg-[#e8e4dd] text-[#333] rounded-bl-sm border border-[#d8d8d8]' : 'bg-[#382110] text-white rounded-br-sm'}`}>
                      <p className="text-sm leading-relaxed">{m.content}</p>
-                     <div className={`text-[10px] mt-1 flex items-center justify-end gap-1 ${isMe ? 'text-white/60' : 'text-[#999]'}`}>
+                     <div className={`text-[10px] mt-1 flex items-center justify-end gap-1 ${isMe ? 'text-[#777]' : 'text-white/60'}`}>
                         {new Date(m.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
                         {isMe && (m.is_read ? <FaCheckDouble /> : <FaCheck />)}
                      </div>

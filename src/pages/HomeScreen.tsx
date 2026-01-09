@@ -1,9 +1,13 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // src/pages/HomeScreen.tsx - BOOCOZMO FINAL (MODALS & ARTISTIC)
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { FaExchangeAlt, FaShoppingCart, FaTags, FaInfoCircle, FaTimes, FaComments, FaHeart, FaMapMarkerAlt, FaBook, FaLocationArrow, FaCrosshairs } from "react-icons/fa";
+import { 
+  FaExchangeAlt, FaShoppingCart, FaTags, FaInfoCircle, FaTimes, 
+  FaComments, FaHeart, FaMapMarkerAlt, FaBook, FaLocationArrow, 
+  FaCrosshairs, FaFolder, FaUsers, FaChevronLeft, FaChevronRight, FaStore
+} from "react-icons/fa";
 import { MapContainer, TileLayer, Marker, useMapEvents } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
@@ -38,6 +42,22 @@ type Offer = {
   distance?: string;
   latitude?: number;
   longitude?: number;
+};
+
+type Store = {
+  id: number;
+  name: string;
+  ownerEmail: string;
+  ownerName?: string;
+  ownerPhoto?: string;
+  created_at: string;
+  visibility: "public" | "private";
+  offerIds?: number[];
+  bookCount?: number;
+  location?: string;
+  latitude?: number;
+  longitude?: number;
+  distance?: number;
 };
 
 type Props = {
@@ -79,13 +99,20 @@ function LocationMarker({ position, setPosition }: { position: { lat: number; ln
 export default function HomeScreen({ currentUser }: Props) {
   const navigate = useNavigate();
   const [offers, setOffers] = useState<Offer[]>([]);
+  const [publicStores, setPublicStores] = useState<Store[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingStores, setLoadingStores] = useState(true);
   const [selectedOffer, setSelectedOffer] = useState<Offer | null>(null);
   
   // Location Logic
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [showLocationModal, setShowLocationModal] = useState(false);
   const [tempLocation, setTempLocation] = useState<{ lat: number; lng: number } | null>(null);
+
+  // Store carousel ref
+  const storesContainerRef = useRef<HTMLDivElement>(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(true);
 
   const fetchProfile = useCallback(async () => {
      try {
@@ -94,8 +121,6 @@ export default function HomeScreen({ currentUser }: Props) {
         });
         if (response.ok) {
            const data = await response.json();
-           // Attempt to parse location string if it follows "Lat: x, Lng: y" format
-           // Or check if backend returns separate coords
            let loc = null;
            
            if (data.latitude && data.longitude) {
@@ -116,7 +141,58 @@ export default function HomeScreen({ currentUser }: Props) {
      }
   }, [currentUser]);
 
-   const fetchOffers = useCallback(async () => {
+  const fetchPublicStores = useCallback(async () => {
+    setLoadingStores(true);
+    try {
+      const response = await fetch(`${API_BASE}/public-stores?limit=50`, {
+        headers: { "Authorization": `Bearer ${currentUser.token}` }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        const stores = data.stores || data || [];
+        
+        // Fetch owner names and photos and parse locations
+        const storesWithOwners = stores.map((store: any) => {
+          let lat = null;
+          let lng = null;
+          
+          if (store.latitude && store.longitude) {
+            lat = parseFloat(store.latitude);
+            lng = parseFloat(store.longitude);
+          } else if (store.location) {
+            const match = store.location.match(/Lat:\s*(-?\d+(\.\d+)?),\s*Lng:\s*(-?\d+(\.\d+)?)/);
+            if (match) {
+              lat = parseFloat(match[1]);
+              lng = parseFloat(match[3]);
+            }
+          }
+          
+          return {
+            id: store.id,
+            name: store.name,
+            ownerEmail: store.ownerEmail,
+            ownerName: store.ownerName || "Community Member",
+            ownerPhoto: store.ownerPhoto,
+            created_at: store.created_at,
+            visibility: store.visibility || "public",
+            offerIds: store.offerIds || [],
+            bookCount: store.offerIds?.length || 0,
+            location: store.location,
+            latitude: lat,
+            longitude: lng
+          };
+        });
+        
+        setPublicStores(storesWithOwners);
+      }
+    } catch (err) {
+      console.error("Error fetching public stores:", err);
+    } finally {
+      setLoadingStores(false);
+    }
+  }, [currentUser.token]);
+
+  const fetchOffers = useCallback(async () => {
      try {
        const response = await fetch(`${API_BASE}/offers?limit=100`, {
          headers: { "Authorization": `Bearer ${currentUser.token}` }
@@ -126,7 +202,15 @@ export default function HomeScreen({ currentUser }: Props) {
        
        // Get unique owner emails to fetch profiles for
        const uniqueEmails = [...new Set(raw.map((o: any) => o.ownerEmail).filter(Boolean))];
-       const profileCache: Record<string, { name: string; photo?: string }> = {};
+       const profileCache: Record<string, { name: string; photo?: string; badges?: string[] }> = {};
+
+       // Helper to calculate badges from stats
+       const calculateBadges = (offersPosted: number): string[] => {
+          const badges: string[] = [];
+          if (offersPosted >= 3) badges.push("Contributor");
+          if (offersPosted >= 20) badges.push("Verified");
+          return badges;
+       };
 
        // Fetch profiles in batches
        await Promise.all(
@@ -137,9 +221,19 @@ export default function HomeScreen({ currentUser }: Props) {
                 });
                 if (pResp.ok) {
                    const pData = await pResp.json();
+                   // Parse badges if string, or calculate from offersPosted
+                   let badges: string[] = [];
+                   if (pData.badges) {
+                      badges = typeof pData.badges === 'string' ? JSON.parse(pData.badges) : pData.badges;
+                   }
+                   // If no badges stored, calculate from offersPosted
+                   if (!badges.length && pData.offersPosted) {
+                      badges = calculateBadges(pData.offersPosted);
+                   }
                    profileCache[email as string] = { 
                       name: pData.name || "Unknown", 
-                      photo: pData.profilePhotoURL || pData.photo || pData.profileImageUrl 
+                      photo: pData.profilePhotoURL || pData.photo || pData.profileImageUrl,
+                      badges
                    };
                 }
              } catch (err) { console.error("Profile fetch error", err); }
@@ -158,6 +252,7 @@ export default function HomeScreen({ currentUser }: Props) {
          ownerName: profileCache[o.ownerEmail]?.name || o.ownerName || "Unknown",
          ownerEmail: o.ownerEmail,
          ownerPhoto: profileCache[o.ownerEmail]?.photo,
+         ownerBadges: profileCache[o.ownerEmail]?.badges || [],
          publishedAt: o.publishedAt,
          distance: "Unknown",
          latitude: o.latitude,
@@ -172,9 +267,19 @@ export default function HomeScreen({ currentUser }: Props) {
    }, [currentUser.token]);
 
   useEffect(() => {
-    fetchProfile(); // Fetch user location first
+    fetchProfile();
+    fetchPublicStores();
     fetchOffers();
-  }, [fetchProfile, fetchOffers]);
+  }, [fetchProfile, fetchPublicStores, fetchOffers]);
+
+  // Check scroll position
+  const checkScrollButtons = () => {
+    if (storesContainerRef.current) {
+      const { scrollLeft, scrollWidth, clientWidth } = storesContainerRef.current;
+      setCanScrollLeft(scrollLeft > 0);
+      setCanScrollRight(scrollLeft < scrollWidth - clientWidth - 10);
+    }
+  };
 
   const nearestOffers = useMemo(() => {
      if (!userLocation) return [];
@@ -186,6 +291,40 @@ export default function HomeScreen({ currentUser }: Props) {
         return { ...o, distVal: 99999, distance: "Unknown" };
      }).sort((a, b) => a.distVal - b.distVal).slice(0, 5); // Top 5 nearest
   }, [offers, userLocation]);
+
+  const sortedStores = useMemo(() => {
+    if (!userLocation) return publicStores;
+    
+    return [...publicStores].map(store => {
+      if (store.latitude && store.longitude && userLocation) {
+        const dist = getDistanceFromLatLonInKm(userLocation.lat, userLocation.lng, store.latitude, store.longitude);
+        return { ...store, distance: dist };
+      }
+      return { ...store, distance: 99999 };
+    }).sort((a, b) => a.distance - b.distance);
+  }, [publicStores, userLocation]);
+
+  useEffect(() => {
+    checkScrollButtons();
+    window.addEventListener('resize', checkScrollButtons);
+    return () => window.removeEventListener('resize', checkScrollButtons);
+  }, [sortedStores]);
+
+  const scrollStores = (direction: 'left' | 'right') => {
+    if (storesContainerRef.current) {
+      const scrollAmount = 300;
+      const newScrollLeft = storesContainerRef.current.scrollLeft + 
+        (direction === 'left' ? -scrollAmount : scrollAmount);
+      
+      storesContainerRef.current.scrollTo({
+        left: newScrollLeft,
+        behavior: 'smooth'
+      });
+      
+      // Update button states after scrolling
+      setTimeout(checkScrollButtons, 300);
+    }
+  };
 
   const updateLocation = async () => {
      if (!tempLocation) return;
@@ -214,27 +353,15 @@ export default function HomeScreen({ currentUser }: Props) {
      } else { alert("Geolocation not supported"); }
   };
 
-  /* 
-    Updated handleContact:
-    1. Check if chat exists with this user for this offer (or just user).
-    2. If yes, navigate to that chat.
-    3. If no, navigate to 'new' chat with params to create one on first message.
-  */
   const handleContact = async (offer: Offer) => {
     if (!offer) return;
     
-    // Optimistic checking? No, let's fetch real chats to be sure
     try {
        const resp = await fetch(`${API_BASE}/chats?user=${encodeURIComponent(currentUser.email)}`, {
           headers: { "Authorization": `Bearer ${currentUser.token}` }
        });
        if (resp.ok) {
           const chats: any[] = await resp.json();
-          // Find existing chat with this owner // AND offer? Optional.
-          // For now, let's match by offer_id if possible, or just user.
-          // The backend might create separate chats per offer or one per user pair.
-          // Let's look for match on offer_id first, then user.
-          
           const existingChat = chats.find((c: any) => 
              (c.user1 === offer.ownerEmail || c.user2 === offer.ownerEmail) && 
              (c.offer_id === offer.id)
@@ -247,33 +374,45 @@ export default function HomeScreen({ currentUser }: Props) {
        }
     } catch (e) { console.error("Error checking chats", e); }
 
-    // If no existing chat found, go to new
     navigate(`/chat/new`, {
       state: {
         chat: {
-          id: 0, // 0 signifies new
+          id: 0,
           user1: currentUser.email,
-          user2: offer.ownerEmail || offer.ownerEmail, // Fallback
+          user2: offer.ownerEmail || offer.ownerEmail,
           other_user_name: offer.ownerName || "Seller",
           offer_title: offer.bookTitle,
           offer_id: offer.id,
-          ownerEmail: offer.ownerEmail // redundant but safe
+          ownerEmail: offer.ownerEmail
         }
       }
     });
   };
 
-  // Artistic "Poster" Component for Sidebar
-  const ArtisticPoster = ({ title, content, color, icon: Icon }: any) => (
-    <div className={`p-6 rounded-[2px] mb-6 relative overflow-hidden text-white shadow-md group`} style={{ backgroundColor: color }}>
-        <div className="absolute top-0 right-0 p-4 opacity-20 transform scale-150 rotate-12 group-hover:rotate-0 transition-transform duration-700">
-           <Icon size={120} />
-        </div>
-        <div className="relative z-10">
-           <h3 className="font-serif font-bold text-xl mb-2 border-b border-white/30 pb-2">{title}</h3>
-           <p className="text-sm leading-relaxed font-sans opacity-95">{content}</p>
-        </div>
-    </div>
+  const handleStoreClick = (store: Store) => {
+    navigate(`/store/${store.id}`, { state: { store } });
+  };
+
+  // Store Card Component - Smaller, Clean Shop Icon
+  const StoreCard = ({ store }: { store: Store }) => (
+    <motion.div
+      whileHover={{ scale: 1.05, y: -2 }}
+      whileTap={{ scale: 0.98 }}
+      onClick={() => handleStoreClick(store)}
+      className="flex-shrink-0 w-20 h-20 md:w-22 md:h-22 flex flex-col items-center justify-center bg-white rounded-full shadow-sm border border-[#e8e0d5] cursor-pointer hover:shadow-md hover:border-[#382110]/30 transition-all duration-300 p-2 mx-1.5 relative group"
+    >
+      {/* Circular Avatar with Shop Icon */}
+      <div className="w-12 h-12 md:w-14 md:h-14 rounded-full bg-[#382110] flex items-center justify-center shadow-sm group-hover:bg-[#2a180c] transition-colors">
+        <FaStore size={16} className="text-white" />
+      </div>
+      
+      {/* Store Name - Positioned below */}
+      <div className="absolute -bottom-5 left-1/2 -translate-x-1/2 w-24 md:w-28">
+        <h3 className="text-[9px] md:text-[10px] font-semibold text-[#382110] text-center truncate w-full leading-tight">
+          {store.name}
+        </h3>
+      </div>
+    </motion.div>
   );
 
   return (
@@ -329,7 +468,21 @@ export default function HomeScreen({ currentUser }: Props) {
                                 </div>
                              )}
                           </div>
-                          <span className="font-bold text-[#382110] text-base">{selectedOffer.ownerName || "Community Member"}</span>
+                          <div className="flex items-center gap-2">
+                             <div className="flex items-center gap-2">
+                             <span className="font-bold text-[#382110] text-base">{selectedOffer.ownerName || "Community Member"}</span>
+                             {selectedOffer.ownerBadges && Array.isArray(selectedOffer.ownerBadges) && selectedOffer.ownerBadges.length > 0 && (
+                                <span className="px-2 py-0.5 rounded text-[9px] font-bold bg-[#d37e2f]/20 text-[#d37e2f] border border-[#d37e2f]/30 whitespace-nowrap">
+                                   {selectedOffer.ownerBadges[selectedOffer.ownerBadges.length - 1]}
+                                </span>
+                             )}
+                          </div>
+                             {selectedOffer.ownerBadges && selectedOffer.ownerBadges.length > 0 && (
+                                <span className="px-2 py-0.5 rounded text-[9px] font-bold bg-[#d37e2f]/20 text-[#d37e2f] border border-[#d37e2f]/30 whitespace-nowrap">
+                                   {selectedOffer.ownerBadges[selectedOffer.ownerBadges.length - 1]}
+                                </span>
+                             )}
+                          </div>
                        </div>
                       <div className="border-l border-[#eee] pl-4 flex items-center gap-2">
                          <FaMapMarkerAlt className="text-[#999]" />
@@ -405,26 +558,44 @@ export default function HomeScreen({ currentUser }: Props) {
        {/* Main Feed */}
        <div className="flex-1 md:pr-6">
           
-          {/* Mobile Artistic Grid (Stickers) */}
-          <div className="md:hidden grid grid-cols-2 gap-2 mb-8">
-             <div className="bg-[#382110] p-4 rounded-[2px] text-white flex flex-col justify-between min-h-[140px] relative overflow-hidden group">
-                <FaExchangeAlt className="absolute -right-2 -top-2 opacity-10 text-[80px]" />
-                <h3 className="font-serif font-bold text-lg leading-tight relative z-10">Circulate Stories</h3>
-                <p className="text-[10px] opacity-90 relative z-10 leading-snug">Pass your beloved books to a new neighbor.</p>
-             </div>
-             <div className="flex flex-col gap-2">
-                <div className="bg-[#00635d] p-3 rounded-[2px] text-white flex-1 relative overflow-hidden">
-                   <FaBook className="absolute -right-2 -bottom-2 opacity-10 text-[50px]" />
-                   <h3 className="font-serif font-bold text-sm mb-1 relative z-10">Hidden Gems</h3>
-                   <p className="text-[9px] opacity-90 relative z-10">Find rare editions nearby.</p>
+          {/* Stores Section - Top of Screen */}
+          {sortedStores.length > 0 && (
+            <div className="mb-8 pt-2">
+              <div className="flex justify-between items-center mb-3">
+                <h2 className="text-[#382110] font-bold text-[16px] uppercase tracking-widest">Stores</h2>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => scrollStores('left')}
+                    disabled={!canScrollLeft}
+                    className={`p-1.5 rounded-full transition-all ${canScrollLeft ? 'bg-white text-[#382110] hover:bg-[#f4f1ea] shadow-sm border border-[#eee]' : 'bg-gray-100 text-gray-400 cursor-not-allowed'}`}
+                  >
+                    <FaChevronLeft size={12} />
+                  </button>
+                  <button
+                    onClick={() => scrollStores('right')}
+                    disabled={!canScrollRight}
+                    className={`p-1.5 rounded-full transition-all ${canScrollRight ? 'bg-white text-[#382110] hover:bg-[#f4f1ea] shadow-sm border border-[#eee]' : 'bg-gray-100 text-gray-400 cursor-not-allowed'}`}
+                  >
+                    <FaChevronRight size={12} />
+                  </button>
                 </div>
-                <div className="bg-[#d37e2f] p-3 rounded-[2px] text-white flex-1 relative overflow-hidden">
-                   <FaHeart className="absolute -right-2 -bottom-2 opacity-10 text-[50px]" />
-                   <h3 className="font-serif font-bold text-sm mb-1 relative z-10">Join Movement</h3>
-                   <p className="text-[9px] opacity-90 relative z-10">Save trees & money.</p>
+              </div>
+              <div className="relative">
+                <div
+                  ref={storesContainerRef}
+                  onScroll={checkScrollButtons}
+                  className="flex overflow-x-auto pb-5 scrollbar-hide gap-2 px-1"
+                  style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+                >
+                  {sortedStores.map((store) => (
+                    <StoreCard key={store.id} store={store} />
+                  ))}
                 </div>
-             </div>
-          </div>
+              </div>
+            </div>
+          )}
+          
+          {/* Mobile Artistic Grid (Stickers) - Removed */}
           
           {/* Location Banner or Nearest Books */}
           {!userLocation ? (
@@ -441,8 +612,7 @@ export default function HomeScreen({ currentUser }: Props) {
              </motion.div>
           ) : (
              <div className="mb-10">
-                <div className="mb-4 flex items-center gap-2">
-                   <FaMapMarkerAlt className="text-[#d37e2f]" />
+                <div className="mb-4">
                    <h2 className="text-[#382110] font-bold text-[16px] font-sans uppercase tracking-widest">Nearest to You</h2>
                 </div>
                 <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide">
@@ -465,9 +635,16 @@ export default function HomeScreen({ currentUser }: Props) {
                                   </div>
                                )}
                             </div>
-                            <span className="text-[9px] font-bold text-[#382110] truncate">
-                               {offer.ownerName?.split(' ')[0] || "User"}
-                            </span>
+                            <div className="flex items-center gap-1 flex-1 min-w-0">
+                               <span className="text-[9px] font-bold text-[#382110] truncate">
+                                  {offer.ownerName?.split(' ')[0] || "User"}
+                               </span>
+                               {offer.ownerBadges && offer.ownerBadges.length > 0 && (
+                                  <span className="px-1 py-0.5 rounded text-[7px] font-bold bg-[#d37e2f]/20 text-[#d37e2f] border border-[#d37e2f]/30 flex-shrink-0 whitespace-nowrap">
+                                     {offer.ownerBadges[offer.ownerBadges.length - 1]}
+                                  </span>
+                               )}
+                            </div>
                          </div>
                       </div>
                    )) : <div className="text-sm text-[#777] italic">No books in your immediate radius yet.</div>}
@@ -520,6 +697,16 @@ export default function HomeScreen({ currentUser }: Props) {
                                   </div>
                                )}
                             </div>
+                            <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                               <span className="text-[10px] font-bold text-[#382110] truncate">
+                                  {offer.ownerName?.split(' ')[0] || "User"}
+                               </span>
+                               {offer.ownerBadges && offer.ownerBadges.length > 0 && (
+                                  <span className="px-1.5 py-0.5 rounded text-[8px] font-bold bg-[#d37e2f]/20 text-[#d37e2f] border border-[#d37e2f]/30 flex-shrink-0 whitespace-nowrap">
+                                     {offer.ownerBadges[offer.ownerBadges.length - 1]}
+                                  </span>
+                               )}
+                            </div>
                             <span className="text-[10px] font-bold text-[#382110] truncate opacity-70">
                                {offer.ownerName || "Community Member"}
                             </span>
@@ -543,24 +730,35 @@ export default function HomeScreen({ currentUser }: Props) {
 
        {/* Artistic Sidebar (Desktop) */}
        <aside className="hidden md:block w-[300px] shrink-0">
-          <ArtisticPoster 
-             title="Circulate Stories" 
-             content="Pass your beloved books to a new neighbor. Every exchange builds a stronger, more connected society." 
-             color="#382110"
-             icon={FaExchangeAlt}
-          />
-          <ArtisticPoster 
-             title="Discover Hidden Gems" 
-             content="Find rare editions and local favorites right in your neighborhood at prices you'll love." 
-             color="#00635d"
-             icon={FaBook}
-          />
-          <ArtisticPoster 
-             title="Join the Movement" 
-             content="Be part of the sustainable reading revolution. Save trees, save money, and make friends." 
-             color="#d37e2f"
-             icon={FaHeart}
-          />
+          <div className="bg-[#382110] p-6 rounded-[2px] mb-6 relative overflow-hidden text-white shadow-md group">
+            <div className="absolute top-0 right-0 p-4 opacity-20 transform scale-150 rotate-12 group-hover:rotate-0 transition-transform duration-700">
+               <FaExchangeAlt size={120} />
+            </div>
+            <div className="relative z-10">
+               <h3 className="font-serif font-bold text-xl mb-2 border-b border-white/30 pb-2">Circulate Stories</h3>
+               <p className="text-sm leading-relaxed font-sans opacity-95">Pass your beloved books to a new neighbor. Every exchange builds a stronger, more connected society.</p>
+            </div>
+          </div>
+          
+          <div className="bg-[#00635d] p-6 rounded-[2px] mb-6 relative overflow-hidden text-white shadow-md group">
+            <div className="absolute top-0 right-0 p-4 opacity-20 transform scale-150 rotate-12 group-hover:rotate-0 transition-transform duration-700">
+               <FaBook size={120} />
+            </div>
+            <div className="relative z-10">
+               <h3 className="font-serif font-bold text-xl mb-2 border-b border-white/30 pb-2">Discover Hidden Gems</h3>
+               <p className="text-sm leading-relaxed font-sans opacity-95">Find rare editions and local favorites right in your neighborhood at prices you'll love.</p>
+            </div>
+          </div>
+          
+          <div className="bg-[#d37e2f] p-6 rounded-[2px] mb-6 relative overflow-hidden text-white shadow-md group">
+            <div className="absolute top-0 right-0 p-4 opacity-20 transform scale-150 rotate-12 group-hover:rotate-0 transition-transform duration-700">
+               <FaHeart size={120} />
+            </div>
+            <div className="relative z-10">
+               <h3 className="font-serif font-bold text-xl mb-2 border-b border-white/30 pb-2">Join the Movement</h3>
+               <p className="text-sm leading-relaxed font-sans opacity-95">Be part of the sustainable reading revolution. Save trees, save money, and make friends.</p>
+            </div>
+          </div>
 
           <div className="mt-8 border-t border-[#d8d8d8] pt-6">
              <h4 className="font-bold text-[#382110] mb-4 uppercase text-xs tracking-widest">Marketplace Utils</h4>

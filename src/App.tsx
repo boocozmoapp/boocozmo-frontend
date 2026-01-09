@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { BrowserRouter, Routes, Route, useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { FaSearch, FaUserCircle, FaCaretDown, FaBell, FaEnvelope, FaBookOpen, FaHome, FaSignOutAlt, FaTimes } from "react-icons/fa";
+import { FaSearch, FaUserCircle, FaEnvelope, FaSignOutAlt, FaTimes } from "react-icons/fa";
 import SplashScreen from "./pages/SplashScreen";
 import HomeScreen from "./pages/HomeScreen";
 import OfferScreen from "./pages/OfferScreen";
@@ -17,6 +17,10 @@ import OfferDetailScreen from "./pages/OfferDetailScreen";
 import MyLibraryScreen from "./pages/MyLibraryScreen";
 import DiscoverScreen from "./pages/DiscoverScreen";
 import WelcomeScreen from "./pages/WelcomeScreen";
+import StoreDetailScreen from "./pages/StoreDetailScreen";
+import StoresScreen from "./pages/StoresScreen";
+import { NotificationProvider } from "./context/NotificationContext";
+import NotificationBell from "./components/NotificationBell";
 import "leaflet/dist/leaflet.css";
 
 type User = {
@@ -48,21 +52,9 @@ function GoodreadsHeader({ user, onLogout }: { user: User; onLogout: () => void 
             <nav className="hidden md:flex items-center gap-1 text-[#382110] text-[14px]">
               <button onClick={() => navigate("/home")} className="px-3 py-2 font-sans hover:bg-white/50 rounded-sm">Home</button>
               <button onClick={() => navigate("/my-library")} className="px-3 py-2 font-sans hover:bg-white/50 rounded-sm">My Books</button>
+              <button onClick={() => navigate("/stores")} className="px-3 py-2 font-sans hover:bg-white/50 rounded-sm">Stores</button>
               <button onClick={() => navigate("/offer")} className="px-3 py-2 font-sans hover:bg-white/50 rounded-sm">Offers</button>
-              <div className="relative group">
-                 <button className="px-3 py-2 font-sans hover:bg-white/50 rounded-sm flex items-center gap-1">
-                   Map <FaCaretDown size={10} className="text-[#999]" />
-                 </button>
-                 <div className="absolute top-full left-0 w-40 bg-white border border-[#d8d8d8] shadow-lg rounded-[3px] py-1 hidden group-hover:block z-50">
-                     <button onClick={() => navigate("/map")} className="w-full text-left px-4 py-2 hover:bg-[#f4f1ea]">Map View</button>
-                     <button onClick={() => navigate("/offer")} className="w-full text-left px-4 py-2 hover:bg-[#f4f1ea]">Post Offer</button>
-                     <div className="border-t border-[#eee] my-1"></div>
-                     <span className="block px-4 py-1 text-[10px] uppercase text-[#999] font-bold">Genres</span>
-                     <button onClick={() => navigate("/home")} className="w-full text-left px-4 py-2 hover:bg-[#f4f1ea]">Fiction</button>
-                     <button onClick={() => navigate("/home")} className="w-full text-left px-4 py-2 hover:bg-[#f4f1ea]">Non-Fiction</button>
-                 </div>
-              </div>
-              {/* ========== COMMUNITY SECTION REMOVED FROM HERE ========== */}
+              <button onClick={() => navigate("/map")} className="px-3 py-2 font-sans hover:bg-white/50 rounded-sm">Map</button>
             </nav>
           </div>
 
@@ -90,9 +82,7 @@ function GoodreadsHeader({ user, onLogout }: { user: User; onLogout: () => void 
                <button onClick={() => navigate("/chat")} className="text-[#382110] hover:text-white hover:bg-[#382110] p-1.5 rounded-full transition-colors relative">
                  <FaEnvelope size={16} />
                </button>
-               <button className="text-[#382110] hover:text-white hover:bg-[#382110] p-1.5 rounded-full transition-colors">
-                 <FaBell size={16} />
-               </button>
+               <NotificationBell />
              </div>
 
              <div className="relative" onClick={() => setIsMenuOpen(!isMenuOpen)}>
@@ -122,9 +112,9 @@ function GoodreadsHeader({ user, onLogout }: { user: User; onLogout: () => void 
       <div className="md:hidden bg-white border-b border-[#eee] py-2 px-4 shadow-sm flex justify-between text-[13px] font-sans font-medium text-[#382110] overflow-x-auto whitespace-nowrap">
          <span onClick={() => navigate("/home")} className="cursor-pointer">Home</span>
          <span onClick={() => navigate("/my-library")} className="cursor-pointer border-l border-[#eee] pl-4">My Books</span>
+         <span onClick={() => navigate("/stores")} className="cursor-pointer border-l border-[#eee] pl-4">Stores</span>
          <span onClick={() => navigate("/offer")} className="cursor-pointer border-l border-[#eee] pl-4">Offers</span>
          <span onClick={() => navigate("/map")} className="cursor-pointer border-l border-[#eee] pl-4">Map</span>
-         {/* ========== MOBILE COMMUNITY LINK REMOVED FROM HERE ========== */}
       </div>
     </>
   );
@@ -259,6 +249,7 @@ function AppContent() {
   }
 
   return (
+    <NotificationProvider currentUser={user}>
     <div className="min-h-screen bg-white font-sans text-[#333]">
       <GoodreadsHeader user={user} onLogout={handleLogout} />
       
@@ -310,11 +301,14 @@ function AppContent() {
               <Route path="/chat/:chatId" element={<SingleChat {...authProps} />} />
               <Route path="/discover" element={<DiscoverScreen {...authProps} />} />
               <Route path="/my-library" element={<MyLibraryScreen {...authProps} onBack={() => navigate("/home")} onAddPress={() => navigate("/offer")} onProfilePress={() => navigate("/profile")} onMapPress={() => navigate("/map")} />} />
+              <Route path="/store/:id" element={<StoreDetailScreen {...authProps} />} />
+              <Route path="/stores" element={<StoresScreen {...authProps} />} />
               <Route path="*" element={<HomeScreen {...authProps} />} />
             </Routes>
          </div>
       </div>
     </div>
+    </NotificationProvider>
   );
 }
 

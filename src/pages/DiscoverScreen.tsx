@@ -2,7 +2,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { FaSearch, FaMapMarkerAlt, FaTimes, FaArrowLeft, FaFilter, FaComments, FaHeart, FaBookmark, FaRegHeart } from "react-icons/fa";
+import { FaSearch, FaMapMarkerAlt, FaTimes, FaArrowLeft, FaFilter, FaComments, FaHeart, FaBookmark, FaRegHeart, FaStore, FaFolder } from "react-icons/fa";
 
 const API_BASE = "https://boocozmo-api.onrender.com";
 
@@ -18,10 +18,24 @@ type Offer = {
   ownerName?: string;
   ownerEmail?: string;
   ownerPhoto?: string;
+  ownerBadges?: string[];
   publishedAt?: string;
   latitude?: number;
   longitude?: number;
   distance?: number;
+};
+
+type Store = {
+  id: number;
+  name: string;
+  ownerEmail: string;
+  ownerName?: string;
+  ownerPhoto?: string;
+  created_at: string;
+  visibility: "public" | "private";
+  location?: string;
+  offerIds?: number[];
+  bookCount?: number;
 };
 
 type Props = {
@@ -46,16 +60,20 @@ function getDistanceFromLatLonInKm(lat1: number, lon1: number, lat2: number, lon
 export default function DiscoverScreen({ currentUser, wishlist = [], toggleWishlist }: Props) {
   const navigate = useNavigate();
   const [allOffers, setAllOffers] = useState<Offer[]>([]);
+  const [allStores, setAllStores] = useState<Store[]>([]);
   const [discoveryFeed, setDiscoveryFeed] = useState<Offer[]>([]);
+  const [storeResults, setStoreResults] = useState<Store[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearching, setIsSearching] = useState(false);
   const [selectedOffer, setSelectedOffer] = useState<Offer | null>(null);
+  const [showStores, setShowStores] = useState(false);
 
-  // Fetch offers and profiles
+  // Fetch offers and stores
   const fetchOffers = useCallback(async () => {
     setLoading(true);
     try {
+      // Fetch offers
       const response = await fetch(`${API_BASE}/offers?limit=300`, {
         headers: { "Authorization": `Bearer ${currentUser.token}` }
       });
@@ -63,7 +81,15 @@ export default function DiscoverScreen({ currentUser, wishlist = [], toggleWishl
       const raw = Array.isArray(data) ? data : (data.offers || []);
       
       const uniqueEmails = [...new Set(raw.map((o: any) => o.ownerEmail).filter(Boolean))];
-      const profileCache: Record<string, { name: string; photo?: string }> = {};
+      const profileCache: Record<string, { name: string; photo?: string; badges?: string[] }> = {};
+
+      // Helper to calculate badges from stats
+      const calculateBadges = (offersPosted: number): string[] => {
+         const badges: string[] = [];
+         if (offersPosted >= 3) badges.push("Contributor");
+         if (offersPosted >= 20) badges.push("Verified");
+         return badges;
+      };
 
       await Promise.all(
          uniqueEmails.map(async (email) => {
@@ -73,9 +99,19 @@ export default function DiscoverScreen({ currentUser, wishlist = [], toggleWishl
                });
                if (pResp.ok) {
                   const pData = await pResp.json();
+                  // Parse badges if string, or calculate from offersPosted
+                  let badges: string[] = [];
+                  if (pData.badges) {
+                     badges = typeof pData.badges === 'string' ? JSON.parse(pData.badges) : pData.badges;
+                  }
+                  // If no badges stored, calculate from offersPosted
+                  if (!badges.length && pData.offersPosted) {
+                     badges = calculateBadges(pData.offersPosted);
+                  }
                   profileCache[email as string] = { 
                      name: pData.name || "Neighbor", 
-                     photo: pData.profilePhotoURL || pData.photo || pData.profileImageUrl 
+                     photo: pData.profilePhotoURL || pData.photo || pData.profileImageUrl,
+                     badges
                   };
                }
             } catch (err) { console.error("Profile fetch error", err); }
@@ -85,11 +121,22 @@ export default function DiscoverScreen({ currentUser, wishlist = [], toggleWishl
       const processed: Offer[] = raw.map((o: any) => ({
         ...o,
         ownerName: profileCache[o.ownerEmail]?.name || "Neighbor",
-        ownerPhoto: profileCache[o.ownerEmail]?.photo
+        ownerPhoto: profileCache[o.ownerEmail]?.photo,
+        ownerBadges: profileCache[o.ownerEmail]?.badges || []
       }));
 
       setAllOffers(processed);
       mixDiscovery(processed);
+
+      // Fetch stores
+      const storesResponse = await fetch(`${API_BASE}/public-stores?limit=100`, {
+        headers: { "Authorization": `Bearer ${currentUser.token}` }
+      });
+      if (storesResponse.ok) {
+        const storesData = await storesResponse.json();
+        const stores = storesData.stores || storesData || [];
+        setAllStores(stores);
+      }
     } catch (e) {
       console.error("Failed to fetch discovery data", e);
     } finally {
@@ -113,10 +160,25 @@ export default function DiscoverScreen({ currentUser, wishlist = [], toggleWishl
     const q = searchQuery.trim().toLowerCase();
     if (!q) {
       mixDiscovery(allOffers);
+      setStoreResults([]);
+      setShowStores(false);
       return;
     }
 
     setIsSearching(true);
+
+    // Search stores by name
+    const storeMatches = allStores.filter(s => 
+      s.name?.toLowerCase().includes(q)
+    );
+    
+    if (storeMatches.length > 0) {
+      setStoreResults(storeMatches);
+      setShowStores(true);
+    } else {
+      setStoreResults([]);
+      setShowStores(false);
+    }
 
     // 1. Prioritize Text Search (Title, Author, Username)
     const textMatches = allOffers.filter(o => 
@@ -211,7 +273,7 @@ export default function DiscoverScreen({ currentUser, wishlist = [], toggleWishl
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search by title, author, user or city..."
+              placeholder="Search books, stores, authors, users or cities..."
               className="w-full bg-[#f4f4f4] border-none rounded-xl py-2 pl-10 pr-4 text-[#382110] text-sm focus:bg-white focus:ring-2 focus:ring-[#382110]/10 outline-none transition-all"
             />
             <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#999] group-focus-within:text-[#382110]">
@@ -219,7 +281,7 @@ export default function DiscoverScreen({ currentUser, wishlist = [], toggleWishl
             </div>
           </form>
 
-          <button onClick={() => {setSearchQuery(""); mixDiscovery(allOffers);}} className="p-2 text-[#382110] hover:bg-[#f4f1ea] rounded-full" title="Shuffle Feed">
+          <button onClick={() => {setSearchQuery(""); mixDiscovery(allOffers); setStoreResults([]); setShowStores(false);}} className="p-2 text-[#382110] hover:bg-[#f4f1ea] rounded-full" title="Shuffle Feed">
             <FaFilter size={16} />
           </button>
         </div>
@@ -233,6 +295,74 @@ export default function DiscoverScreen({ currentUser, wishlist = [], toggleWishl
               <div key={i} className="aspect-square bg-gray-100 animate-pulse rounded-md" />
             ))}
           </div>
+        ) : showStores && storeResults.length > 0 ? (
+          <>
+            <div className="mb-4">
+              <h2 className="text-lg font-bold text-[#382110] mb-2">Stores</h2>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4 mb-8">
+              {storeResults.map((store) => (
+                <motion.div
+                  key={store.id}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  onClick={() => navigate(`/store/${store.id}`, { state: { store } })}
+                  className="bg-white rounded-lg border border-[#eee] p-4 cursor-pointer hover:border-[#382110]/30 hover:shadow-md transition-all"
+                >
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="w-12 h-12 rounded-full bg-[#382110] flex items-center justify-center flex-shrink-0">
+                      <FaStore size={18} className="text-white" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-semibold text-[#382110] text-sm truncate">{store.name}</h3>
+                      <p className="text-xs text-[#777] truncate">{store.ownerName || "Store Owner"}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs text-[#777]">
+                    <FaFolder size={12} />
+                    <span>{store.bookCount || store.offerIds?.length || 0} books</span>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+            {discoveryFeed.length > 0 && (
+              <>
+                <div className="mb-4">
+                  <h2 className="text-lg font-bold text-[#382110] mb-2">Books</h2>
+                </div>
+                <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-1 md:gap-4">
+                  {discoveryFeed.map((offer, idx) => (
+                    <motion.div 
+                      key={`${offer.id}-${idx}`}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ duration: 0.3 }}
+                      className="group relative cursor-pointer aspect-square bg-[#f9f9f9] overflow-hidden rounded-lg shadow-sm"
+                      onClick={() => setSelectedOffer(offer)}
+                    >
+                      <img 
+                        src={offer.imageUrl || "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=600&q=80"}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                        alt={offer.bookTitle}
+                      />
+                      <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity" />
+                      
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleWishlist?.(offer.bookTitle);
+                        }}
+                        className={`absolute top-2 right-2 p-1.5 rounded-full shadow-lg transition-all
+                          ${isWishlisted(offer.bookTitle) ? 'bg-[#d37e2f] text-white' : 'bg-white text-[#382110] opacity-0 group-hover:opacity-100'}`}
+                      >
+                        <FaHeart size={12} />
+                      </button>
+                    </motion.div>
+                  ))}
+                </div>
+              </>
+            )}
+          </>
         ) : discoveryFeed.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-center px-4">
              <div className="w-16 h-16 bg-[#f4f1ea] rounded-full flex items-center justify-center text-[#382110] mb-4">
@@ -253,7 +383,7 @@ export default function DiscoverScreen({ currentUser, wishlist = [], toggleWishl
                </button>
              )}
              
-             <button onClick={() => {setSearchQuery(""); mixDiscovery(allOffers);}} className="mt-4 text-[#382110] text-xs font-bold uppercase opacity-50 underline">Refresh Discovery</button>
+             <button onClick={() => {setSearchQuery(""); mixDiscovery(allOffers); setStoreResults([]); setShowStores(false);}} className="mt-4 text-[#382110] text-xs font-bold uppercase opacity-50 underline">Refresh Discovery</button>
           </div>
         ) : (
           <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-1 md:gap-4">
@@ -328,7 +458,14 @@ export default function DiscoverScreen({ currentUser, wishlist = [], toggleWishl
                            {selectedOffer.ownerPhoto ? <img src={selectedOffer.ownerPhoto} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-sm font-bold">{selectedOffer.ownerName?.charAt(0)}</div>}
                         </div>
                         <div>
-                           <p className="text-sm font-bold text-[#382110]">{selectedOffer.ownerName || "Community Member"}</p>
+                           <div className="flex items-center gap-2">
+                              <p className="text-sm font-bold text-[#382110]">{selectedOffer.ownerName || "Community Member"}</p>
+                              {selectedOffer.ownerBadges && selectedOffer.ownerBadges.length > 0 && (
+                                 <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-[#d37e2f]/20 text-[#d37e2f] border border-[#d37e2f]/30 whitespace-nowrap">
+                                    {selectedOffer.ownerBadges[selectedOffer.ownerBadges.length - 1]}
+                                 </span>
+                              )}
+                           </div>
                            <div className="flex items-center text-xs text-[#999]">
                               <FaMapMarkerAlt className="mr-1" />
                               {selectedOffer.distance ? `${Math.round(selectedOffer.distance)} km away` : "Nearby"}
