@@ -1,7 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-// src/pages/LoginScreen.tsx - DIRECT SUPABASE OAUTH VERSION
+// src/pages/LoginScreen.tsx
 import React, { useState, useEffect } from "react";
-import { FaGoogle, FaEnvelope } from "react-icons/fa";
+import { motion } from "framer-motion";
+import { FaGoogle, FaEnvelope, FaFeatherAlt } from "react-icons/fa";
+import { useNavigate } from "react-router-dom";
 
 const API_BASE = "https://boocozmo-api.onrender.com";
 
@@ -11,6 +13,7 @@ type Props = {
 };
 
 export default function LoginScreen({ onLoginSuccess, onGoToSignup }: Props) {
+  const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -39,23 +42,15 @@ export default function LoginScreen({ onLoginSuccess, onGoToSignup }: Props) {
     checkExistingSession();
   }, [onLoginSuccess]);
 
-  // Google OAuth Login - DIRECT TO SUPABASE
+  // Google OAuth - Direct to Supabase
   const handleGoogleLogin = () => {
     setGoogleLoading(true);
     setError(null);
-    
-    console.log("🚀 Starting Google OAuth...");
-    
-    // Direct Supabase OAuth URL (NO backend involved!)
-    const frontendUrl = window.location.origin; // e.g., http://localhost:5173 or https://yourdomain.com
+
+    const frontendUrl = window.location.origin;
     const redirectUrl = `${frontendUrl}/auth/callback`;
     const supabaseUrl = `https://ffbilizmhmnkjapgdzdk.supabase.co/auth/v1/authorize?provider=google&redirect_to=${encodeURIComponent(redirectUrl)}`;
-    
-    console.log("🔗 Direct Supabase OAuth URL:", supabaseUrl);
-    console.log("🌐 Frontend URL:", frontendUrl);
-    console.log("📍 Redirect URL:", redirectUrl);
-    
-    // Redirect immediately to Supabase
+
     window.location.href = supabaseUrl;
   };
 
@@ -74,19 +69,13 @@ export default function LoginScreen({ onLoginSuccess, onGoToSignup }: Props) {
       });
 
       const data = await res.json();
-      
-      console.log("🔍 Login API Response:", data);
-      console.log("🔍 Login API Status:", res.status);
-      
+
       if (!res.ok) {
         throw new Error(data.error || data.message || "Login failed");
       }
 
-      // Extract user info
       let user;
-      
       if (data.user && data.token) {
-        // Structure: { user: { id, name, email }, token }
         user = {
           id: data.user.id.toString(),
           name: data.user.name || data.user.username || "User",
@@ -94,7 +83,6 @@ export default function LoginScreen({ onLoginSuccess, onGoToSignup }: Props) {
           token: data.token,
         };
       } else if (data.id && data.token) {
-        // Structure: { id, name, email, token }
         user = {
           id: data.id.toString(),
           name: data.name || data.username || "User",
@@ -105,142 +93,197 @@ export default function LoginScreen({ onLoginSuccess, onGoToSignup }: Props) {
         throw new Error("Invalid login response");
       }
 
-      console.log("✅ Login successful, user:", user);
-      
-      // Double-check required fields
-      if (!user.email || !user.token) {
-        throw new Error("Incomplete user data received");
-      }
-
       localStorage.setItem("user", JSON.stringify(user));
       onLoginSuccess(user);
-      
     } catch (err: any) {
-      console.error("❌ Login error details:", err);
       setError(err.message || "Network error. Please try again.");
     } finally {
       setLoading(false);
     }
   };
 
-  // Clear any OAuth state
+  // Handle OAuth callback errors
   useEffect(() => {
-    // Check for any error in URL
     const urlParams = new URLSearchParams(window.location.search);
-    const error = urlParams.get("error");
-    
-    if (error) {
-      setError(`Authentication error: ${error}`);
-      // Clean URL
+    const errorParam = urlParams.get("error");
+    if (errorParam) {
+      setError(`Authentication error: ${errorParam}`);
       window.history.replaceState({}, document.title, "/login");
     }
   }, []);
 
   return (
-    <div className="min-h-screen bg-white flex flex-col items-center pt-12 sm:pt-20 px-4">
-      <div className="w-full max-w-[350px] space-y-4">
-        {/* Logo */}
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-serif font-bold text-[#382110] tracking-tight">Boocozmo</h1>
-          <p className="text-xs text-[#555] mt-2 font-sans">Login to your account</p>
-        </div>
+    <div className="relative min-h-screen bg-[#fdfaf5] overflow-hidden font-serif text-[#382110] leading-relaxed">
+      {/* Background Layers – same universe as Welcome */}
+      <div
+        className="absolute inset-0 bg-cover bg-center opacity-32 pointer-events-none mix-blend-multiply"
+        style={{
+          backgroundImage:
+            "url('https://media.istockphoto.com/id/1203011577/vector/newspaper-with-old-grunge-vintage-unreadable-paper-texture-background.jpg?s=612x612&w=0&k=20&c=b16KyYgiKLgpjf1Z18HDLjD4z3QfDB31e3tVgk-GoYk=')",
+        }}
+      />
+      <div
+        className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/old-paper.png')] opacity-18 pointer-events-none"
+      />
 
-        {/* Google OAuth Button */}
-        <button 
-          onClick={handleGoogleLogin}
-          disabled={googleLoading}
-          className="w-full border border-[#4285F4] bg-white hover:bg-[#f8f9fa] text-[#4285F4] font-medium py-2.5 rounded-[3px] flex items-center justify-center gap-2 shadow-sm transition-colors disabled:opacity-70"
+      {/* Gentle vignette */}
+      <div
+        className="absolute inset-0 pointer-events-none z-0"
+        style={{
+          background: "radial-gradient(circle at 50% 50%, transparent 40%, rgba(139,69,19,0.08) 100%)",
+        }}
+      />
+
+      {/* Stitched side pages */}
+      <div
+        className="fixed top-0 bottom-0 left-0 w-[15vw] max-w-[190px] opacity-22 pointer-events-none z-0"
+        style={{
+          backgroundImage:
+            "url('https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?ixlib=rb-4.0.3&auto=format&fit=crop&q=80')",
+          backgroundSize: "cover",
+          backgroundPosition: "right center",
+          transform: "skew(-5deg) translateX(-10px)",
+          boxShadow: "inset -20px 0 40px rgba(0,0,0,0.28)",
+        }}
+      />
+      <div
+        className="fixed top-0 bottom-0 right-0 w-[15vw] max-w-[190px] opacity-22 pointer-events-none z-0"
+        style={{
+          backgroundImage:
+            "url('https://images.unsplash.com/photo-1589995632479-ab97cbddc28c?ixlib=rb-4.0.3&auto=format&fit=crop&q=80')",
+          backgroundSize: "cover",
+          backgroundPosition: "left center",
+          transform: "skew(5deg) translateX(10px)",
+          boxShadow: "inset 20px 0 40px rgba(0,0,0,0.28)",
+        }}
+      />
+
+      {/* Tiny bookmark ribbon */}
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-6 h-48 opacity-35 pointer-events-none z-10">
+        <div className="w-full h-full bg-gradient-to-b from-[#8B0000] via-[#A52A2A] to-transparent rounded-t-full" />
+      </div>
+
+      {/* Header with logo */}
+      <header className="sticky top-0 left-0 right-0 h-20 px-6 md:px-12 flex items-center justify-between z-50 bg-[#fdfaf5]/92 backdrop-blur-sm border-b border-[#d9c9b8]">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-[#382110] rounded-sm flex items-center justify-center text-white text-xl">
+            <FaFeatherAlt />
+          </div>
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Boocozmo</h1>
+        </div>
+      </header>
+
+      <div className="relative z-10 pt-16 pb-16 px-6 md:px-12 max-w-md mx-auto flex flex-col items-center">
+        <motion.div
+          initial={{ opacity: 0, y: 40 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 1.1, ease: "easeOut" }}
+          className="w-full bg-white/65 backdrop-blur-sm border border-[#d9c9b8] rounded-lg p-8 md:p-10 shadow-md"
         >
-          <FaGoogle className="text-[#4285F4]" size={18} />
-          {googleLoading ? "Redirecting to Google..." : "Continue with Google"}
-        </button>
+          {/* Title */}
+          <div className="text-center mb-10">
+            <h2 className="text-3xl md:text-4xl font-bold mb-2">Welcome Back</h2>
+            <p className="text-[#5c4033] text-sm md:text-base">Return to your shelves of stories</p>
+          </div>
 
-        {/* Divider */}
-        <div className="relative flex items-center py-2">
-          <div className="flex-grow border-t border-[#d8d8d8]"></div>
-          <span className="flex-shrink-0 mx-4 text-gray-500 text-xs uppercase">OR</span>
-          <div className="flex-grow border-t border-[#d8d8d8]"></div>
-        </div>
-
-        {/* Email Form */}
-        <form onSubmit={handleLogin} className="space-y-3">
+          {/* Error message */}
           {error && (
-            <div className="text-red-600 text-xs text-center border border-red-200 bg-red-50 p-2 rounded">
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mb-6 p-3 bg-red-50/80 border border-red-200 rounded text-red-700 text-sm text-center"
+            >
               {error}
-            </div>
+            </motion.div>
           )}
-          
-          <div>
+
+          {/* Google Button */}
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={handleGoogleLogin}
+            disabled={googleLoading}
+            className="w-full mb-6 border border-[#4285F4]/40 bg-white/80 hover:bg-[#f8f9fa] text-[#4285F4] font-medium py-3 rounded shadow-sm transition-all flex items-center justify-center gap-3 disabled:opacity-60"
+          >
+            <FaGoogle size={20} />
+            {googleLoading ? "Redirecting..." : "Continue with Google"}
+          </motion.button>
+
+          {/* Divider */}
+          <div className="relative flex items-center mb-6">
+            <div className="flex-grow border-t border-[#d9c9b8]"></div>
+            <span className="flex-shrink-0 mx-4 text-[#5c4033] text-xs uppercase tracking-wider">or</span>
+            <div className="flex-grow border-t border-[#d9c9b8]"></div>
+          </div>
+
+          {/* Email Form */}
+          <form onSubmit={handleLogin} className="space-y-5">
             <input
               type="email"
               placeholder="Email address"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full border border-[#d8d8d8] rounded-[3px] px-3 py-2.5 text-sm focus:border-[#382110] focus:ring-1 focus:ring-[#382110] outline-none text-[#333] placeholder-gray-500 bg-white"
+              className="w-full border border-[#d9c9b8] rounded px-4 py-3 bg-white/70 focus:border-[#382110] focus:ring-1 focus:ring-[#382110]/50 outline-none text-[#382110] placeholder-[#8b6f47]"
               autoComplete="email"
+              required
             />
-          </div>
-          <div>
+
             <input
               type="password"
               placeholder="Password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full border border-[#d8d8d8] rounded-[3px] px-3 py-2.5 text-sm focus:border-[#382110] focus:ring-1 focus:ring-[#382110] outline-none text-[#333] placeholder-gray-500 bg-white"
+              className="w-full border border-[#d9c9b8] rounded px-4 py-3 bg-white/70 focus:border-[#382110] focus:ring-1 focus:ring-[#382110]/50 outline-none text-[#382110] placeholder-[#8b6f47]"
               autoComplete="current-password"
+              required
             />
-          </div>
 
-          <div className="flex justify-end">
-            <button
-              type="button"
-              onClick={() => setError("Password reset coming soon")}
-              className="text-xs text-[#00635d] hover:underline"
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={() => setError("Password reset coming soon...")}
+                className="text-sm text-[#5c4033] hover:text-[#382110] transition-colors"
+              >
+                Forgot password?
+              </button>
+            </div>
+
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              type="submit"
+              disabled={loading}
+              className="w-full bg-[#382110] hover:bg-[#2a190c] text-white font-medium py-3 rounded shadow-md transition-all disabled:opacity-60 flex items-center justify-center gap-2"
             >
-              Forgot password?
+              <FaEnvelope size={16} />
+              {loading ? "Signing in..." : "Sign in with Email"}
+            </motion.button>
+          </form>
+
+          {/* Signup link */}
+          <div className="text-center mt-8 text-sm text-[#5c4033]">
+            Not yet part of the society?{" "}
+            <button
+              onClick={onGoToSignup}
+              className="text-[#382110] font-medium hover:underline transition-all"
+            >
+              Create an account
             </button>
           </div>
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-[#382110] hover:bg-[#2a190c] text-white font-bold py-2.5 rounded-[3px] shadow-sm transition-colors disabled:opacity-70 flex items-center justify-center gap-2"
-          >
-            <FaEnvelope size={14} />
-            {loading ? "Signing in..." : "Sign in with Email"}
-          </button>
-        </form>
-
-        <div className="text-center text-xs text-[#555] mt-4 pt-4 border-t border-[#eee]">
-          By signing in, you agree to the Boocozmo{" "}
-          <a href="#" className="text-[#00635d] hover:underline">Terms of Service</a> and{" "}
-          <a href="#" className="text-[#00635d] hover:underline">Privacy Policy</a>.
-        </div>
-
-        <div className="text-center text-sm mt-6 pt-4 border-t border-[#eee]">
-          Not a member?{" "}
-          <button onClick={onGoToSignup} className="text-[#00635d] font-medium hover:underline">
-            Create an account
-          </button>
-        </div>
-
-        {/* Demo Account Hint */}
-        <div className="text-center text-xs text-gray-400 mt-6 p-3 bg-gray-50 rounded border border-gray-200">
-          <p className="font-medium mb-1">Demo Account (for testing):</p>
-          <p className="mb-1">Email: demo@boocozmo.com</p>
-          <p>Password: demo123</p>
-        </div>
-
-        {/* Debug info - remove in production */}
-        <div className="text-center text-xs text-gray-400 mt-4 p-2 bg-gray-50 rounded">
-          <p className="font-medium mb-1">Debug Info:</p>
-          <p>URL: {window.location.pathname}</p>
-          <p>Origin: {window.location.origin}</p>
-          <p>Has error param: {new URLSearchParams(window.location.search).get("error") ? "Yes" : "No"}</p>
-          <p>Has token param: {new URLSearchParams(window.location.search).get("token") ? "Yes" : "No"}</p>
-          <p>Has hash: {window.location.hash ? "Yes" : "No"}</p>
-        </div>
+          {/* Demo hint */}
+          <div className="mt-10 p-4 bg-[#fdfaf5]/80 border border-[#d9c9b8]/70 rounded text-xs text-[#5c4033] text-center">
+            <p className="font-medium mb-1">Demo Account (testing only)</p>
+            <p>Email: demo@boocozmo.com</p>
+            <p>Password: demo123</p>
+          </div>
+        </motion.div>
       </div>
+
+      {/* Footer */}
+      <footer className="relative z-10 mt-auto py-8 text-center text-sm text-[#5c4033]/80 border-t border-[#d9c9b8]/30">
+        <p>Boocozmo — Where Books Still Breathe • © 2026</p>
+      </footer>
     </div>
   );
 }

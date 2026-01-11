@@ -27,6 +27,7 @@ L.Marker.prototype.options.icon = DefaultIcon;
 const API_BASE = "https://boocozmo-api.onrender.com";
 
 type Offer = {
+  ownerBadges: any;
   id: number;
   bookTitle: string;
   author: string;

@@ -1,9 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-// src/App.tsx - FINAL WORKING VERSION
+// src/App.tsx - FINAL WORKING VERSION WITH COMMUNITIES
 import React, { useEffect, useState } from "react";
 import { BrowserRouter, Routes, Route, useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { FaSearch, FaUserCircle, FaEnvelope, FaSignOutAlt, FaTimes } from "react-icons/fa";
+import { FaSearch, FaUserCircle, FaEnvelope, FaSignOutAlt, FaTimes, FaUsers } from "react-icons/fa";
 import SplashScreen from "./pages/SplashScreen";
 import HomeScreen from "./pages/HomeScreen";
 import OfferScreen from "./pages/OfferScreen";
@@ -20,6 +20,7 @@ import WelcomeScreen from "./pages/WelcomeScreen";
 import StoreDetailScreen from "./pages/StoreDetailScreen";
 import StoresScreen from "./pages/StoresScreen";
 import AuthCallback from "./pages/AuthCallback";
+import CommunityScreen from "./pages/CommunityScreen"; // NEW IMPORT
 import { NotificationProvider } from "./context/NotificationContext";
 import NotificationBell from "./components/NotificationBell";
 import "leaflet/dist/leaflet.css";
@@ -43,7 +44,7 @@ function App() {
     const [activeNotification, setActiveNotification] = useState<{ id: string, title: string, owner: string, distance?: string, type: 'wishlist' | 'nearby' } | null>(null);
     const [seenOffers, setSeenOffers] = useState<Set<number>>(new Set());       
 
-    // Goodreads Header Component
+    // Goodreads Header Component - UPDATED WITH COMMUNITIES
     const GoodreadsHeader = ({ user, onLogout }: { user: User; onLogout: () => void }) => {
       const [isMenuOpen, setIsMenuOpen] = useState(false);
 
@@ -60,9 +61,12 @@ function App() {
                   Boocozmo
                 </h1>
 
-                {/* Desktop Nav */}
+                {/* Desktop Nav - ADDED COMMUNITIES */}
                 <nav className="hidden md:flex items-center gap-1 text-[#382110] text-[14px]">
                   <button onClick={() => navigate("/home")} className="px-3 py-2 font-sans hover:bg-white/50 rounded-sm">Home</button>
+                  <button onClick={() => navigate("/communities")} className="px-3 py-2 font-sans hover:bg-white/50 rounded-sm flex items-center gap-1">
+                    <FaUsers size={12} /> Communities
+                  </button>
                   <button onClick={() => navigate("/my-library")} className="px-3 py-2 font-sans hover:bg-white/50 rounded-sm">My Books</button>
                   <button onClick={() => navigate("/stores")} className="px-3 py-2 font-sans hover:bg-white/50 rounded-sm">Stores</button>
                   <button onClick={() => navigate("/offer")} className="px-3 py-2 font-sans hover:bg-white/50 rounded-sm">Offers</button>
@@ -102,7 +106,7 @@ function App() {
                        {user?.name ? <span className="font-bold text-xs text-[#555]">{user.name.charAt(0)}</span> : <FaUserCircle className="text-[#999]" />}   
                     </div>
 
-                    {/* Profile Dropdown */}
+                    {/* Profile Dropdown - ADDED COMMUNITIES LINK */}
                     {isMenuOpen && (
                        <div className="absolute right-0 top-10 w-48 bg-white border border-[#d8d8d8] shadow-lg rounded-[3px] py-1 z-50">
                           <div className="px-4 py-2 border-b border-[#eee] text-sm text-[#382110] font-bold truncate">
@@ -110,6 +114,9 @@ function App() {
                           </div>
                           <button onClick={() => navigate("/profile")} className="w-full text-left px-4 py-2 text-sm text-[#382110] hover:underline hover:bg-[#f4f1ea]">Profile</button>
                           <button onClick={() => navigate("/my-library")} className="w-full text-left px-4 py-2 text-sm text-[#382110] hover:underline hover:bg-[#f4f1ea]">My Books</button>
+                          <button onClick={() => navigate("/communities")} className="w-full text-left px-4 py-2 text-sm text-[#382110] hover:underline hover:bg-[#f4f1ea] flex items-center gap-2">
+                            <FaUsers size={12} /> Communities
+                          </button>
                           <button onClick={onLogout} className="w-full text-left px-4 py-2 text-sm text-[#382110] hover:underline hover:bg-[#f4f1ea] flex items-center gap-2">
                             Sign out <FaSignOutAlt size={12} />
                           </button>
@@ -120,9 +127,12 @@ function App() {
             </div>
           </header>
 
-          {/* Mobile Subheader */}
+          {/* Mobile Subheader - ADDED COMMUNITIES */}
           <div className="md:hidden bg-white border-b border-[#eee] py-2 px-4 shadow-sm flex justify-between text-[13px] font-sans font-medium text-[#382110] overflow-x-auto whitespace-nowrap">
              <span onClick={() => navigate("/home")} className="cursor-pointer">Home</span>
+             <span onClick={() => navigate("/communities")} className="cursor-pointer border-l border-[#eee] pl-4 flex items-center gap-1">
+               <FaUsers size={10} /> Communities
+             </span>
              <span onClick={() => navigate("/my-library")} className="cursor-pointer border-l border-[#eee] pl-4">My Books</span>
              <span onClick={() => navigate("/stores")} className="cursor-pointer border-l border-[#eee] pl-4">Stores</span>
              <span onClick={() => navigate("/offer")} className="cursor-pointer border-l border-[#eee] pl-4">Offers</span>
@@ -325,6 +335,7 @@ function App() {
                     {/* AUTHENTICATED ROUTES */}
                     <Route path="/" element={<HomeScreen {...authProps} />} />
                     <Route path="/home" element={<HomeScreen {...authProps} />} />
+                    <Route path="/communities" element={<CommunityScreen {...authProps} />} /> {/* NEW ROUTE */}
                     <Route path="/offer" element={<OfferScreen {...authProps} onBack={() => navigate("/home")} onProfilePress={() => navigate("/profile")} onMapPress={() => navigate("/map")} onAddPress={() => navigate("/offer")} />} />
                     <Route path="/offer/:id" element={<OfferDetailScreen {...authProps} />} />
                     <Route path="/profile" element={<ProfileScreen {...authProps} />} />
