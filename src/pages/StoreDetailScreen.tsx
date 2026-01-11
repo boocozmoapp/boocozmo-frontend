@@ -96,7 +96,7 @@ export default function StoreDetailScreen({ currentUser }: Props) {
       // 3. Fetch offers for this store (using query param)
       // IMPORTANT: Adjust "?store_id=" to match your backend's actual query param
       // Common alternatives: ?storeId=, ?store=, ?store_id=
-      const offersResponse = await fetch(`${API_BASE}/offers?store_id=${id}`, {
+      const offersResponse = await fetch(`${API_BASE}/offers-by-store?store_id=${id}`, {
         headers: { "Authorization": `Bearer ${currentUser.token}` }
       });
 

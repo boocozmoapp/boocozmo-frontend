@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { BrowserRouter, Routes, Route, useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { FaSearch, FaUserCircle, FaEnvelope, FaSignOutAlt, FaTimes } from "react-icons/fa";
+import { FaSearch, FaUserCircle, FaEnvelope, FaSignOutAlt, FaTimes, FaMapMarkerAlt, FaBook, FaPlus, FaStore, FaLayerGroup } from "react-icons/fa";
 import SplashScreen from "./pages/SplashScreen";
 import HomeScreen from "./pages/HomeScreen";
 import OfferScreen from "./pages/OfferScreen";
@@ -31,6 +31,17 @@ type User = {
   id: string;
   token: string;
 } | null;
+
+// Helper for Nav Items
+const NavItem = ({ icon, label, path, active, navigate }: any) => (
+  <button 
+    onClick={() => navigate(path)} 
+    className={`flex flex-col items-center justify-center w-14 gap-1 ${active ? 'text-[#382110]' : 'text-[#999]'} transition-colors active:scale-95`}
+  >
+    {icon}
+    <span className="text-[10px] font-medium tracking-tight">{label}</span>
+  </button>
+);
 
 function App() {
   const AppContent = () => {
@@ -94,7 +105,7 @@ function App() {
               </div>
 
               <div className="flex items-center gap-3 md:gap-4 text-[#382110]">
-                <button className="md:hidden" onClick={() => navigate("/discover")}><FaSearch size={18} /></button>
+                <button className="md:hidden" onClick={() => navigate("/my-library")}><FaLayerGroup size={18} /></button>
 
                 <div className="flex items-center gap-3 border-r border-[#ccc] pr-4 mr-1">
                   <button onClick={() => navigate("/chat")} className="text-[#382110] hover:text-white hover:bg-[#382110] p-1.5 rounded-full transition-colors relative">
@@ -113,12 +124,12 @@ function App() {
                       <div className="px-4 py-2 border-b border-[#eee] text-sm text-[#382110] font-bold truncate">
                         {user?.name}
                       </div>
-                      <button onClick={() => navigate("/profile")} className="w-full text-left px-4 py-2 text-sm text-[#382110] hover:underline hover:bg-[#f4f1ea]">Profile</button>
-                      <button onClick={() => navigate("/my-library")} className="w-full text-left px-4 py-2 text-sm text-[#382110] hover:underline hover:bg-[#f4f1ea]">My Books</button>
-                      <button onClick={() => navigate("/communities")} className="w-full text-left px-4 py-2 text-sm text-[#382110] hover:underline hover:bg-[#f4f1ea]">
+                      <button onClick={() => navigate("/profile")} className="w-full text-left px-4 py-2 text-sm text-[#382110] hover:bg-[#f4f1ea]">Profile</button>
+                      <button onClick={() => navigate("/my-library")} className="w-full text-left px-4 py-2 text-sm text-[#382110] hover:bg-[#f4f1ea]">My Books</button>
+                      <button onClick={() => navigate("/communities")} className="w-full text-left px-4 py-2 text-sm text-[#382110] hover:bg-[#f4f1ea]">
                         Communities
                       </button>
-                      <button onClick={onLogout} className="w-full text-left px-4 py-2 text-sm text-[#382110] hover:underline hover:bg-[#f4f1ea] flex items-center gap-2">
+                      <button onClick={onLogout} className="w-full text-left px-4 py-2 text-sm text-[#382110] hover:bg-[#f4f1ea] flex items-center gap-2">
                         Sign out <FaSignOutAlt size={12} />
                       </button>
                     </div>
@@ -128,20 +139,31 @@ function App() {
             </div>
           </header>
 
-          {/* Mobile Subheader - Communities text only */}
-          <div className="md:hidden bg-white border-b border-[#eee] py-2 px-4 shadow-sm flex justify-between text-[13px] font-sans font-medium text-[#382110] overflow-x-auto whitespace-nowrap">
-            <span onClick={() => navigate("/home")} className="cursor-pointer">Home</span>
-            <span onClick={() => navigate("/communities")} className="cursor-pointer border-l border-[#eee] pl-4">
-              Communities
-            </span>
-            <span onClick={() => navigate("/my-library")} className="cursor-pointer border-l border-[#eee] pl-4">My Books</span>
-            <span onClick={() => navigate("/stores")} className="cursor-pointer border-l border-[#eee] pl-4">Stores</span>
-            <span onClick={() => navigate("/offer")} className="cursor-pointer border-l border-[#eee] pl-4">Offers</span>
-            <span onClick={() => navigate("/map")} className="cursor-pointer border-l border-[#eee] pl-4">Map</span>
+
+
+          {/* Premium Mobile Bottom Navigation Bar */}
+          <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-[#e5e5e5] h-[60px] flex items-center justify-around z-50 px-2 shadow-[0_-2px_10px_rgba(0,0,0,0.03)] pb-safe">
+            <NavItem icon={<FaBook size={18} />} label="Home" path="/home" active={location.pathname === "/home" || location.pathname === "/"} navigate={navigate} />
+            <NavItem icon={<FaStore size={18} />} label="Stores" path="/stores" active={location.pathname === "/stores"} navigate={navigate} />
+            
+            {/* Center Floating Action Button */}
+            <div className="relative -top-5">
+              <button 
+                onClick={() => navigate("/offer")}
+                className="w-12 h-12 rounded-full bg-[#382110] text-white flex items-center justify-center shadow-lg hover:scale-105 active:scale-95 transition-transform border-4 border-[#f4f1ea]"
+              >
+                <FaPlus size={20} />
+              </button>
+            </div>
+
+            <NavItem icon={<FaMapMarkerAlt size={18} />} label="Map" path="/map" active={location.pathname === "/map"} navigate={navigate} />
+            <NavItem icon={<FaUserCircle size={18} />} label="Profile" path="/profile" active={location.pathname === "/profile"} navigate={navigate} />
           </div>
         </>
       );
     };
+
+
 
     const getDist = (lat1: number, lon1: number, lat2: number, lon2: number) => {
       const R = 6371;
@@ -311,7 +333,7 @@ function App() {
             )}
           </AnimatePresence>
 
-          <div className="bg-[#f4f1ea] pb-10">
+          <div className="bg-[#f4f1ea] pb-24 top-gap-fix">
             <div className="max-w-[1100px] mx-auto bg-white min-h-[calc(100vh-120px)] shadow-[0_0_10px_rgba(0,0,0,0.02)] border-x border-[#ebebeb]">
               <Routes>
                 <Route path="/auth/callback" element={<AuthCallback />} />

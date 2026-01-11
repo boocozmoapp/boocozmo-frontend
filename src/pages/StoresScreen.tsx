@@ -118,7 +118,6 @@ export default function StoresScreen({ currentUser }: Props) {
         
         // Process stores
         const processedStores = storesList
-          .filter((s: any) => s.visibility === "public")
           .map((s: any) => {
             let lat = null;
             let lng = null;

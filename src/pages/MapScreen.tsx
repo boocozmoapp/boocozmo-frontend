@@ -121,25 +121,27 @@ const createStoreIcon = (() => {
     if (iconCache.has(cacheKey)) return iconCache.get(cacheKey)!;
 
     const size = isSelected ? 52 : 44;
-    const goldenColor = "#d4af37"; // Golden color
     
     const icon = L.divIcon({
       className: 'custom-store-marker',
       html: `
         <div style="
           width: ${size}px; height: ${size}px; border-radius: 50%;
-          background: linear-gradient(135deg, #d4af37 0%, #f4d03f 50%, #d4af37 100%);
-          border: 4px solid white;
+          background: linear-gradient(135deg, #7c3aed 0%, #a78bfa 100%);
+          border: 3px solid white;
           display: flex; align-items: center; justify-content: center;
-          box-shadow: 0 4px 16px rgba(212, 175, 55, 0.4);
+          box-shadow: 0 4px 16px rgba(124, 58, 237, 0.4);
           transition: all 0.2s;
+          position: relative;
         ">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M4 4H20C21.1 4 22 4.9 22 6V18C22 19.1 21.1 20 20 20H4C2.9 20 2 19.1 2 18V6C2 4.9 2.9 4 4 4Z" stroke="#382110" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-            <path d="M4 8H20" stroke="#382110" stroke-width="2" stroke-linecap="round"/>
-            <path d="M8 4V8" stroke="#382110" stroke-width="2" stroke-linecap="round"/>
-            <path d="M16 4V8" stroke="#382110" stroke-width="2" stroke-linecap="round"/>
-          </svg>
+          <i class="fa-solid fa-store" style="color: white; font-size: 20px;"></i>
+          <div style="
+             position: absolute; bottom: -4px; right: -4px; 
+             background: #409d69; color: white; border-radius: 50%; 
+             width: 18px; height: 18px; font-size: 10px; font-weight: bold;
+             display: flex; align-items: center; justify-content: center;
+             border: 2px solid white;
+          ">+</div>
         </div>
       `,
       iconSize: [size, size],
@@ -466,7 +468,7 @@ export default function MapScreen({ currentUser }: Props) {
            distanceText = `${d.toFixed(1)} km`;
         }
 
-        const marker = L.marker([store.latitude, store.longitude], { icon })
+        const marker = L.marker([store.latitude, store.longitude], { icon, zIndexOffset: 1000 })
           .addTo(mapInstance.current!)
           .on('click', () => handleStoreMarkerClick(store));
         

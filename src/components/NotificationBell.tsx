@@ -15,9 +15,9 @@ type NotificationItemType = {
   message: string;
   timestamp: Date;
   isRead: boolean;
-  offerId?: number;
   offerTitle?: string;
   type?: 'message' | 'wishlist' | 'nearby';
+  offerId?: number;
 };
 
 type Props = {
@@ -26,9 +26,13 @@ type Props = {
 
 export default function NotificationBell({ className = "" }: Props) {
   const navigate = useNavigate();
-  const { unreadCount, notifications, markAsRead, markChatAsRead, isConnected } = useNotifications();
+  // We use notifications array to calc unread locally for instant feedback
+  const { notifications, markAsRead, markChatAsRead, isConnected } = useNotifications();
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Calculate unread count strictly from the local list
+  const unreadCount = notifications.filter(n => !n.isRead).length;
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -56,7 +60,7 @@ export default function NotificationBell({ className = "" }: Props) {
   }, [navigate]);
 
   const handleNotificationClick = async (notification: NotificationItemType) => {
-    // Mark as read
+    // Mark as read immediately in UI
     markAsRead(notification.id);
     
     // Close dropdown
@@ -64,12 +68,11 @@ export default function NotificationBell({ className = "" }: Props) {
     
     // Navigate based on notification type
     if (notification.type === 'wishlist' || notification.type === 'nearby') {
-      // Navigate to offer
-      if (notification.offerId) {
-        navigate(`/offer/${notification.offerId}`);
-      }
+       if (notification.offerId) {
+         navigate(`/offer/${notification.offerId}`);
+       }
     } else {
-      // Message notification - navigate to chat
+      // Message notification
       if (notification.chatId) {
         await markChatAsRead(notification.chatId);
         navigate(`/chat/${notification.chatId}`);
@@ -91,41 +94,38 @@ export default function NotificationBell({ className = "" }: Props) {
     return new Date(date).toLocaleDateString();
   };
 
-  const unreadNotifications = notifications.filter(n => !n.isRead);
-  const recentNotifications = notifications.slice(0, 10);
-
   return (
     <div className={`relative ${className}`} ref={dropdownRef}>
       {/* Bell Button */}
-      <button
+      <motion.button
+        whileTap={{ scale: 0.9 }}
         onClick={() => setIsOpen(!isOpen)}
-        className="relative p-2 text-[#382110] hover:text-white hover:bg-[#382110] rounded-full transition-colors"
+        className="relative p-2 text-[#382110] hover:text-white hover:bg-[#382110] rounded-full transition-colors z-50"
         aria-label={`Notifications ${unreadCount > 0 ? `(${unreadCount} unread)` : ""}`}
       >
-        <FaBell size={16} />
+        <FaBell size={18} />
         
-        {/* Unread Badge */}
+        {/* Unread Badge - STRICTLY only when unreadCount > 0 */}
         <AnimatePresence>
           {unreadCount > 0 && (
             <motion.span
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
               exit={{ scale: 0 }}
-              className="absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-[#d37e2f] text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1 shadow-lg"
+              className="absolute top-0 right-0 w-3 h-3 bg-[#e74c3c] rounded-full border border-white shadow-sm flex items-center justify-center z-50 pointer-events-none"
             >
-              {unreadCount > 99 ? "99+" : unreadCount}
             </motion.span>
           )}
         </AnimatePresence>
 
-        {/* Connection Indicator */}
-        <span 
-          className={`absolute bottom-0 right-0 w-2 h-2 rounded-full border border-white ${
-            isConnected ? "bg-green-500" : "bg-gray-400"
-          }`}
-          title={isConnected ? "Connected" : "Disconnected"}
-        />
-      </button>
+        {/* Connection Dot (subtle, bottom right) */}
+        {!isConnected && (
+            <span 
+              className="absolute bottom-0 right-0 w-2 h-2 rounded-full bg-gray-300 border border-white"
+              title="Connecting..."
+            />
+        )}
+      </motion.button>
 
       {/* Dropdown */}
       <AnimatePresence>
@@ -134,63 +134,63 @@ export default function NotificationBell({ className = "" }: Props) {
             initial={{ opacity: 0, y: 10, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 10, scale: 0.95 }}
-            transition={{ duration: 0.15 }}
-            className="absolute right-0 top-12 w-80 max-h-[70vh] bg-white border border-[#d8d8d8] rounded-lg shadow-xl z-[100] overflow-hidden"
+            transition={{ type: "spring", bounce: 0.4, duration: 0.3 }}
+            className="absolute right-0 top-12 w-80 max-h-[70vh] bg-white border border-[#d8d8d8] rounded-xl shadow-2xl z-[100] overflow-hidden origin-top-right flex flex-col"
           >
             {/* Header */}
-            <div className="px-4 py-3 border-b border-[#eee] flex items-center justify-between bg-[#f4f1ea]">
+            <div className="px-4 py-3 border-b border-[#eee] flex items-center justify-between bg-[#fcfbf9]">
               <div className="flex items-center gap-2">
-                <FaBell className="text-[#382110]" />
-                <h3 className="font-bold text-[#382110] text-sm">Notifications</h3>
+                <h3 className="font-serif font-bold text-[#382110] text-sm">Notifications</h3>
                 {unreadCount > 0 && (
-                  <span className="px-2 py-0.5 bg-[#d37e2f] text-white text-[10px] font-bold rounded-full">
+                  <span className="px-2 py-0.5 bg-[#e74c3c] text-white text-[10px] font-bold rounded-full">
                     {unreadCount} new
                   </span>
                 )}
               </div>
               <button
                 onClick={() => setIsOpen(false)}
-                className="p-1 text-[#999] hover:text-[#382110] transition-colors"
+                className="p-1 text-[#999] hover:text-[#382110] transition-colors rounded-full hover:bg-[#eee]"
               >
-                <FaTimes size={14} />
+                <FaTimes size={12} />
               </button>
             </div>
 
             {/* Notifications List */}
-            <div className="max-h-[400px] overflow-y-auto">
-              {recentNotifications.length === 0 ? (
-                <div className="py-12 px-4 text-center">
-                  <FaEnvelope className="mx-auto text-3xl text-[#ccc] mb-3" />
-                  <p className="text-sm text-[#777]">No notifications yet</p>
-                  <p className="text-xs text-[#999] mt-1">Messages will appear here</p>
+            <div className="overflow-y-auto custom-scrollbar flex-1 max-h-[400px]">
+              {notifications.length === 0 ? (
+                <div className="py-12 px-8 text-center flex flex-col items-center">
+                  <div className="w-12 h-12 bg-[#f4f1ea] rounded-full flex items-center justify-center mb-3">
+                     <FaBell className="text-xl text-[#dccdb4]" />
+                  </div>
+                  <p className="text-sm font-bold text-[#555]">All caught up!</p>
+                  <p className="text-xs text-[#999] mt-1">No new notifications to show.</p>
                 </div>
               ) : (
-                <div className="divide-y divide-[#eee]">
-                  {recentNotifications.map((notification) => (
+                <div className="divide-y divide-[#f5f5f5]">
+                  {notifications.map((notification) => (
                     <motion.div
+                      layout
                       key={notification.id}
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                       onClick={() => handleNotificationClick(notification)}
-                      className={`px-4 py-3 cursor-pointer transition-colors hover:bg-[#f4f1ea] ${
-                        !notification.isRead ? "bg-[#f0f9ff]" : ""
-                      }`}
+                      className={`px-4 py-3 cursor-pointer transition-colors relative group
+                        ${!notification.isRead ? "bg-[#fffaf0] hover:bg-[#fff5e0]" : "bg-white hover:bg-[#fafafa]"}`
+                      }
                     >
-                      <div className="flex items-start gap-3">
+                      <div className="flex gap-3">
                         {/* Avatar/Icon based on type */}
-                        <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0 ${
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-xs flex-shrink-0 shadow-sm mt-1 ${
                           notification.type === 'wishlist' 
                             ? "bg-gradient-to-br from-[#ec4899] to-[#db2777]"
                             : notification.type === 'nearby'
                             ? "bg-gradient-to-br from-[#00635d] to-[#004d48]"
-                            : !notification.isRead 
-                            ? "bg-gradient-to-br from-[#d37e2f] to-[#b56c28]" 
-                            : "bg-[#999]"
+                            : "bg-[#382110]"
                         }`}>
                           {notification.type === 'wishlist' ? (
-                            <FaHeart size={16} />
+                            <FaHeart size={12} />
                           ) : notification.type === 'nearby' ? (
-                            <FaMapMarkerAlt size={16} />
+                            <FaMapMarkerAlt size={12} />
                           ) : (
                             notification.senderName.charAt(0).toUpperCase()
                           )}
@@ -198,38 +198,29 @@ export default function NotificationBell({ className = "" }: Props) {
 
                         {/* Content */}
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-0.5">
-                            <span className="font-semibold text-[#382110] text-sm truncate">
-                              {notification.type === 'wishlist' ? '✨ Wishlist Match' 
-                                : notification.type === 'nearby' ? '📍 Nearby Book'
+                          <div className="flex justify-between items-start mb-0.5">
+                            <span className={`text-[13px] text-[#382110] truncate pr-2 ${!notification.isRead ? 'font-bold' : 'font-semibold'}`}>
+                               {notification.type === 'wishlist' ? 'Wishlist Match' 
+                                : notification.type === 'nearby' ? 'Nearby Gem'
                                 : notification.senderName}
                             </span>
-                            {!notification.isRead && (
-                              <span className="w-2 h-2 bg-[#d37e2f] rounded-full flex-shrink-0" />
-                            )}
+                            <span className="text-[10px] text-[#999] whitespace-nowrap">{formatTime(notification.timestamp)}</span>
                           </div>
                           
-                          <p className="text-xs text-[#555] line-clamp-2 mb-1">
+                          <p className={`text-xs text-[#555] line-clamp-2 leading-relaxed ${!notification.isRead ? 'font-medium' : 'font-normal'}`}>
                             {notification.message}
                           </p>
                           
-                          <div className="flex items-center gap-2 text-[10px] text-[#999]">
-                            <span>{formatTime(notification.timestamp)}</span>
-                            {notification.offerTitle && (
-                              <>
-                                <span>•</span>
-                                <span className="flex items-center gap-1 truncate">
-                                  <FaBook size={8} />
-                                  {notification.offerTitle}
-                                </span>
-                              </>
-                            )}
-                          </div>
+                          {notification.offerTitle && (
+                             <div className="mt-1 flex items-center gap-1 text-[10px] text-[#00635d] font-bold">
+                                <FaBook size={8} /> {notification.offerTitle}
+                             </div>
+                          )}
                         </div>
-
-                        {/* Read indicator */}
-                        {notification.isRead && (
-                          <FaCheck className="text-[#00635d] flex-shrink-0" size={12} />
+                        
+                        {/* Unread Dot Indicator right in list items */}
+                        {!notification.isRead && (
+                           <div className="absolute right-4 top-1/2 -translate-y-1/2 w-2 h-2 bg-[#e74c3c] rounded-full shadow-sm" />
                         )}
                       </div>
                     </motion.div>
@@ -237,21 +228,20 @@ export default function NotificationBell({ className = "" }: Props) {
                 </div>
               )}
             </div>
-
-            {/* Footer */}
-            {recentNotifications.length > 0 && (
-              <div className="px-4 py-3 border-t border-[#eee] bg-[#fafafa]">
-                <button
+            
+            {/* Mark all read footer (only if unread exist) */}
+            {notifications.length > 0 && notifications.some(n=>!n.isRead) && (
+                <button 
                   onClick={() => {
-                    setIsOpen(false);
-                    navigate("/chat");
+                     notifications.forEach(n => markAsRead(n.id)); 
+                     setIsOpen(false);
                   }}
-                  className="w-full text-center text-sm font-medium text-[#00635d] hover:text-[#004d48] transition-colors"
+                  className="w-full py-2 bg-[#f9f9f9] border-t border-[#eee] text-xs font-bold text-[#555] hover:text-[#382110] hover:bg-[#f0f0f0] transition-colors"
                 >
-                  View all messages
+                   Mark all as read
                 </button>
-              </div>
             )}
+
           </motion.div>
         )}
       </AnimatePresence>

@@ -171,7 +171,7 @@ export default function OfferScreen({ onBack, currentUser }: Props) {
           </div>
        </header>
 
-       <main className="max-w-3xl mx-auto p-4 md:p-8">
+       <main className="max-w-3xl mx-auto px-4 pb-8 pt-0 md:px-8 md:pb-8">
           {/* Instructional Poster */}
           <div className="mb-6 w-full bg-white border border-[#e8e0d5] rounded-lg p-5 relative overflow-hidden flex flex-col md:flex-row items-center gap-5">
               <div className="absolute top-0 right-0 w-1/4 h-full opacity-10 pointer-events-none grayscale">

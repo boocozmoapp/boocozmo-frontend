@@ -417,7 +417,7 @@ export default function HomeScreen({ currentUser }: Props) {
   );
 
   return (
-    <div className="py-6 px-4 md:px-0 flex flex-col md:flex-row gap-8 max-w-[1100px] mx-auto min-h-screen">
+    <div className="pb-6 px-4 md:px-0 flex flex-col md:flex-row gap-8 max-w-[1100px] mx-auto min-h-screen">
        
        {/* Modal for Offer Details */}
        <AnimatePresence>
@@ -662,34 +662,50 @@ export default function HomeScreen({ currentUser }: Props) {
           ) : (
              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6">
                 {offers.length > 0 ? offers.map(offer => (
-                   <div key={offer.id} className="flex flex-col gap-2 group">
+                   <motion.div 
+                      key={offer.id} 
+                      whileHover={{ y: -4 }}
+                      className="flex flex-col gap-2 group bg-white p-2.5 rounded-xl border border-[#ece9e4] shadow-[0_2px_8px_rgba(0,0,0,0.04)] hover:shadow-[0_8px_16px_rgba(0,0,0,0.06)] transition-all duration-300"
+                   >
                       <div 
                         onClick={() => setSelectedOffer(offer)}
-                        className="w-full h-[200px] md:h-[230px] relative shadow-md cursor-pointer overflow-hidden border border-[#eee]"
+                        className="w-full h-[200px] md:h-[220px] relative rounded-lg overflow-hidden bg-[#f8f6f3]"
                       >
-                         <img src={offer.imageUrl || "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=300&q=80"} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
-                         <div className="absolute top-2 right-2">
-                             <span className={`text-[9px] md:text-[10px] font-bold px-1.5 py-0.5 text-white shadow-sm
-                               ${offer.type === 'sell' ? 'bg-[#d37e2f]' : offer.type === 'exchange' ? 'bg-[#00635d]' : 'bg-[#764d91]'}`}>
-                               {offer.type.toUpperCase()}
-                             </span>
+                         {/* Image with slight zoom on hover */}
+                         <img 
+                            src={offer.imageUrl || "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=300&q=80"} 
+                            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 opacity-95 group-hover:opacity-100" 
+                            alt={offer.bookTitle}
+                         />
+                         
+                         {/* Type Badge */}
+                         <div className="absolute top-2 right-2 flex flex-col items-end gap-1">
+                             <div className={`text-[10px] font-bold px-2 py-1 text-white shadow-sm rounded-md tracking-wider uppercase
+                               ${offer.type === 'sell' ? 'bg-[#d37e2fcc] backdrop-blur-md' : offer.type === 'exchange' ? 'bg-[#00635dcc] backdrop-blur-md' : 'bg-[#764d91cc] backdrop-blur-md'}`}>
+                               {offer.type}
+                             </div>
                          </div>
-                         {/* Distance Badge if user loc known */}
+
+                         {/* Distance Badge */}
                          {userLocation && offer.latitude !== undefined && offer.longitude !== undefined && (
-                            <div className="absolute bottom-1 left-1 bg-black/50 text-white px-1.5 rounded text-[9px] font-bold flex items-center gap-1">
+                            <div className="absolute bottom-2 left-2 bg-black/60 backdrop-blur-sm text-white px-2 py-0.5 rounded-md text-[10px] font-bold flex items-center gap-1.5 shadow-sm">
                                <FaLocationArrow size={8} /> {getDistanceFromLatLonInKm(userLocation.lat, userLocation.lng, offer.latitude, offer.longitude).toFixed(1)} km
                             </div>
                          )}
                       </div>
-                      <div>
-                         <h3 onClick={() => setSelectedOffer(offer)} className="font-serif font-bold text-[#382110] text-[13px] md:text-[14px] leading-tight cursor-pointer hover:underline line-clamp-2 min-h-[36px]">
+
+                      <div className="px-1">
+                         <h3 
+                            onClick={() => setSelectedOffer(offer)}
+                            className="font-serif font-bold text-[#2d2520] text-[15px] leading-tight cursor-pointer line-clamp-2 min-h-[40px] group-hover:text-[#8b4513] transition-colors"
+                         >
                             {offer.bookTitle}
                          </h3>
-                         <div className="text-xs text-[#555] mb-2 truncate">by {offer.author}</div>
+                         <div className="text-xs text-[#777] mb-3 truncate font-medium">by {offer.author}</div>
                          
                          {/* Owner Info Section */}
-                         <div className="flex items-center gap-2 mb-3 pt-2 border-t border-[#f4f1ea]">
-                            <div className="w-6 h-6 rounded-full overflow-hidden bg-[#382110]/10 border border-[#eee] flex-shrink-0">
+                         <div className="flex items-center gap-2 pt-2 border-t border-[#f4f4f4]">
+                            <div className="w-7 h-7 rounded-full overflow-hidden bg-[#f4f1ea] border border-[#e5e5e5] flex-shrink-0 shadow-sm">
                                {offer.ownerPhoto ? (
                                   <img src={offer.ownerPhoto} className="w-full h-full object-cover" alt={offer.ownerName} />
                                ) : (
@@ -698,29 +714,21 @@ export default function HomeScreen({ currentUser }: Props) {
                                   </div>
                                )}
                             </div>
-                            <div className="flex items-center gap-1.5 flex-1 min-w-0">
-                               <span className="text-[10px] font-bold text-[#382110] truncate">
-                                  {offer.ownerName?.split(' ')[0] || "User"}
+                            <div className="flex flex-col flex-1 min-w-0 justify-center">
+                               <span className="text-[11px] font-bold text-[#444] truncate leading-none">
+                                  {offer.ownerName?.split(' ')[0] || "Member"}
                                </span>
-                               {offer.ownerBadges && offer.ownerBadges.length > 0 && (
-                                  <span className="px-1.5 py-0.5 rounded text-[8px] font-bold bg-[#d37e2f]/20 text-[#d37e2f] border border-[#d37e2f]/30 flex-shrink-0 whitespace-nowrap">
+                               {offer.ownerBadges && offer.ownerBadges.length > 0 ? (
+                                  <span className="text-[9px] text-[#d37e2f] font-semibold truncate leading-tight mt-0.5">
                                      {offer.ownerBadges[offer.ownerBadges.length - 1]}
                                   </span>
+                               ) : (
+                                  <span className="text-[9px] text-[#999] truncate leading-tight mt-0.5">Nearby</span>
                                )}
                             </div>
-                            <span className="text-[10px] font-bold text-[#382110] truncate opacity-70">
-                               {offer.ownerName || "Community Member"}
-                            </span>
                          </div>
-
-                         <button 
-                           onClick={() => setSelectedOffer(offer)}
-                           className="w-full bg-[#f4f1ea] hover:bg-[#e9e6dd] text-[#382110] text-xs font-bold py-1.5 border border-[#d8d8d8] rounded-[2px]"
-                         >
-                            View Details
-                         </button>
                       </div>
-                   </div>
+                   </motion.div>
                 )) : <div className="text-[#777] italic">No offers found.</div>}
                 
                 {/* Spacers for flex justification on mobile 2-col */}

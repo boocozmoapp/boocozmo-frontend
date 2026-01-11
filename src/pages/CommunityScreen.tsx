@@ -709,7 +709,7 @@ export default function CommunityScreen({ currentUser }: Props) {
 
         {/* Posts Feed - Takes most of the space */}
         <div className="flex-1 overflow-y-auto pb-20"> {/* Added padding bottom for post form */}
-          <div className="max-w-3xl mx-auto px-4 w-full py-4">
+          <div className="max-w-3xl mx-auto px-4 w-full pb-4 pt-0">
             {/* Join Prompt for non-members */}
             {!selectedCommunity.is_member && !selectedCommunity.is_owner && (
               <div className="bg-gradient-to-r from-[#382110]/10 to-[#d37e2f]/10 rounded-xl border border-dashed border-[#382110]/30 p-4 text-center mb-4">
