@@ -33,6 +33,8 @@ export default function LoginScreen({ onLoginSuccess, onGoToSignup }: Props) {
 
           if (response.ok) {
             onLoginSuccess(user);
+            // FIXED: Redirect immediately if session is valid
+            navigate("/home", { replace: true });
           }
         }
       } catch (e) {
@@ -40,7 +42,7 @@ export default function LoginScreen({ onLoginSuccess, onGoToSignup }: Props) {
       }
     };
     checkExistingSession();
-  }, [onLoginSuccess]);
+  }, [onLoginSuccess, navigate]);
 
   // Google OAuth - Direct to Supabase
   const handleGoogleLogin = () => {
@@ -95,6 +97,10 @@ export default function LoginScreen({ onLoginSuccess, onGoToSignup }: Props) {
 
       localStorage.setItem("user", JSON.stringify(user));
       onLoginSuccess(user);
+
+      // FIXED: Immediately redirect to home after success
+      navigate("/home", { replace: true });
+
     } catch (err: any) {
       setError(err.message || "Network error. Please try again.");
     } finally {

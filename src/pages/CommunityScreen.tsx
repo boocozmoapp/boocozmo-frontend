@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-// src/pages/CommunityScreen.tsx - BOOCOZMO Communities
+// src/pages/CommunityScreen.tsx - BOOCOZMO Communities (FIXED VERSION)
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
@@ -8,11 +8,29 @@ import {
   FaHeart, FaComment, FaShare, FaCheck, FaTimes,
   FaSearch, FaFilter, FaUserPlus, FaSignOutAlt, FaEdit,
   FaTrash, FaBook, FaGlobe, FaLock, FaStar, FaChevronLeft,
-  FaChevronRight
+  FaChevronRight, FaHome
 } from "react-icons/fa";
-import { formatDistanceToNow } from "date-fns";
 
 const API_BASE = "https://boocozmo-api.onrender.com";
+
+// Simple date formatting helper
+const formatTimeAgo = (dateString: string): string => {
+  const date = new Date(dateString);
+  const now = new Date();
+  const seconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+  
+  if (seconds < 60) return 'just now';
+  if (seconds < 3600) return `${Math.floor(seconds / 60)} minutes ago`;
+  if (seconds < 86400) return `${Math.floor(seconds / 3600)} hours ago`;
+  if (seconds < 604800) return `${Math.floor(seconds / 86400)} days ago`;
+  
+  // For older dates, show actual date
+  return date.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined
+  });
+};
 
 type User = {
   email: string;
@@ -69,6 +87,7 @@ export default function CommunityScreen({ currentUser }: Props) {
   const [communityPosts, setCommunityPosts] = useState<CommunityPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingPosts, setLoadingPosts] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   
   // UI states
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -93,7 +112,15 @@ export default function CommunityScreen({ currentUser }: Props) {
   // Search and filter
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
-  const [categories, setCategories] = useState<string[]>(["all", "general", "fantasy", "sci-fi", "mystery", "romance", "non-fiction", "academic"]);
+  const [categories, setCategories] = useState<{category: string, count: number}[]>([
+    {category: "general", count: 0},
+    {category: "fantasy", count: 0},
+    {category: "sci-fi", count: 0},
+    {category: "mystery", count: 0},
+    {category: "romance", count: 0},
+    {category: "non-fiction", count: 0},
+    {category: "academic", count: 0}
+  ]);
   
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
@@ -107,6 +134,7 @@ export default function CommunityScreen({ currentUser }: Props) {
 
   const fetchCommunities = useCallback(async (page = 1, category = selectedCategory, search = searchQuery) => {
     setLoading(true);
+    setError(null);
     try {
       let url = `${API_BASE}/communities?limit=${communitiesPerPage}&offset=${(page - 1) * communitiesPerPage}`;
       
@@ -118,52 +146,110 @@ export default function CommunityScreen({ currentUser }: Props) {
         url += `&search=${encodeURIComponent(search)}`;
       }
       
-      const response = await fetch(url, {
-        headers: { "Authorization": `Bearer ${currentUser.token}` }
-      });
+      console.log("📡 Fetching communities from:", url);
+      
+      // FIX: NO auth headers for public endpoint
+      const response = await fetch(url); // NO HEADERS
       
       if (response.ok) {
         const data = await response.json();
+        console.log("✅ Communities fetched:", data.communities?.length || 0);
         setCommunities(data.communities || []);
         setTotalCommunities(data.total || 0);
+        setError(null);
+      } else {
+        const errorData = await response.json();
+        console.error("❌ Communities fetch failed:", errorData);
+        setError(errorData.error || "Failed to fetch communities");
+        setCommunities([]);
       }
     } catch (error) {
-      console.error("Error fetching communities:", error);
+      console.error("❌ Error fetching communities:", error);
+      setError("Network error. Please check your connection.");
+      setCommunities([]);
     } finally {
       setLoading(false);
     }
-  }, [currentUser.token, selectedCategory, searchQuery]);
+  }, [selectedCategory, searchQuery]);
 
   const fetchCategories = useCallback(async () => {
     try {
-      const response = await fetch(`${API_BASE}/communities/categories`, {
-        headers: { "Authorization": `Bearer ${currentUser.token}` }
-      });
+      console.log("📡 Fetching categories...");
+      
+      // FIX: NO auth headers for public endpoint
+      const response = await fetch(`${API_BASE}/communities/categories`); // NO HEADERS
       
       if (response.ok) {
         const data = await response.json();
-        const fetchedCategories = data.map((cat: any) => cat.category).filter(Boolean);
-        setCategories(["all", "general", ...fetchedCategories]);
+        console.log("✅ Categories fetched:", data);
+        
+        if (Array.isArray(data)) {
+          // Extract just category strings for the filter buttons
+          const categoryStrings = ["all", ...data.map((cat: any) => cat.category).filter(Boolean)];
+          
+          // Keep the full data for reference
+          setCategories(data);
+          
+          // Update filter buttons with just category names
+          const filterCategories = ["all", ...categoryStrings.filter((cat: string) => cat !== "all")];
+          // You might want to store this separately for the filter buttons
+        } else {
+          console.log("⚠️ Categories data is not an array:", data);
+          // Keep default categories
+        }
+      } else {
+        console.log("⚠️ Using default categories");
+        // Use default categories if endpoint fails
       }
     } catch (error) {
       console.error("Error fetching categories:", error);
+      // Keep default categories
     }
-  }, [currentUser.token]);
+  }, []); // Removed currentUser.token dependency
 
   const fetchCommunityDetails = useCallback(async (communityId: number) => {
     setLoadingPosts(true);
+    setError(null);
     try {
-      const response = await fetch(`${API_BASE}/communities/${communityId}`, {
-        headers: { "Authorization": `Bearer ${currentUser.token}` }
-      });
+      console.log(`📡 Fetching community ${communityId} details...`);
+      
+      // FIX: Use public endpoint first, fallback to auth if needed
+      let response = await fetch(`${API_BASE}/communities/${communityId}`);
       
       if (response.ok) {
         const data = await response.json();
+        console.log("✅ Community details fetched (public):", data.community);
         setSelectedCommunity(data.community);
         setCommunityPosts(data.posts || []);
+      } else if (response.status === 401 || response.status === 403) {
+        // If public endpoint fails with auth error, try authenticated version
+        console.log("🔄 Trying authenticated endpoint...");
+        const authResponse = await fetch(`${API_BASE}/communities/${communityId}/auth`, {
+          headers: { "Authorization": `Bearer ${currentUser.token}` }
+        });
+        
+        if (authResponse.ok) {
+          const authData = await authResponse.json();
+          console.log("✅ Community details fetched (auth):", authData.community);
+          setSelectedCommunity(authData.community);
+          setCommunityPosts(authData.posts || []);
+        } else {
+          const errorData = await authResponse.json();
+          console.error("❌ Auth community fetch failed:", errorData);
+          setError(errorData.error || "Failed to load community");
+          alert(`Failed to load community: ${errorData.error || "Unknown error"}`);
+          setSelectedCommunity(null);
+        }
+      } else {
+        const errorData = await response.json();
+        console.error("❌ Community fetch failed:", errorData);
+        setError(errorData.error || "Failed to load community");
+        alert(`Failed to load community: ${errorData.error || "Unknown error"}`);
+        setSelectedCommunity(null);
       }
     } catch (error) {
       console.error("Error fetching community details:", error);
+      setError("Network error. Please check your connection.");
       alert("Failed to load community. It may have been deleted.");
       setSelectedCommunity(null);
     } finally {
@@ -180,6 +266,7 @@ export default function CommunityScreen({ currentUser }: Props) {
     }
 
     try {
+      console.log("📡 Creating community:", newCommunity);
       const response = await fetch(`${API_BASE}/communities/create`, {
         method: "POST",
         headers: {
@@ -191,7 +278,7 @@ export default function CommunityScreen({ currentUser }: Props) {
 
       if (response.ok) {
         const data = await response.json();
-        alert("Community created successfully!");
+        alert("✅ Community created successfully!");
         setShowCreateModal(false);
         setNewCommunity({ title: "", description: "", category: "general", is_public: true });
         fetchCommunities();
@@ -200,16 +287,17 @@ export default function CommunityScreen({ currentUser }: Props) {
         fetchCommunityDetails(data.community.id);
       } else {
         const error = await response.json();
-        alert(error.error || "Failed to create community");
+        alert(`❌ ${error.error || "Failed to create community"}`);
       }
     } catch (error) {
       console.error("Error creating community:", error);
-      alert("Failed to create community");
+      alert("❌ Failed to create community. Check your connection.");
     }
   };
 
   const handleJoinCommunity = async (communityId: number) => {
     try {
+      console.log(`📡 Joining community ${communityId}...`);
       const response = await fetch(`${API_BASE}/communities/${communityId}/join`, {
         method: "POST",
         headers: {
@@ -219,7 +307,7 @@ export default function CommunityScreen({ currentUser }: Props) {
       });
 
       if (response.ok) {
-        alert("Successfully joined the community!");
+        alert("✅ Successfully joined the community!");
         setShowJoinModal(false);
         // Refresh community details
         if (selectedCommunity) {
@@ -229,16 +317,17 @@ export default function CommunityScreen({ currentUser }: Props) {
         fetchCommunities();
       } else {
         const error = await response.json();
-        alert(error.error || "Failed to join community");
+        alert(`❌ ${error.error || "Failed to join community"}`);
       }
     } catch (error) {
       console.error("Error joining community:", error);
-      alert("Failed to join community");
+      alert("❌ Failed to join community. Check your connection.");
     }
   };
 
   const handleLeaveCommunity = async (communityId: number) => {
     try {
+      console.log(`📡 Leaving community ${communityId}...`);
       const response = await fetch(`${API_BASE}/communities/${communityId}/leave`, {
         method: "POST",
         headers: {
@@ -248,7 +337,7 @@ export default function CommunityScreen({ currentUser }: Props) {
       });
 
       if (response.ok) {
-        alert("You have left the community");
+        alert("✅ You have left the community");
         setShowLeaveModal(false);
         // Go back to communities list
         setSelectedCommunity(null);
@@ -257,11 +346,11 @@ export default function CommunityScreen({ currentUser }: Props) {
         fetchCommunities();
       } else {
         const error = await response.json();
-        alert(error.error || "Failed to leave community");
+        alert(`❌ ${error.error || "Failed to leave community"}`);
       }
     } catch (error) {
       console.error("Error leaving community:", error);
-      alert("Failed to leave community");
+      alert("❌ Failed to leave community. Check your connection.");
     }
   };
 
@@ -274,6 +363,7 @@ export default function CommunityScreen({ currentUser }: Props) {
     }
 
     try {
+      console.log("📡 Creating post in community:", selectedCommunity.id);
       const response = await fetch(`${API_BASE}/communities/${selectedCommunity.id}/posts`, {
         method: "POST",
         headers: {
@@ -285,24 +375,26 @@ export default function CommunityScreen({ currentUser }: Props) {
 
       if (response.ok) {
         const data = await response.json();
+        console.log("✅ Post created:", data.post);
         // Add new post to the beginning of the list
         setCommunityPosts(prev => [data.post, ...prev]);
         // Clear post form
         setNewPost({ content: "", image_url: "", sticker_url: "" });
         // Show success message
-        alert("Post created successfully!");
+        alert("✅ Post created successfully!");
       } else {
         const error = await response.json();
-        alert(error.error || "Failed to create post");
+        alert(`❌ ${error.error || "Failed to create post"}`);
       }
     } catch (error) {
       console.error("Error creating post:", error);
-      alert("Failed to create post");
+      alert("❌ Failed to create post. Check your connection.");
     }
   };
 
   const handleLikePost = async (postId: number) => {
     try {
+      console.log(`📡 Liking post ${postId}...`);
       const response = await fetch(`${API_BASE}/posts/${postId}/like`, {
         method: "POST",
         headers: {
@@ -313,6 +405,7 @@ export default function CommunityScreen({ currentUser }: Props) {
 
       if (response.ok) {
         const data = await response.json();
+        console.log("✅ Post liked:", data);
         // Update the post in the list
         setCommunityPosts(prev => prev.map(post => 
           post.id === postId 
@@ -321,11 +414,14 @@ export default function CommunityScreen({ currentUser }: Props) {
                 like_count: data.like_count, 
                 has_liked: data.has_liked,
                 likes: data.has_liked 
-                  ? [...post.likes, currentUser.email]
-                  : post.likes.filter(email => email !== currentUser.email)
+                  ? [...(post.likes || []), currentUser.email]
+                  : (post.likes || []).filter(email => email !== currentUser.email)
               }
             : post
         ));
+      } else {
+        const error = await response.json();
+        console.error("❌ Like failed:", error);
       }
     } catch (error) {
       console.error("Error liking post:", error);
@@ -336,6 +432,7 @@ export default function CommunityScreen({ currentUser }: Props) {
     if (!postToDelete) return;
 
     try {
+      console.log(`📡 Deleting post ${postToDelete.id}...`);
       const response = await fetch(`${API_BASE}/posts/${postToDelete.id}`, {
         method: "DELETE",
         headers: {
@@ -349,14 +446,14 @@ export default function CommunityScreen({ currentUser }: Props) {
         setCommunityPosts(prev => prev.filter(post => post.id !== postToDelete.id));
         setShowDeletePostModal(false);
         setPostToDelete(null);
-        alert("Post deleted successfully!");
+        alert("✅ Post deleted successfully!");
       } else {
         const error = await response.json();
-        alert(error.error || "Failed to delete post");
+        alert(`❌ ${error.error || "Failed to delete post"}`);
       }
     } catch (error) {
       console.error("Error deleting post:", error);
-      alert("Failed to delete post");
+      alert("❌ Failed to delete post. Check your connection.");
     }
   };
 
@@ -392,7 +489,7 @@ export default function CommunityScreen({ currentUser }: Props) {
       fetchCommunities(currentPage);
       fetchCategories();
     }
-  }, [selectedCommunity, currentPage, fetchCommunities, fetchCategories]);
+  }, [selectedCommunity, currentPage]);
 
   // ==================== RENDER COMPONENTS ====================
 
@@ -464,50 +561,56 @@ export default function CommunityScreen({ currentUser }: Props) {
     </motion.div>
   );
 
-  // Post Component
+  // Post Component (Twitter-like feed)
   const PostCard = ({ post }: { post: CommunityPost }) => (
-    <div className="bg-white rounded-xl shadow-sm border border-[#e8e0d5] p-4 mb-4">
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="bg-white rounded-xl shadow-sm border border-[#e8e0d5] p-5 mb-4 hover:shadow-md transition-shadow duration-300"
+    >
       {/* Author Header */}
-      <div className="flex items-start justify-between mb-3">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full overflow-hidden bg-gray-200 border border-gray-300">
-            {post.author_photo ? (
-              <img src={post.author_photo} alt={post.author_name} className="w-full h-full object-cover" />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center bg-[#382110] text-white font-bold">
-                {post.author_name?.charAt(0) || "U"}
-              </div>
+      <div className="flex items-start gap-3 mb-4">
+        <div className="w-12 h-12 rounded-full overflow-hidden bg-gray-200 border border-gray-300 flex-shrink-0">
+          {post.author_photo ? (
+            <img src={post.author_photo} alt={post.author_name} className="w-full h-full object-cover" />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center bg-[#382110] text-white font-bold text-lg">
+              {post.author_name?.charAt(0).toUpperCase() || "U"}
+            </div>
+          )}
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center justify-between mb-1">
+            <div>
+              <h4 className="font-bold text-[#382110] text-base">{post.author_name || "Community Member"}</h4>
+              <p className="text-xs text-gray-500">
+                {formatTimeAgo(post.created_at)}
+              </p>
+            </div>
+            
+            {/* Post Actions (Delete for author/owner) */}
+            {(post.author_email === currentUser.email || selectedCommunity?.owner_email === currentUser.email) && (
+              <button
+                onClick={() => {
+                  setPostToDelete(post);
+                  setShowDeletePostModal(true);
+                }}
+                className="text-gray-400 hover:text-red-500 transition-colors p-1"
+                title="Delete post"
+              >
+                <FaTrash size={14} />
+              </button>
             )}
           </div>
-          <div>
-            <h4 className="font-bold text-[#382110]">{post.author_name || "Community Member"}</h4>
-            <p className="text-xs text-gray-500">
-              {formatDistanceToNow(new Date(post.created_at), { addSuffix: true })}
-            </p>
-          </div>
         </div>
-        
-        {/* Post Actions (Delete for author/owner) */}
-        {(post.author_email === currentUser.email || selectedCommunity?.owner_email === currentUser.email) && (
-          <button
-            onClick={() => {
-              setPostToDelete(post);
-              setShowDeletePostModal(true);
-            }}
-            className="text-gray-400 hover:text-red-500 transition-colors"
-            title="Delete post"
-          >
-            <FaTrash size={14} />
-          </button>
-        )}
       </div>
 
       {/* Post Content */}
       <div className="mb-4">
-        <p className="text-gray-800 whitespace-pre-line">{post.content}</p>
+        <p className="text-gray-800 whitespace-pre-line text-sm leading-relaxed">{post.content}</p>
         
         {post.image_url && (
-          <div className="mt-3 rounded-lg overflow-hidden">
+          <div className="mt-3 rounded-xl overflow-hidden border border-gray-200">
             <img 
               src={post.image_url} 
               alt="Post attachment" 
@@ -518,32 +621,31 @@ export default function CommunityScreen({ currentUser }: Props) {
         )}
       </div>
 
-      {/* Post Actions */}
-      <div className="flex items-center justify-between pt-3 border-t border-gray-100">
+      {/* Post Actions (Twitter-like) */}
+      <div className="flex items-center justify-between pt-4 border-t border-gray-100">
         <button
           onClick={() => handleLikePost(post.id)}
-          className={`flex items-center gap-2 px-3 py-1 rounded-full transition-colors ${
+          className={`flex items-center gap-2 px-3 py-1.5 rounded-full transition-colors ${
             post.has_liked 
               ? 'text-red-500 bg-red-50' 
               : 'text-gray-500 hover:text-red-500 hover:bg-red-50'
           }`}
         >
-          <FaHeart size={14} />
+          <FaHeart size={16} className={post.has_liked ? "fill-current" : ""} />
           <span className="text-sm font-medium">{post.like_count}</span>
         </button>
 
-        <div className="flex items-center gap-4 text-gray-500">
-          <button className="flex items-center gap-1 hover:text-blue-500 transition-colors">
-            <FaComment size={14} />
-            <span className="text-sm font-medium">{post.comment_count}</span>
-          </button>
-          <button className="flex items-center gap-1 hover:text-green-500 transition-colors">
-            <FaShare size={14} />
-            <span className="text-sm font-medium">Share</span>
-          </button>
-        </div>
+        <button className="flex items-center gap-2 px-3 py-1.5 text-gray-500 hover:text-blue-500 hover:bg-blue-50 rounded-full transition-colors">
+          <FaComment size={16} />
+          <span className="text-sm font-medium">{post.comment_count}</span>
+        </button>
+
+        <button className="flex items-center gap-2 px-3 py-1.5 text-gray-500 hover:text-green-500 hover:bg-green-50 rounded-full transition-colors">
+          <FaShare size={16} />
+          <span className="text-sm font-medium">Share</span>
+        </button>
       </div>
-    </div>
+    </motion.div>
   );
 
   // Helper function for category colors
@@ -560,50 +662,45 @@ export default function CommunityScreen({ currentUser }: Props) {
     return colors[category] || 'bg-gray-500';
   };
 
+  // Get category strings for filter buttons
+  const getCategoryStrings = () => {
+    return ["all", ...categories.map(cat => cat.category).filter(Boolean)];
+  };
+
   // ==================== RENDER LOGIC ====================
 
   if (selectedCommunity) {
-    // Render Community Detail View
+    // Render Community Detail View (Twitter-like feed)
     return (
-      <div className="min-h-screen bg-gradient-to-b from-[#f9f6f0] to-white py-6 px-4 md:px-6">
-        {/* Back Button and Header */}
-        <div className="max-w-3xl mx-auto mb-6">
-          <button
-            onClick={() => {
-              setSelectedCommunity(null);
-              setCommunityPosts([]);
-            }}
-            className="flex items-center gap-2 text-[#382110] hover:text-[#2a180c] font-medium mb-4 transition-colors"
-          >
-            <FaArrowLeft /> Back to Communities
-          </button>
-
-          {/* Community Header */}
-          <div className="bg-white rounded-2xl shadow-sm border border-[#e8e0d5] p-6 mb-6">
-            <div className="flex items-start justify-between">
-              <div>
-                <div className="flex items-center gap-3 mb-2">
-                  <h1 className="text-2xl font-bold text-[#382110]">{selectedCommunity.title}</h1>
-                  <span className={`px-3 py-1 rounded-full text-xs font-medium text-white ${getCategoryColor(selectedCommunity.category)}`}>
-                    {selectedCommunity.category}
-                  </span>
-                  {selectedCommunity.is_public ? (
-                    <span className="px-2 py-1 bg-green-100 text-green-700 text-xs font-medium rounded-full flex items-center gap-1">
-                      <FaGlobe size={10} /> Public
+      <div className="min-h-screen bg-gradient-to-b from-[#f9f6f0] to-white">
+        {/* Community Header - Fixed at top */}
+        <div className="sticky top-0 z-40 bg-white/95 backdrop-blur-sm border-b border-[#e8e0d5] shadow-sm">
+          <div className="max-w-3xl mx-auto px-4 md:px-6 py-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <button
+                  onClick={() => {
+                    setSelectedCommunity(null);
+                    setCommunityPosts([]);
+                  }}
+                  className="text-[#382110] hover:text-[#2a180c] transition-colors p-2"
+                  title="Back to communities"
+                >
+                  <FaArrowLeft size={20} />
+                </button>
+                <div>
+                  <h1 className="text-xl font-bold text-[#382110]">{selectedCommunity.title}</h1>
+                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <span className="flex items-center gap-1">
+                      <FaUsers size={12} /> {selectedCommunity.member_count} members
                     </span>
-                  ) : (
-                    <span className="px-2 py-1 bg-gray-100 text-gray-700 text-xs font-medium rounded-full flex items-center gap-1">
-                      <FaLock size={10} /> Private
-                    </span>
-                  )}
+                    <span>•</span>
+                    <span>{selectedCommunity.is_public ? "Public" : "Private"}</span>
+                  </div>
                 </div>
-                {selectedCommunity.description && (
-                  <p className="text-gray-600 mb-4">{selectedCommunity.description}</p>
-                )}
               </div>
-
-              {/* Community Actions */}
-              <div className="flex items-center gap-3">
+              
+              <div className="flex items-center gap-2">
                 {selectedCommunity.is_owner ? (
                   <button
                     onClick={() => {
@@ -612,58 +709,39 @@ export default function CommunityScreen({ currentUser }: Props) {
                         alert("Delete functionality coming soon!");
                       }
                     }}
-                    className="px-4 py-2 bg-red-100 text-red-700 rounded-full text-sm font-medium hover:bg-red-200 transition-colors flex items-center gap-2"
+                    className="px-3 py-1.5 bg-red-100 text-red-700 rounded-full text-sm font-medium hover:bg-red-200 transition-colors flex items-center gap-1"
                   >
-                    <FaTrash size={14} /> Delete
+                    <FaTrash size={12} /> Delete
                   </button>
                 ) : selectedCommunity.is_member ? (
                   <button
                     onClick={() => setShowLeaveModal(true)}
-                    className="px-4 py-2 bg-gray-100 text-gray-700 rounded-full text-sm font-medium hover:bg-gray-200 transition-colors flex items-center gap-2"
+                    className="px-3 py-1.5 bg-gray-100 text-gray-700 rounded-full text-sm font-medium hover:bg-gray-200 transition-colors flex items-center gap-1"
                   >
-                    <FaSignOutAlt size={14} /> Leave
+                    <FaSignOutAlt size={12} /> Leave
                   </button>
                 ) : (
                   <button
                     onClick={() => setShowJoinModal(true)}
-                    className="px-4 py-2 bg-[#382110] text-white rounded-full text-sm font-medium hover:bg-[#2a180c] transition-colors flex items-center gap-2"
+                    className="px-3 py-1.5 bg-[#382110] text-white rounded-full text-sm font-medium hover:bg-[#2a180c] transition-colors flex items-center gap-1"
                   >
-                    <FaUserPlus size={14} /> Join Community
+                    <FaUserPlus size={12} /> Join
                   </button>
                 )}
               </div>
             </div>
-
-            {/* Community Stats */}
-            <div className="flex items-center gap-6 mt-4 pt-4 border-t border-gray-100">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-full bg-[#382110]/10 flex items-center justify-center">
-                  <FaUsers className="text-[#382110]" size={14} />
-                </div>
-                <div>
-                  <p className="text-sm text-gray-600">Members</p>
-                  <p className="font-bold text-lg text-[#382110]">{selectedCommunity.member_count}</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-full bg-[#d37e2f]/10 flex items-center justify-center">
-                  <FaBook className="text-[#d37e2f]" size={14} />
-                </div>
-                <div>
-                  <p className="text-sm text-gray-600">Posts</p>
-                  <p className="font-bold text-lg text-[#d37e2f]">{communityPosts.length}</p>
-                </div>
-              </div>
-            </div>
           </div>
+        </div>
 
+        {/* Main Content Area - Twitter-like feed */}
+        <div className="max-w-3xl mx-auto px-4 md:px-6 py-6">
           {/* Create Post Form (Only for members) */}
           {selectedCommunity.can_post ? (
-            <div className="bg-white rounded-xl shadow-sm border border-[#e8e0d5] p-4 mb-6">
-              <div className="flex gap-3">
-                <div className="w-10 h-10 rounded-full overflow-hidden bg-gray-200 flex-shrink-0">
+            <div className="bg-white rounded-2xl shadow-sm border border-[#e8e0d5] p-5 mb-6">
+              <div className="flex gap-4">
+                <div className="w-12 h-12 rounded-full overflow-hidden bg-gray-200 flex-shrink-0">
                   {currentUser.name && (
-                    <div className="w-full h-full flex items-center justify-center bg-[#382110] text-white font-bold">
+                    <div className="w-full h-full flex items-center justify-center bg-[#382110] text-white font-bold text-lg">
                       {currentUser.name.charAt(0).toUpperCase()}
                     </div>
                   )}
@@ -672,8 +750,8 @@ export default function CommunityScreen({ currentUser }: Props) {
                   <textarea
                     value={newPost.content}
                     onChange={(e) => setNewPost({ ...newPost, content: e.target.value })}
-                    placeholder={`What's on your mind in ${selectedCommunity.title}?`}
-                    className="w-full p-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#382110]/30 focus:border-[#382110] resize-none"
+                    placeholder={`What's happening in ${selectedCommunity.title}?`}
+                    className="w-full p-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#382110]/30 focus:border-[#382110] resize-none text-sm"
                     rows={3}
                   />
                   
@@ -682,19 +760,19 @@ export default function CommunityScreen({ currentUser }: Props) {
                       <img 
                         src={newPost.image_url} 
                         alt="Preview" 
-                        className="w-full max-h-64 object-contain rounded-lg bg-gray-100"
+                        className="w-full max-h-64 object-contain rounded-lg bg-gray-100 border border-gray-300"
                       />
                       <button
                         onClick={() => setNewPost({ ...newPost, image_url: "" })}
-                        className="absolute top-2 right-2 w-8 h-8 bg-black/50 text-white rounded-full flex items-center justify-center hover:bg-black/70"
+                        className="absolute top-2 right-2 w-8 h-8 bg-black/70 text-white rounded-full flex items-center justify-center hover:bg-black/90 transition-colors"
                       >
                         <FaTimes size={14} />
                       </button>
                     </div>
                   )}
                   
-                  <div className="flex items-center justify-between mt-3">
-                    <div className="flex items-center gap-2">
+                  <div className="flex items-center justify-between mt-4">
+                    <div className="flex items-center gap-3">
                       <input
                         type="file"
                         ref={fileInputRef}
@@ -704,7 +782,7 @@ export default function CommunityScreen({ currentUser }: Props) {
                       />
                       <button
                         onClick={() => fileInputRef.current?.click()}
-                        className="p-2 text-gray-500 hover:text-[#382110] transition-colors"
+                        className="p-2 text-gray-500 hover:text-[#382110] transition-colors rounded-full hover:bg-gray-100"
                         title="Add image"
                       >
                         <FaCamera size={18} />
@@ -713,13 +791,13 @@ export default function CommunityScreen({ currentUser }: Props) {
                     <button
                       onClick={handleCreatePost}
                       disabled={!newPost.content.trim()}
-                      className={`px-5 py-2 rounded-full flex items-center gap-2 font-medium ${
+                      className={`px-5 py-2 rounded-full flex items-center gap-2 font-medium text-sm ${
                         newPost.content.trim()
                           ? 'bg-[#382110] text-white hover:bg-[#2a180c]'
                           : 'bg-gray-100 text-gray-400 cursor-not-allowed'
                       } transition-colors`}
                     >
-                      <FaPaperPlane /> Post
+                      <FaPaperPlane size={14} /> Post
                     </button>
                   </div>
                 </div>
@@ -728,15 +806,15 @@ export default function CommunityScreen({ currentUser }: Props) {
           ) : (
             /* Join Prompt for non-members */
             !selectedCommunity.is_member && (
-              <div className="bg-gradient-to-r from-[#382110]/10 to-[#d37e2f]/10 rounded-xl border-2 border-dashed border-[#382110]/30 p-6 text-center mb-6">
+              <div className="bg-gradient-to-r from-[#382110]/10 to-[#d37e2f]/10 rounded-2xl border-2 border-dashed border-[#382110]/30 p-6 text-center mb-6">
                 <FaUsers className="text-[#382110] text-3xl mx-auto mb-3" />
                 <h3 className="text-lg font-bold text-[#382110] mb-2">Join to Participate</h3>
                 <p className="text-gray-600 mb-4">Join this community to view and create posts</p>
                 <button
                   onClick={() => setShowJoinModal(true)}
-                  className="px-6 py-3 bg-[#382110] text-white rounded-full font-medium hover:bg-[#2a180c] transition-colors flex items-center gap-2 mx-auto"
+                  className="px-5 py-2.5 bg-[#382110] text-white rounded-full font-medium hover:bg-[#2a180c] transition-colors flex items-center gap-2 mx-auto text-sm"
                 >
-                  <FaUserPlus /> Join {selectedCommunity.title}
+                  <FaUserPlus size={14} /> Join {selectedCommunity.title}
                 </button>
               </div>
             )
@@ -744,19 +822,20 @@ export default function CommunityScreen({ currentUser }: Props) {
 
           {/* Posts Feed */}
           <div>
+            <h3 className="font-bold text-[#382110] text-lg mb-4">Community Posts</h3>
+            
             {loadingPosts ? (
               <div className="flex justify-center p-8">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#382110]"></div>
               </div>
             ) : communityPosts.length > 0 ? (
-              <div>
-                <h3 className="font-bold text-[#382110] text-lg mb-4">Recent Posts</h3>
+              <AnimatePresence>
                 {communityPosts.map((post) => (
                   <PostCard key={post.id} post={post} />
                 ))}
-              </div>
+              </AnimatePresence>
             ) : (
-              <div className="bg-white rounded-xl shadow-sm border border-[#e8e0d5] p-8 text-center">
+              <div className="bg-white rounded-2xl shadow-sm border border-[#e8e0d5] p-8 text-center">
                 <FaBook className="text-gray-300 text-4xl mx-auto mb-3" />
                 <h3 className="text-lg font-bold text-gray-500 mb-2">No posts yet</h3>
                 <p className="text-gray-400">
@@ -769,6 +848,7 @@ export default function CommunityScreen({ currentUser }: Props) {
           </div>
         </div>
 
+        {/* Modals remain the same... */}
         {/* Join Modal */}
         <AnimatePresence>
           {showJoinModal && (
@@ -780,7 +860,7 @@ export default function CommunityScreen({ currentUser }: Props) {
               >
                 <h3 className="text-xl font-bold text-[#382110] mb-4">Join Community</h3>
                 <p className="text-gray-600 mb-6">
-                  You're about to join <span className="font-bold">{selectedCommunity.title}</span>. 
+                  You're about to join <span className="font-bold">{selectedCommunity?.title}</span>. 
                   Once joined, you'll be able to view and create posts in this community.
                 </p>
                 <div className="flex gap-3 justify-end">
@@ -791,7 +871,7 @@ export default function CommunityScreen({ currentUser }: Props) {
                     Cancel
                   </button>
                   <button
-                    onClick={() => handleJoinCommunity(selectedCommunity.id)}
+                    onClick={() => selectedCommunity && handleJoinCommunity(selectedCommunity.id)}
                     className="px-4 py-2 bg-[#382110] text-white rounded-full font-medium hover:bg-[#2a180c]"
                   >
                     Join Community
@@ -813,7 +893,7 @@ export default function CommunityScreen({ currentUser }: Props) {
               >
                 <h3 className="text-xl font-bold text-[#382110] mb-4">Leave Community</h3>
                 <p className="text-gray-600 mb-6">
-                  Are you sure you want to leave <span className="font-bold">{selectedCommunity.title}</span>? 
+                  Are you sure you want to leave <span className="font-bold">{selectedCommunity?.title}</span>? 
                   You'll no longer be able to view or create posts in this community.
                 </p>
                 <div className="flex gap-3 justify-end">
@@ -824,7 +904,7 @@ export default function CommunityScreen({ currentUser }: Props) {
                     Cancel
                   </button>
                   <button
-                    onClick={() => handleLeaveCommunity(selectedCommunity.id)}
+                    onClick={() => selectedCommunity && handleLeaveCommunity(selectedCommunity.id)}
                     className="px-4 py-2 bg-red-600 text-white rounded-full font-medium hover:bg-red-700"
                   >
                     Leave Community
@@ -894,6 +974,14 @@ export default function CommunityScreen({ currentUser }: Props) {
             </button>
           </div>
 
+          {/* Error Display */}
+          {error && (
+            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4">
+              <p className="font-medium">Error: {error}</p>
+              <p className="text-sm mt-1">Check if backend tables are created and server is running.</p>
+            </div>
+          )}
+
           {/* Search and Filter */}
           <div className="bg-white rounded-xl shadow-sm border border-[#e8e0d5] p-4">
             <div className="flex flex-col md:flex-row gap-4">
@@ -906,14 +994,18 @@ export default function CommunityScreen({ currentUser }: Props) {
                     onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder="Search communities..."
                     className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#382110]/30 focus:border-[#382110]"
+                    onKeyPress={(e) => e.key === 'Enter' && fetchCommunities(1)}
                   />
                 </div>
               </div>
               <div className="flex gap-2 overflow-x-auto pb-2">
-                {categories.map((category) => (
+                {getCategoryStrings().map((category) => (
                   <button
                     key={category}
-                    onClick={() => setSelectedCategory(category)}
+                    onClick={() => {
+                      setSelectedCategory(category);
+                      fetchCommunities(1, category, searchQuery);
+                    }}
                     className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
                       selectedCategory === category
                         ? 'bg-[#382110] text-white'
@@ -946,7 +1038,11 @@ export default function CommunityScreen({ currentUser }: Props) {
               <div className="flex justify-center mt-8">
                 <div className="flex items-center gap-2">
                   <button
-                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                    onClick={() => {
+                      const newPage = Math.max(1, currentPage - 1);
+                      setCurrentPage(newPage);
+                      fetchCommunities(newPage);
+                    }}
                     disabled={currentPage === 1}
                     className={`p-2 rounded-lg ${
                       currentPage === 1
@@ -971,7 +1067,10 @@ export default function CommunityScreen({ currentUser }: Props) {
                           <span className="px-2">...</span>
                         )}
                         <button
-                          onClick={() => setCurrentPage(page)}
+                          onClick={() => {
+                            setCurrentPage(page);
+                            fetchCommunities(page);
+                          }}
                           className={`px-3 py-1 rounded-lg ${
                             currentPage === page
                               ? 'bg-[#382110] text-white'
@@ -985,7 +1084,11 @@ export default function CommunityScreen({ currentUser }: Props) {
                   }
                   
                   <button
-                    onClick={() => setCurrentPage(prev => prev + 1)}
+                    onClick={() => {
+                      const newPage = currentPage + 1;
+                      setCurrentPage(newPage);
+                      fetchCommunities(newPage);
+                    }}
                     disabled={currentPage >= Math.ceil(totalCommunities / communitiesPerPage)}
                     className={`p-2 rounded-lg ${
                       currentPage >= Math.ceil(totalCommunities / communitiesPerPage)
@@ -1002,11 +1105,15 @@ export default function CommunityScreen({ currentUser }: Props) {
         ) : (
           <div className="bg-white rounded-2xl shadow-sm border border-[#e8e0d5] p-12 text-center">
             <FaUsers className="text-gray-300 text-5xl mx-auto mb-4" />
-            <h3 className="text-xl font-bold text-gray-500 mb-2">No communities found</h3>
+            <h3 className="text-xl font-bold text-gray-500 mb-2">
+              {error ? "Failed to load communities" : "No communities found"}
+            </h3>
             <p className="text-gray-400 mb-6">
-              {searchQuery || selectedCategory !== 'all' 
-                ? 'Try adjusting your search or filters'
-                : 'Be the first to create a community!'}
+              {error 
+                ? "Check if backend is running and tables are created"
+                : searchQuery || selectedCategory !== 'all' 
+                  ? 'Try adjusting your search or filters'
+                  : 'Be the first to create a community!'}
             </p>
             <button
               onClick={() => setShowCreateModal(true)}
@@ -1075,7 +1182,7 @@ export default function CommunityScreen({ currentUser }: Props) {
                       onChange={(e) => setNewCommunity({ ...newCommunity, category: e.target.value })}
                       className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#382110]/30 focus:border-[#382110]"
                     >
-                      {categories.filter(cat => cat !== 'all').map((category) => (
+                      {getCategoryStrings().filter(cat => cat !== 'all').map((category) => (
                         <option key={category} value={category}>
                           {category.charAt(0).toUpperCase() + category.slice(1)}
                         </option>
@@ -1142,4 +1249,3 @@ export default function CommunityScreen({ currentUser }: Props) {
     </div>
   );
 }
-
