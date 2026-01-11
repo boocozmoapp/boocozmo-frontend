@@ -1,14 +1,14 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-// src/pages/CommunityScreen.tsx - BOOCOZMO Communities (FIXED VERSION)
+// src/pages/CommunityScreen.tsx - CLEANER VERSION
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   FaUsers, FaPlus, FaArrowLeft, FaPaperPlane, FaCamera, 
   FaHeart, FaComment, FaShare, FaCheck, FaTimes,
-  FaSearch, FaFilter, FaUserPlus, FaSignOutAlt, FaEdit,
-  FaTrash, FaBook, FaGlobe, FaLock, FaStar, FaChevronLeft,
-  FaChevronRight, FaHome
+  FaSearch, FaFilter, FaUserPlus, FaSignOutAlt,
+  FaTrash, FaBook, FaGlobe, FaLock, FaChevronLeft,
+  FaChevronRight
 } from "react-icons/fa";
 
 const API_BASE = "https://boocozmo-api.onrender.com";
@@ -20,11 +20,10 @@ const formatTimeAgo = (dateString: string): string => {
   const seconds = Math.floor((now.getTime() - date.getTime()) / 1000);
   
   if (seconds < 60) return 'just now';
-  if (seconds < 3600) return `${Math.floor(seconds / 60)} minutes ago`;
-  if (seconds < 86400) return `${Math.floor(seconds / 3600)} hours ago`;
-  if (seconds < 604800) return `${Math.floor(seconds / 86400)} days ago`;
+  if (seconds < 3600) return `${Math.floor(seconds / 60)}m`;
+  if (seconds < 86400) return `${Math.floor(seconds / 3600)}h`;
+  if (seconds < 604800) return `${Math.floor(seconds / 86400)}d`;
   
-  // For older dates, show actual date
   return date.toLocaleDateString('en-US', {
     month: 'short',
     day: 'numeric',
@@ -148,8 +147,7 @@ export default function CommunityScreen({ currentUser }: Props) {
       
       console.log("📡 Fetching communities from:", url);
       
-      // FIX: NO auth headers for public endpoint
-      const response = await fetch(url); // NO HEADERS
+      const response = await fetch(url);
       
       if (response.ok) {
         const data = await response.json();
@@ -175,82 +173,70 @@ export default function CommunityScreen({ currentUser }: Props) {
   const fetchCategories = useCallback(async () => {
     try {
       console.log("📡 Fetching categories...");
-      
-      // FIX: NO auth headers for public endpoint
-      const response = await fetch(`${API_BASE}/communities/categories`); // NO HEADERS
+      const response = await fetch(`${API_BASE}/communities/categories`);
       
       if (response.ok) {
         const data = await response.json();
         console.log("✅ Categories fetched:", data);
         
         if (Array.isArray(data)) {
-          // Extract just category strings for the filter buttons
-          const categoryStrings = ["all", ...data.map((cat: any) => cat.category).filter(Boolean)];
-          
-          // Keep the full data for reference
           setCategories(data);
-          
-          // Update filter buttons with just category names
-          const filterCategories = ["all", ...categoryStrings.filter((cat: string) => cat !== "all")];
-          // You might want to store this separately for the filter buttons
-        } else {
-          console.log("⚠️ Categories data is not an array:", data);
-          // Keep default categories
         }
-      } else {
-        console.log("⚠️ Using default categories");
-        // Use default categories if endpoint fails
       }
     } catch (error) {
       console.error("Error fetching categories:", error);
-      // Keep default categories
     }
-  }, []); // Removed currentUser.token dependency
+  }, []);
 
+  // FIXED: Always use authenticated endpoint for community details
   const fetchCommunityDetails = useCallback(async (communityId: number) => {
     setLoadingPosts(true);
     setError(null);
     try {
       console.log(`📡 Fetching community ${communityId} details...`);
       
-      // FIX: Use public endpoint first, fallback to auth if needed
-      let response = await fetch(`${API_BASE}/communities/${communityId}`);
+      // Always use authenticated endpoint if user is logged in
+      const response = await fetch(`${API_BASE}/communities/${communityId}/auth`, {
+        headers: { 
+          "Authorization": `Bearer ${currentUser.token}`,
+          "Content-Type": "application/json"
+        }
+      });
       
       if (response.ok) {
         const data = await response.json();
-        console.log("✅ Community details fetched (public):", data.community);
-        setSelectedCommunity(data.community);
-        setCommunityPosts(data.posts || []);
-      } else if (response.status === 401 || response.status === 403) {
-        // If public endpoint fails with auth error, try authenticated version
-        console.log("🔄 Trying authenticated endpoint...");
-        const authResponse = await fetch(`${API_BASE}/communities/${communityId}/auth`, {
-          headers: { "Authorization": `Bearer ${currentUser.token}` }
-        });
+        console.log("✅ Community details fetched:", data.community);
+        console.log("✅ User status:", data.user_status);
+        console.log("✅ Is member?", data.user_status?.is_member);
+        console.log("✅ Can post?", data.user_status?.can_post);
         
-        if (authResponse.ok) {
-          const authData = await authResponse.json();
-          console.log("✅ Community details fetched (auth):", authData.community);
-          setSelectedCommunity(authData.community);
-          setCommunityPosts(authData.posts || []);
+        setSelectedCommunity({
+          ...data.community,
+          is_member: data.user_status?.is_member || false,
+          is_owner: data.user_status?.is_owner || false,
+          can_post: data.user_status?.can_post || false
+        });
+        setCommunityPosts(data.posts || []);
+      } else {
+        // If auth endpoint fails, try public endpoint
+        console.log("🔄 Auth failed, trying public endpoint...");
+        const publicResponse = await fetch(`${API_BASE}/communities/${communityId}`);
+        
+        if (publicResponse.ok) {
+          const publicData = await publicResponse.json();
+          console.log("✅ Community details fetched (public):", publicData.community);
+          setSelectedCommunity(publicData.community);
+          setCommunityPosts(publicData.posts || []);
         } else {
-          const errorData = await authResponse.json();
-          console.error("❌ Auth community fetch failed:", errorData);
+          const errorData = await publicResponse.json();
+          console.error("❌ Community fetch failed:", errorData);
           setError(errorData.error || "Failed to load community");
-          alert(`Failed to load community: ${errorData.error || "Unknown error"}`);
           setSelectedCommunity(null);
         }
-      } else {
-        const errorData = await response.json();
-        console.error("❌ Community fetch failed:", errorData);
-        setError(errorData.error || "Failed to load community");
-        alert(`Failed to load community: ${errorData.error || "Unknown error"}`);
-        setSelectedCommunity(null);
       }
     } catch (error) {
       console.error("Error fetching community details:", error);
       setError("Network error. Please check your connection.");
-      alert("Failed to load community. It may have been deleted.");
       setSelectedCommunity(null);
     } finally {
       setLoadingPosts(false);
@@ -501,10 +487,8 @@ export default function CommunityScreen({ currentUser }: Props) {
       onClick={() => fetchCommunityDetails(community.id)}
       className="bg-white rounded-xl shadow-sm border border-[#e8e0d5] overflow-hidden cursor-pointer hover:shadow-md transition-all duration-300 group"
     >
-      {/* Header with color based on category */}
       <div className={`h-2 ${getCategoryColor(community.category)}`} />
       
-      {/* Content */}
       <div className="p-4">
         <div className="flex items-start justify-between mb-3">
           <div className="flex-1 min-w-0">
@@ -524,7 +508,6 @@ export default function CommunityScreen({ currentUser }: Props) {
           )}
         </div>
 
-        {/* Category and Stats */}
         <div className="flex items-center justify-between text-sm">
           <span className="px-2 py-1 bg-gray-100 text-gray-700 rounded-full text-xs font-medium">
             {community.category}
@@ -542,7 +525,6 @@ export default function CommunityScreen({ currentUser }: Props) {
           </div>
         </div>
 
-        {/* Owner Info */}
         <div className="flex items-center gap-2 mt-4 pt-3 border-t border-gray-100">
           <div className="w-6 h-6 rounded-full overflow-hidden bg-gray-200">
             {community.owner_photo ? (
@@ -561,14 +543,13 @@ export default function CommunityScreen({ currentUser }: Props) {
     </motion.div>
   );
 
-  // Post Component (Twitter-like feed)
+  // Post Component
   const PostCard = ({ post }: { post: CommunityPost }) => (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       className="bg-white rounded-xl shadow-sm border border-[#e8e0d5] p-5 mb-4 hover:shadow-md transition-shadow duration-300"
     >
-      {/* Author Header */}
       <div className="flex items-start gap-3 mb-4">
         <div className="w-12 h-12 rounded-full overflow-hidden bg-gray-200 border border-gray-300 flex-shrink-0">
           {post.author_photo ? (
@@ -588,7 +569,6 @@ export default function CommunityScreen({ currentUser }: Props) {
               </p>
             </div>
             
-            {/* Post Actions (Delete for author/owner) */}
             {(post.author_email === currentUser.email || selectedCommunity?.owner_email === currentUser.email) && (
               <button
                 onClick={() => {
@@ -605,7 +585,6 @@ export default function CommunityScreen({ currentUser }: Props) {
         </div>
       </div>
 
-      {/* Post Content */}
       <div className="mb-4">
         <p className="text-gray-800 whitespace-pre-line text-sm leading-relaxed">{post.content}</p>
         
@@ -621,7 +600,6 @@ export default function CommunityScreen({ currentUser }: Props) {
         )}
       </div>
 
-      {/* Post Actions (Twitter-like) */}
       <div className="flex items-center justify-between pt-4 border-t border-gray-100">
         <button
           onClick={() => handleLikePost(post.id)}
@@ -670,50 +648,43 @@ export default function CommunityScreen({ currentUser }: Props) {
   // ==================== RENDER LOGIC ====================
 
   if (selectedCommunity) {
-    // Render Community Detail View (Twitter-like feed)
+    // SIMPLIFIED Community Detail View
     return (
       <div className="min-h-screen bg-gradient-to-b from-[#f9f6f0] to-white">
-        {/* Community Header - Fixed at top */}
+        {/* Clean Header - Just back button and title */}
         <div className="sticky top-0 z-40 bg-white/95 backdrop-blur-sm border-b border-[#e8e0d5] shadow-sm">
-          <div className="max-w-3xl mx-auto px-4 md:px-6 py-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <button
-                  onClick={() => {
-                    setSelectedCommunity(null);
-                    setCommunityPosts([]);
-                  }}
-                  className="text-[#382110] hover:text-[#2a180c] transition-colors p-2"
-                  title="Back to communities"
-                >
-                  <FaArrowLeft size={20} />
-                </button>
-                <div>
-                  <h1 className="text-xl font-bold text-[#382110]">{selectedCommunity.title}</h1>
-                  <div className="flex items-center gap-2 text-sm text-gray-600">
-                    <span className="flex items-center gap-1">
-                      <FaUsers size={12} /> {selectedCommunity.member_count} members
-                    </span>
-                    <span>•</span>
-                    <span>{selectedCommunity.is_public ? "Public" : "Private"}</span>
-                  </div>
+          <div className="max-w-3xl mx-auto px-4 md:px-6 py-3">
+            <div className="flex items-center gap-4">
+              <button
+                onClick={() => {
+                  setSelectedCommunity(null);
+                  setCommunityPosts([]);
+                }}
+                className="text-[#382110] hover:text-[#2a180c] transition-colors p-2"
+                title="Back to communities"
+              >
+                <FaArrowLeft size={20} />
+              </button>
+              <div className="flex-1">
+                <h1 className="text-xl font-bold text-[#382110]">{selectedCommunity.title}</h1>
+                <div className="flex items-center gap-2 text-xs text-gray-600">
+                  <span className="flex items-center gap-1">
+                    <FaUsers size={10} /> {selectedCommunity.member_count} members
+                  </span>
+                  <span>•</span>
+                  <span>{selectedCategory}</span>
+                  {selectedCommunity.is_owner && (
+                    <>
+                      <span>•</span>
+                      <span className="text-[#d37e2f]">Owner</span>
+                    </>
+                  )}
                 </div>
               </div>
               
-              <div className="flex items-center gap-2">
-                {selectedCommunity.is_owner ? (
-                  <button
-                    onClick={() => {
-                      if (window.confirm("Are you sure you want to delete this community?")) {
-                        // Implement delete functionality
-                        alert("Delete functionality coming soon!");
-                      }
-                    }}
-                    className="px-3 py-1.5 bg-red-100 text-red-700 rounded-full text-sm font-medium hover:bg-red-200 transition-colors flex items-center gap-1"
-                  >
-                    <FaTrash size={12} /> Delete
-                  </button>
-                ) : selectedCommunity.is_member ? (
+              {/* Join/Leave button - FIXED LOGIC */}
+              {!selectedCommunity.is_owner && (
+                selectedCommunity.is_member ? (
                   <button
                     onClick={() => setShowLeaveModal(true)}
                     className="px-3 py-1.5 bg-gray-100 text-gray-700 rounded-full text-sm font-medium hover:bg-gray-200 transition-colors flex items-center gap-1"
@@ -727,102 +698,93 @@ export default function CommunityScreen({ currentUser }: Props) {
                   >
                     <FaUserPlus size={12} /> Join
                   </button>
-                )}
-              </div>
+                )
+              )}
             </div>
           </div>
         </div>
 
-        {/* Main Content Area - Twitter-like feed */}
-        <div className="max-w-3xl mx-auto px-4 md:px-6 py-6">
-          {/* Create Post Form (Only for members) */}
-          {selectedCommunity.can_post ? (
-            <div className="bg-white rounded-2xl shadow-sm border border-[#e8e0d5] p-5 mb-6">
-              <div className="flex gap-4">
-                <div className="w-12 h-12 rounded-full overflow-hidden bg-gray-200 flex-shrink-0">
-                  {currentUser.name && (
-                    <div className="w-full h-full flex items-center justify-center bg-[#382110] text-white font-bold text-lg">
-                      {currentUser.name.charAt(0).toUpperCase()}
-                    </div>
-                  )}
-                </div>
-                <div className="flex-1">
-                  <textarea
-                    value={newPost.content}
-                    onChange={(e) => setNewPost({ ...newPost, content: e.target.value })}
-                    placeholder={`What's happening in ${selectedCommunity.title}?`}
-                    className="w-full p-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#382110]/30 focus:border-[#382110] resize-none text-sm"
-                    rows={3}
-                  />
-                  
-                  {newPost.image_url && (
-                    <div className="mt-3 relative">
-                      <img 
-                        src={newPost.image_url} 
-                        alt="Preview" 
-                        className="w-full max-h-64 object-contain rounded-lg bg-gray-100 border border-gray-300"
-                      />
-                      <button
-                        onClick={() => setNewPost({ ...newPost, image_url: "" })}
-                        className="absolute top-2 right-2 w-8 h-8 bg-black/70 text-white rounded-full flex items-center justify-center hover:bg-black/90 transition-colors"
-                      >
-                        <FaTimes size={14} />
-                      </button>
-                    </div>
-                  )}
-                  
-                  <div className="flex items-center justify-between mt-4">
-                    <div className="flex items-center gap-3">
-                      <input
-                        type="file"
-                        ref={fileInputRef}
-                        onChange={handleImageUpload}
-                        accept="image/*"
-                        className="hidden"
-                      />
-                      <button
-                        onClick={() => fileInputRef.current?.click()}
-                        className="p-2 text-gray-500 hover:text-[#382110] transition-colors rounded-full hover:bg-gray-100"
-                        title="Add image"
-                      >
-                        <FaCamera size={18} />
-                      </button>
-                    </div>
+        {/* Main Content */}
+        <div className="max-w-3xl mx-auto px-4 md:px-6 py-4">
+          {/* Post Creation Form - Always show for members/owners */}
+          {selectedCommunity.can_post && (
+            <div className="mb-6">
+              <div className="bg-white rounded-2xl shadow-sm border border-[#e8e0d5] p-4">
+                <textarea
+                  value={newPost.content}
+                  onChange={(e) => setNewPost({ ...newPost, content: e.target.value })}
+                  placeholder={`What's happening in ${selectedCommunity.title}?`}
+                  className="w-full p-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#382110]/30 focus:border-[#382110] resize-none text-sm mb-3"
+                  rows={3}
+                />
+                
+                {newPost.image_url && (
+                  <div className="mb-3 relative">
+                    <img 
+                      src={newPost.image_url} 
+                      alt="Preview" 
+                      className="w-full max-h-64 object-contain rounded-lg bg-gray-100 border border-gray-300"
+                    />
                     <button
-                      onClick={handleCreatePost}
-                      disabled={!newPost.content.trim()}
-                      className={`px-5 py-2 rounded-full flex items-center gap-2 font-medium text-sm ${
-                        newPost.content.trim()
-                          ? 'bg-[#382110] text-white hover:bg-[#2a180c]'
-                          : 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                      } transition-colors`}
+                      onClick={() => setNewPost({ ...newPost, image_url: "" })}
+                      className="absolute top-2 right-2 w-8 h-8 bg-black/70 text-white rounded-full flex items-center justify-center hover:bg-black/90 transition-colors"
                     >
-                      <FaPaperPlane size={14} /> Post
+                      <FaTimes size={14} />
                     </button>
                   </div>
+                )}
+                
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="file"
+                      ref={fileInputRef}
+                      onChange={handleImageUpload}
+                      accept="image/*"
+                      className="hidden"
+                    />
+                    <button
+                      onClick={() => fileInputRef.current?.click()}
+                      className="p-2 text-gray-500 hover:text-[#382110] transition-colors rounded-full hover:bg-gray-100"
+                      title="Add image"
+                    >
+                      <FaCamera size={18} />
+                    </button>
+                  </div>
+                  <button
+                    onClick={handleCreatePost}
+                    disabled={!newPost.content.trim()}
+                    className={`px-4 py-2 rounded-full flex items-center gap-2 font-medium text-sm ${
+                      newPost.content.trim()
+                        ? 'bg-[#382110] text-white hover:bg-[#2a180c]'
+                        : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                    } transition-colors`}
+                  >
+                    <FaPaperPlane size={14} /> Post
+                  </button>
                 </div>
               </div>
             </div>
-          ) : (
-            /* Join Prompt for non-members */
-            !selectedCommunity.is_member && (
-              <div className="bg-gradient-to-r from-[#382110]/10 to-[#d37e2f]/10 rounded-2xl border-2 border-dashed border-[#382110]/30 p-6 text-center mb-6">
-                <FaUsers className="text-[#382110] text-3xl mx-auto mb-3" />
-                <h3 className="text-lg font-bold text-[#382110] mb-2">Join to Participate</h3>
-                <p className="text-gray-600 mb-4">Join this community to view and create posts</p>
-                <button
-                  onClick={() => setShowJoinModal(true)}
-                  className="px-5 py-2.5 bg-[#382110] text-white rounded-full font-medium hover:bg-[#2a180c] transition-colors flex items-center gap-2 mx-auto text-sm"
-                >
-                  <FaUserPlus size={14} /> Join {selectedCommunity.title}
-                </button>
-              </div>
-            )
+          )}
+
+          {/* Join Prompt for non-members */}
+          {!selectedCommunity.is_member && !selectedCommunity.is_owner && (
+            <div className="bg-gradient-to-r from-[#382110]/10 to-[#d37e2f]/10 rounded-2xl border-2 border-dashed border-[#382110]/30 p-6 text-center mb-6">
+              <FaUsers className="text-[#382110] text-3xl mx-auto mb-3" />
+              <h3 className="text-lg font-bold text-[#382110] mb-2">Join to Participate</h3>
+              <p className="text-gray-600 mb-4">Join this community to view and create posts</p>
+              <button
+                onClick={() => setShowJoinModal(true)}
+                className="px-5 py-2.5 bg-[#382110] text-white rounded-full font-medium hover:bg-[#2a180c] transition-colors flex items-center gap-2 mx-auto text-sm"
+              >
+                <FaUserPlus size={14} /> Join {selectedCommunity.title}
+              </button>
+            </div>
           )}
 
           {/* Posts Feed */}
           <div>
-            <h3 className="font-bold text-[#382110] text-lg mb-4">Community Posts</h3>
+            <h3 className="font-bold text-[#382110] text-lg mb-4">Posts</h3>
             
             {loadingPosts ? (
               <div className="flex justify-center p-8">
@@ -848,8 +810,7 @@ export default function CommunityScreen({ currentUser }: Props) {
           </div>
         </div>
 
-        {/* Modals remain the same... */}
-        {/* Join Modal */}
+        {/* Modals */}
         <AnimatePresence>
           {showJoinModal && (
             <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
@@ -860,8 +821,7 @@ export default function CommunityScreen({ currentUser }: Props) {
               >
                 <h3 className="text-xl font-bold text-[#382110] mb-4">Join Community</h3>
                 <p className="text-gray-600 mb-6">
-                  You're about to join <span className="font-bold">{selectedCommunity?.title}</span>. 
-                  Once joined, you'll be able to view and create posts in this community.
+                  Join <span className="font-bold">{selectedCommunity?.title}</span> to view and create posts.
                 </p>
                 <div className="flex gap-3 justify-end">
                   <button
@@ -874,7 +834,7 @@ export default function CommunityScreen({ currentUser }: Props) {
                     onClick={() => selectedCommunity && handleJoinCommunity(selectedCommunity.id)}
                     className="px-4 py-2 bg-[#382110] text-white rounded-full font-medium hover:bg-[#2a180c]"
                   >
-                    Join Community
+                    Join
                   </button>
                 </div>
               </motion.div>
@@ -882,7 +842,6 @@ export default function CommunityScreen({ currentUser }: Props) {
           )}
         </AnimatePresence>
 
-        {/* Leave Modal */}
         <AnimatePresence>
           {showLeaveModal && (
             <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
@@ -893,8 +852,7 @@ export default function CommunityScreen({ currentUser }: Props) {
               >
                 <h3 className="text-xl font-bold text-[#382110] mb-4">Leave Community</h3>
                 <p className="text-gray-600 mb-6">
-                  Are you sure you want to leave <span className="font-bold">{selectedCommunity?.title}</span>? 
-                  You'll no longer be able to view or create posts in this community.
+                  Leave <span className="font-bold">{selectedCommunity?.title}</span>?
                 </p>
                 <div className="flex gap-3 justify-end">
                   <button
@@ -907,7 +865,7 @@ export default function CommunityScreen({ currentUser }: Props) {
                     onClick={() => selectedCommunity && handleLeaveCommunity(selectedCommunity.id)}
                     className="px-4 py-2 bg-red-600 text-white rounded-full font-medium hover:bg-red-700"
                   >
-                    Leave Community
+                    Leave
                   </button>
                 </div>
               </motion.div>
@@ -915,7 +873,6 @@ export default function CommunityScreen({ currentUser }: Props) {
           )}
         </AnimatePresence>
 
-        {/* Delete Post Modal */}
         <AnimatePresence>
           {showDeletePostModal && postToDelete && (
             <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
@@ -926,7 +883,7 @@ export default function CommunityScreen({ currentUser }: Props) {
               >
                 <h3 className="text-xl font-bold text-[#382110] mb-4">Delete Post</h3>
                 <p className="text-gray-600 mb-6">
-                  Are you sure you want to delete this post? This action cannot be undone.
+                  Delete this post?
                 </p>
                 <div className="flex gap-3 justify-end">
                   <button
@@ -942,7 +899,7 @@ export default function CommunityScreen({ currentUser }: Props) {
                     onClick={handleDeletePost}
                     className="px-4 py-2 bg-red-600 text-white rounded-full font-medium hover:bg-red-700"
                   >
-                    Delete Post
+                    Delete
                   </button>
                 </div>
               </motion.div>
@@ -957,13 +914,12 @@ export default function CommunityScreen({ currentUser }: Props) {
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#f9f6f0] to-white py-6 px-4 md:px-6">
       <div className="max-w-7xl mx-auto">
-        {/* Header */}
         <div className="mb-8">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
             <div>
               <h1 className="text-3xl font-bold text-[#382110] mb-2">Communities</h1>
               <p className="text-gray-600">
-                Join book clubs, share reviews, and connect with fellow readers
+                Join book clubs and connect with readers
               </p>
             </div>
             <button
@@ -974,15 +930,12 @@ export default function CommunityScreen({ currentUser }: Props) {
             </button>
           </div>
 
-          {/* Error Display */}
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4">
               <p className="font-medium">Error: {error}</p>
-              <p className="text-sm mt-1">Check if backend tables are created and server is running.</p>
             </div>
           )}
 
-          {/* Search and Filter */}
           <div className="bg-white rounded-xl shadow-sm border border-[#e8e0d5] p-4">
             <div className="flex flex-col md:flex-row gap-4">
               <div className="flex-1">
@@ -1012,7 +965,7 @@ export default function CommunityScreen({ currentUser }: Props) {
                         : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                     }`}
                   >
-                    {category === 'all' ? 'All Categories' : category}
+                    {category === 'all' ? 'All' : category}
                   </button>
                 ))}
               </div>
@@ -1020,7 +973,6 @@ export default function CommunityScreen({ currentUser }: Props) {
           </div>
         </div>
 
-        {/* Communities Grid */}
         {loading ? (
           <div className="flex justify-center p-12">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#382110]"></div>
@@ -1033,7 +985,6 @@ export default function CommunityScreen({ currentUser }: Props) {
               ))}
             </div>
 
-            {/* Pagination */}
             {totalCommunities > communitiesPerPage && (
               <div className="flex justify-center mt-8">
                 <div className="flex items-center gap-2">
@@ -1106,26 +1057,26 @@ export default function CommunityScreen({ currentUser }: Props) {
           <div className="bg-white rounded-2xl shadow-sm border border-[#e8e0d5] p-12 text-center">
             <FaUsers className="text-gray-300 text-5xl mx-auto mb-4" />
             <h3 className="text-xl font-bold text-gray-500 mb-2">
-              {error ? "Failed to load communities" : "No communities found"}
+              {error ? "Failed to load" : "No communities"}
             </h3>
             <p className="text-gray-400 mb-6">
               {error 
-                ? "Check if backend is running and tables are created"
+                ? "Check backend connection"
                 : searchQuery || selectedCategory !== 'all' 
-                  ? 'Try adjusting your search or filters'
-                  : 'Be the first to create a community!'}
+                  ? 'Try different search/filters'
+                  : 'Create the first community!'}
             </p>
             <button
               onClick={() => setShowCreateModal(true)}
               className="px-6 py-3 bg-[#382110] text-white rounded-full font-medium hover:bg-[#2a180c] transition-colors inline-flex items-center gap-2"
             >
-              <FaPlus /> Create First Community
+              <FaPlus /> Create Community
             </button>
           </div>
         )}
       </div>
 
-      {/* Create Community Modal */}
+      {/* Create Community Modal (same as before) */}
       <AnimatePresence>
         {showCreateModal && (
           <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4 overflow-y-auto">
@@ -1202,8 +1153,8 @@ export default function CommunityScreen({ currentUser }: Props) {
                           </p>
                           <p className="text-sm text-gray-500">
                             {newCommunity.is_public 
-                              ? 'Anyone can join and see posts' 
-                              : 'Only invited members can join'}
+                              ? 'Anyone can join' 
+                              : 'Only invited members'}
                           </p>
                         </div>
                         <div className="relative">
@@ -1238,7 +1189,7 @@ export default function CommunityScreen({ currentUser }: Props) {
                         : 'bg-gray-100 text-gray-400 cursor-not-allowed'
                     } transition-colors`}
                   >
-                    Create Community
+                    Create
                   </button>
                 </div>
               </div>
