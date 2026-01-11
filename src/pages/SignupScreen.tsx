@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-// src/pages/SignupScreen.tsx - MINIMAL GOODREADS STYLE
+// src/pages/SignupScreen.tsx - MINIMAL GOODREADS STYLE WITH GOOGLE OAUTH
 import React, { useState, useEffect } from "react";
-import { FaAmazon, FaApple, FaMapMarkerAlt, FaCrosshairs } from "react-icons/fa";
+import { FaGoogle, FaMapMarkerAlt, FaCrosshairs } from "react-icons/fa";
 import { MapContainer, TileLayer, Marker, useMapEvents } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
@@ -45,6 +45,7 @@ export default function SignupScreen({ onSignupSuccess, onGoToLogin }: Props) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
   // Location State
@@ -62,6 +63,29 @@ export default function SignupScreen({ onSignupSuccess, onGoToLogin }: Props) {
      } else {
         alert("Geolocation not supported");
      }
+  };
+
+  // Google OAuth Login
+  const handleGoogleLogin = async () => {
+    try {
+      setGoogleLoading(true);
+      setError(null);
+      
+      // Get OAuth URL from backend
+      const response = await fetch(`${API_BASE}/auth/google/url`);
+      const data = await response.json();
+      
+      if (data.url) {
+        // Redirect to Google OAuth
+        window.location.href = data.url;
+      } else {
+        throw new Error('Failed to get Google OAuth URL');
+      }
+    } catch (err: any) {
+      console.error("Google OAuth error:", err);
+      setError(err.message || "Google login failed. Please try again.");
+      setGoogleLoading(false);
+    }
   };
 
   const handleSignup = async (e: React.FormEvent) => {
@@ -126,12 +150,14 @@ export default function SignupScreen({ onSignupSuccess, onGoToLogin }: Props) {
           <p className="text-xs text-[#555] mt-1 font-sans uppercase tracking-widest">Join the Society of Seekers</p>
         </div>
 
-        {/* Social Buttons */}
-        <button className="w-full border border-[#d8d8d8] bg-[#fcd46e] hover:bg-[#fbc649] text-black font-medium py-2 rounded-[3px] flex items-center justify-center gap-2 shadow-sm transition-colors">
-          <FaAmazon /> Sign up with Amazon
-        </button>
-        <button className="w-full border border-[#ccc] bg-white hover:bg-[#f4f1ea] text-black font-medium py-2 rounded-[3px] flex items-center justify-center gap-2 shadow-sm transition-colors">
-          <FaApple /> Sign up with Apple
+        {/* Google OAuth Button */}
+        <button 
+          onClick={handleGoogleLogin}
+          disabled={googleLoading}
+          className="w-full border border-[#4285F4] bg-white hover:bg-[#f8f9fa] text-[#4285F4] font-medium py-2 rounded-[3px] flex items-center justify-center gap-2 shadow-sm transition-colors disabled:opacity-70"
+        >
+          <FaGoogle className="text-[#4285F4]" />
+          {googleLoading ? "Connecting to Google..." : "Continue with Google"}
         </button>
 
         {/* Divider */}
@@ -176,7 +202,7 @@ export default function SignupScreen({ onSignupSuccess, onGoToLogin }: Props) {
           {/* Location Picker */}
           <div className="border border-[#d8d8d8] rounded-[3px] p-3 bg-[#f9f9f9]">
              <label className="block text-xs font-bold text-[#382110] mb-2 uppercase tracking-wide flex items-center gap-2">
-                <FaMapMarkerAlt /> Set Your Location
+                <FaMapMarkerAlt /> Set Your Location (Optional)
              </label>
              
              {!showMap ? (
@@ -212,13 +238,18 @@ export default function SignupScreen({ onSignupSuccess, onGoToLogin }: Props) {
             disabled={loading}
             className="w-full bg-[#382110] hover:bg-[#2a190c] text-white font-bold py-2 rounded-[3px] shadow-sm transition-colors disabled:opacity-70 mt-4"
           >
-            {loading ? "Creating Account..." : "Sign up"}
+            {loading ? "Creating Account..." : "Sign up with Email"}
           </button>
         </form>
 
         <div className="text-center text-sm mt-6 pt-4 border-t border-[#eee]">
            Already a member? <button onClick={onGoToLogin} className="text-[#00635d] hover:underline">Sign in</button>
         </div>
+        
+        {/* Privacy Note */}
+        <p className="text-xs text-gray-500 text-center mt-4">
+          By continuing, you agree to Boocozmo's Terms of Service and Privacy Policy.
+        </p>
       </div>
     </div>
   );
