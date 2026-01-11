@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-// src/pages/StoreDetailScreen.tsx - PREMIUM THEME
+// src/pages/StoreDetailScreen.tsx - PREMIUM THEME (FULLY FIXED)
 import { useEffect, useState, useCallback } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
@@ -48,108 +48,86 @@ export default function StoreDetailScreen({ currentUser }: Props) {
   const [store, setStore] = useState<Store | null>(storeFromState || null);
   const [offers, setOffers] = useState<Offer[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [selectedOffer, setSelectedOffer] = useState<Offer | null>(null);
 
   const fetchStoreAndOffers = useCallback(async () => {
     if (!id) {
       setLoading(false);
+      setError("Invalid store ID");
       return;
     }
-    
+
     setLoading(true);
+    setError(null);
+
     try {
-      // First try the combined endpoint
-      let storeData: any = null;
-      let offersData: any[] = [];
+      // 1. Fetch store details
+      const storeResponse = await fetch(`${API_BASE}/stores/${id}`, {
+        headers: { "Authorization": `Bearer ${currentUser.token}` }
+      });
 
-      // Try fetching from combined endpoint first
-      try {
-        const response = await fetch(`${API_BASE}/stores/${id}/offers`, {
-          headers: { "Authorization": `Bearer ${currentUser.token}` }
-        });
-        
-        if (response.ok) {
-          const data = await response.json();
-          storeData = data.store || data;
-          offersData = data.offers || [];
-        }
-      } catch (e) {
-        console.log("Combined endpoint failed, trying separate endpoints");
+      if (!storeResponse.ok) {
+        const errData = await storeResponse.json().catch(() => ({}));
+        throw new Error(errData.error || `Failed to load store (${storeResponse.status})`);
       }
 
-      // If no store data, try fetching store separately
-      if (!storeData) {
-        const storeResponse = await fetch(`${API_BASE}/stores/${id}`, {
-          headers: { "Authorization": `Bearer ${currentUser.token}` }
-        });
-        if (storeResponse.ok) {
-          storeData = await storeResponse.json();
-        }
-      }
+      const storeData = await storeResponse.json();
 
-      // If we have store data with offerIds but no offers, fetch them
-      if (storeData && offersData.length === 0 && storeData.offerIds?.length > 0) {
+      // 2. Fetch owner profile (for name/photo)
+      let ownerName = storeData.ownerName;
+      let ownerPhoto = storeData.ownerPhoto;
+
+      if (storeData.ownerEmail && !ownerName) {
         try {
-          const offersResponse = await fetch(`${API_BASE}/store-offers`, {
-            method: 'POST',
-            headers: { 
-              "Authorization": `Bearer ${currentUser.token}`,
-              "Content-Type": "application/json"
-            },
-            body: JSON.stringify({ offerIds: storeData.offerIds })
+          const profileResp = await fetch(`${API_BASE}/profile/${storeData.ownerEmail}`, {
+            headers: { "Authorization": `Bearer ${currentUser.token}` }
           });
-          if (offersResponse.ok) {
-            const offersResult = await offersResponse.json();
-            offersData = offersResult.offers || offersResult || [];
+          if (profileResp.ok) {
+            const profileData = await profileResp.json();
+            ownerName = profileData.name || "Store Owner";
+            ownerPhoto = profileData.profilePhotoURL || profileData.photo || profileData.profileImageUrl;
           }
-        } catch (e) {
-          console.error("Error fetching offers:", e);
+        } catch (profileErr) {
+          console.warn("Owner profile fetch failed:", profileErr);
         }
       }
 
-      // Process store data
-      if (storeData) {
-        // Fetch owner profile for name and photo
-        let ownerName = storeData.ownerName;
-        let ownerPhoto = storeData.ownerPhoto;
-        
-        if (storeData.ownerEmail && !ownerName) {
-          try {
-            const profileResp = await fetch(`${API_BASE}/profile/${storeData.ownerEmail}`, {
-              headers: { "Authorization": `Bearer ${currentUser.token}` }
-            });
-            if (profileResp.ok) {
-              const profileData = await profileResp.json();
-              ownerName = profileData.name || "Store Owner";
-              ownerPhoto = profileData.profilePhotoURL || profileData.photo || profileData.profileImageUrl;
-            }
-          } catch (e) {
-            console.error("Error fetching owner profile:", e);
-          }
-        }
+      // 3. Fetch offers for this store (using query param)
+      // IMPORTANT: Adjust "?store_id=" to match your backend's actual query param
+      // Common alternatives: ?storeId=, ?store=, ?store_id=
+      const offersResponse = await fetch(`${API_BASE}/offers?store_id=${id}`, {
+        headers: { "Authorization": `Bearer ${currentUser.token}` }
+      });
 
-        setStore({
-          id: storeData.id,
-          name: storeData.name,
-          ownerEmail: storeData.ownerEmail,
-          ownerName: ownerName || "Store Owner",
-          ownerPhoto: ownerPhoto,
-          created_at: storeData.created_at || new Date().toISOString(),
-          visibility: storeData.visibility || "public",
-          location: storeData.location,
-          offerIds: storeData.offerIds || offersData.map((o: any) => o.id)
-        });
+      let offersData = [];
+      if (offersResponse.ok) {
+        const data = await offersResponse.json();
+        offersData = data.offers || data || [];
       } else {
-        setStore(null);
+        console.warn(`Offers fetch for store ${id} returned ${offersResponse.status}`);
       }
 
-      // Process offers - filter to only show public ones
+      // 4. Process store
+      setStore({
+        id: storeData.id,
+        name: storeData.name || "Unnamed Store",
+        ownerEmail: storeData.ownerEmail,
+        ownerName: ownerName || "Store Owner",
+        ownerPhoto,
+        created_at: storeData.created_at || new Date().toISOString(),
+        visibility: storeData.visibility || "public",
+        location: storeData.location,
+        offerIds: storeData.offerIds || offersData.map((o: any) => o.id)
+      });
+
+      // 5. Process offers (filter public only)
       const processedOffers = offersData
         .filter((o: any) => o.visibility === "public" || !o.visibility)
         .map((o: any) => ({
           id: o.id,
-          bookTitle: o.bookTitle || "Untitled",
-          author: o.author || "Unknown",
+          bookTitle: o.bookTitle || "Untitled Book",
+          author: o.author || "Unknown Author",
           type: o.type || "sell",
           imageUrl: o.imageUrl,
           imageBase64: o.imageBase64,
@@ -158,10 +136,12 @@ export default function StoreDetailScreen({ currentUser }: Props) {
           description: o.description,
           visibility: o.visibility || "public",
         }));
+
       setOffers(processedOffers);
 
-    } catch (err) {
-      console.error("Error fetching store and offers:", err);
+    } catch (err: any) {
+      console.error("Store & offers fetch error:", err);
+      setError(err.message || "Failed to load store details");
       setStore(null);
       setOffers([]);
     } finally {
@@ -170,32 +150,34 @@ export default function StoreDetailScreen({ currentUser }: Props) {
   }, [id, currentUser.token]);
 
   useEffect(() => {
-    // Always fetch fresh data from API
     fetchStoreAndOffers();
   }, [fetchStoreAndOffers]);
 
   const handleContact = async () => {
     if (!store) return;
-    
+
     try {
+      // Check for existing chat
       const resp = await fetch(`${API_BASE}/chats?user=${encodeURIComponent(currentUser.email)}`, {
         headers: { "Authorization": `Bearer ${currentUser.token}` }
       });
+
       if (resp.ok) {
-        const chats: any[] = await resp.json();
-        const existingChat = chats.find((c: any) => 
-          (c.user1 === store.ownerEmail || c.user2 === store.ownerEmail)
+        const chats = await resp.json();
+        const existing = chats.find((c: any) =>
+          c.user1 === store.ownerEmail || c.user2 === store.ownerEmail
         );
 
-        if (existingChat) {
-          navigate(`/chat/${existingChat.id}`, { state: { chat: existingChat } });
+        if (existing) {
+          navigate(`/chat/${existing.id}`, { state: { chat: existing } });
           return;
         }
       }
     } catch (e) {
-      console.error("Error checking chats", e);
+      console.warn("Chat check failed:", e);
     }
 
+    // Create new chat
     navigate(`/chat/new`, {
       state: {
         chat: {
@@ -213,8 +195,8 @@ export default function StoreDetailScreen({ currentUser }: Props) {
   const getImageSource = (offer: Offer) => {
     if (offer.imageUrl) return offer.imageUrl;
     if (offer.imageBase64) {
-      return offer.imageBase64.startsWith("data:") 
-        ? offer.imageBase64 
+      return offer.imageBase64.startsWith("data:")
+        ? offer.imageBase64
         : `data:image/jpeg;base64,${offer.imageBase64}`;
     }
     return "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=300&h=400&fit=crop&q=80";
@@ -223,19 +205,20 @@ export default function StoreDetailScreen({ currentUser }: Props) {
   if (loading) {
     return (
       <div className="h-screen bg-[#f4f1ea] flex items-center justify-center">
-        <div className="text-[#382110]">Loading store...</div>
+        <div className="text-[#382110] text-lg">Loading store...</div>
       </div>
     );
   }
 
-  if (!store) {
+  if (error || !store) {
     return (
       <div className="h-screen bg-[#f4f1ea] flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-[#382110] mb-4">Store not found</p>
-          <button 
-            onClick={() => navigate(-1)} 
-            className="px-4 py-2 bg-[#382110] text-white rounded-lg"
+        <div className="text-center max-w-md px-6">
+          <h2 className="text-2xl font-bold text-[#382110] mb-4">Store Not Found</h2>
+          <p className="text-[#555] mb-6">{error || "This store doesn't exist or is private."}</p>
+          <button
+            onClick={() => navigate(-1)}
+            className="px-6 py-3 bg-[#382110] text-white rounded-lg hover:bg-[#2a180c] transition-colors"
           >
             Go Back
           </button>
@@ -250,8 +233,8 @@ export default function StoreDetailScreen({ currentUser }: Props) {
       <header className="bg-white border-b border-[#d8d8d8] sticky top-0 z-30 shadow-sm">
         <div className="max-w-[1100px] mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <button 
-              onClick={() => navigate(-1)} 
+            <button
+              onClick={() => navigate(-1)}
               className="p-2 text-[#382110] hover:bg-[#f4f1ea] rounded-full transition-colors"
             >
               <FaArrowLeft size={18} />
@@ -283,7 +266,7 @@ export default function StoreDetailScreen({ currentUser }: Props) {
               </div>
             </div>
           </div>
-          
+
           <button
             onClick={handleContact}
             className="px-6 py-2.5 bg-[#409d69] hover:bg-[#358759] text-white rounded-lg font-semibold text-sm flex items-center gap-2 transition-colors shadow-sm"
@@ -308,8 +291,8 @@ export default function StoreDetailScreen({ currentUser }: Props) {
             </div>
             <div className="flex items-center gap-2">
               <span className={`px-2 py-1 rounded-full text-xs font-bold ${
-                store.visibility === "public" 
-                  ? "bg-[#e0f2fe] text-[#00635d]" 
+                store.visibility === "public"
+                  ? "bg-[#e0f2fe] text-[#00635d]"
                   : "bg-[#f3f4f6] text-[#777]"
               }`}>
                 {store.visibility === "public" ? "Public Collection" : "Private Collection"}
@@ -333,7 +316,7 @@ export default function StoreDetailScreen({ currentUser }: Props) {
               <h2 className="text-xl font-bold text-[#382110] mb-1">Available Books</h2>
               <p className="text-sm text-[#777]">{offers.length} {offers.length === 1 ? 'book' : 'books'} in this collection</p>
             </div>
-            
+
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6">
               {offers.map((offer) => (
                 <motion.div
@@ -343,15 +326,15 @@ export default function StoreDetailScreen({ currentUser }: Props) {
                   className="bg-white rounded-xl overflow-hidden border border-[#eee] hover:border-[#382110]/30 transition-all shadow-sm cursor-pointer group"
                 >
                   <div className="aspect-[2/3] relative overflow-hidden">
-                    <img 
-                      src={getImageSource(offer)} 
-                      className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110" 
+                    <img
+                      src={getImageSource(offer)}
+                      className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
                       alt={offer.bookTitle}
                     />
                     <div className="absolute top-2 right-2">
                       <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded shadow-sm text-white ${
-                        offer.type === 'sell' ? 'bg-[#d37e2f]' : 
-                        offer.type === 'exchange' ? 'bg-[#00635d]' : 
+                        offer.type === 'sell' ? 'bg-[#d37e2f]' :
+                        offer.type === 'exchange' ? 'bg-[#00635d]' :
                         'bg-[#764d91]'
                       }`}>
                         {offer.type.toUpperCase()}
