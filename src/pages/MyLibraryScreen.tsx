@@ -386,20 +386,41 @@ export default function MyLibraryScreen({
          },
          body: JSON.stringify({ 
            name: newStoreName.trim(), 
-           offers: [],
            visibility: newStoreVisibility
          })
       });
-      if (!response.ok) throw new Error("Failed");
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed using create-store");
+      }
       await fetchStores();
       setNewStoreName("");
       setNewStoreVisibility("private");
       setShowCreateStoreModal(false);
-    } catch (e) { 
+    } catch (e: any) { 
       console.error("Create store error:", e);
-      alert("Failed to create library"); 
+      alert(`Server Code/DB Mismatch. Check Server Logs:\n1. Does 'stores' table have 'description' column? (Backend uses it)\n2. Is 'ownerEmail' column case-sensitive? (Backend might send lowercase)\n\nServer Error: ${e.message}`); 
     }
     finally { setCreatingStore(false); }
+  };
+
+  const handleRemove = async (offerId: number) => {
+    if (!selectedStore) return;
+    if (!confirm("Remove this book from the collection?")) return;
+    
+    try {
+      const response = await fetchWithTimeout(`${API_BASE}/remove-from-store/${selectedStore.id}/${offerId}`, {
+         method: 'POST',
+         headers: { Authorization: `Bearer ${currentUser.token}` }
+      });
+      if (!response.ok) throw new Error("Failed");
+      
+      await fetchStoreOffers(selectedStore);
+      alert("Book removed from collection");
+    } catch (e) {
+       console.error(e);
+       alert("Failed to remove book");
+    }
   };
 
   const handleAddBook = async () => {
@@ -412,9 +433,16 @@ export default function MyLibraryScreen({
              const r = new FileReader(); r.onload = () => resolve(r.result as string); r.readAsDataURL(newBookForm.imageFile!);
           });
        }
+       const offerRes = await fetchWithTimeout(`${API_BASE}/submit-offer`, {
+          method: 'POST', headers: { Authorization: `Bearer ${currentUser.token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...newBookForm, type: 'sell', imageUrl: imageBase64, price: null, exchangeBook: null, latitude: null, longitude: null })
+       });
+       if (!offerRes.ok) throw new Error("Failed to create book");
+       const newOffer = await offerRes.json();
+
        const response = await fetchWithTimeout(`${API_BASE}/add-to-store/${selectedStore.id}`, {
           method: 'POST', headers: { Authorization: `Bearer ${currentUser.token}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ offers: [{ ...newBookForm, type: 'sell', image: imageBase64, price: null, exchangeBook: null, latitude: null, longitude: null }] })
+          body: JSON.stringify({ offerIds: [newOffer.id] })
        });
        if (!response.ok) throw new Error("Failed");
        await fetchStoreOffers(selectedStore);
@@ -451,15 +479,7 @@ export default function MyLibraryScreen({
     finally { setPublishing(false); }
   };
 
-  const handleRemove = async (offerId: number) => {
-     if (!selectedStore || !confirm("Remove?")) return;
-     try {
-        await fetchWithTimeout(`${API_BASE}/remove-from-store/${selectedStore.id}/${offerId}`, {
-           method: 'DELETE', headers: { Authorization: `Bearer ${currentUser.token}` }
-        });
-        await fetchStoreOffers(selectedStore);
-     } catch (e) { alert("Failed remove"); }
-  };
+
 
   useEffect(() => {
     fetchStores();

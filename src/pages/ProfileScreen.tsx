@@ -169,7 +169,7 @@ export default function ProfileScreen({ currentUser, wishlist = [], toggleWishli
       const response = await fetchWithTimeout(`${API_BASE}/my-offers`, { headers: { "Authorization": `Bearer ${currentUser.token}` } });
       if (!response.ok) throw new Error("Failed");
       const data = await response.json();
-      setMyOffers(Array.isArray(data.offers) ? data.offers : []);
+      setMyOffers((Array.isArray(data.offers) ? data.offers : []).filter((o: any) => o.state === 'open'));
     } catch { setMyOffers([]); } finally { setLoadingOffers(false); }
   }, [currentUser.token]);
 
@@ -286,9 +286,19 @@ export default function ProfileScreen({ currentUser, wishlist = [], toggleWishli
   const handleDeleteOffer = async (id: number) => {
      if(!confirm("Delete?")) return;
      try {
-        await fetchWithTimeout(`${API_BASE}/delete-offer/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${currentUser.token}` } });
+        const res = await fetchWithTimeout(`${API_BASE}/delete-offer/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${currentUser.token}` } });
+        if (!res.ok) {
+            const errData = await res.json().catch(() => ({}));
+            throw new Error(errData.error || "Server Error");
+        }
         await fetchMyOffers();
-     } catch(e) { alert("Failed delete"); }
+     } catch(e: any) { 
+        console.error(e);
+        const msg = e.message === "Failed to delete offer" 
+           ? "Cannot delete book with active chats. Please go to the Chat and 'Close Deal' instead." 
+           : e.message;
+        alert(`Deletion Failed: ${msg}`); 
+     }
   };
 
   const viralStats = useMemo(() => ({

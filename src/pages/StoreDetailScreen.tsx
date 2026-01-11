@@ -123,7 +123,7 @@ export default function StoreDetailScreen({ currentUser }: Props) {
 
       // 5. Process offers (filter public only)
       const processedOffers = offersData
-        .filter((o: any) => o.visibility === "public" || !o.visibility)
+        .filter((o: any) => (o.visibility === "public" || !o.visibility) && o.state !== 'closed')
         .map((o: any) => ({
           id: o.id,
           bookTitle: o.bookTitle || "Untitled Book",

@@ -42,7 +42,7 @@ type Community = {
   id: number;
   title: string;
   description: string;
-  owner_email: string;
+  ownerEmail: string;
   owner_name?: string;
   owner_photo?: string;
   category: string;
@@ -59,7 +59,7 @@ type Community = {
 type CommunityPost = {
   id: number;
   community_id: number;
-  author_email: string;
+  authorEmail: string;
   author_name?: string;
   author_photo?: string;
   content: string;
@@ -360,8 +360,14 @@ export default function CommunityScreen({ currentUser }: Props) {
       if (response.ok) {
         const data = await response.json();
         console.log("✅ Post created:", data.post);
-        // Add new post to the beginning of the list
-        setCommunityPosts(prev => [data.post, ...prev]);
+      // Add new post to the beginning of the list with optimistic auth details
+      const enrichedPost = {
+        ...data.post,
+        author_name: currentUser.name || "Me",
+        // Note: currentUser might not have profilePhoto in some contexts, but we try access it or use default
+        author_photo: (currentUser as any).profilePhoto || null, 
+      };
+      setCommunityPosts(prev => [enrichedPost, ...prev]);
         // Clear post form
         setNewPost({ content: "", image_url: "", sticker_url: "" });
         // Clear textarea
@@ -579,7 +585,7 @@ export default function CommunityScreen({ currentUser }: Props) {
               </p>
             </div>
             
-            {(post.author_email === currentUser.email || selectedCommunity?.owner_email === currentUser.email) && (
+            {(post.authorEmail === currentUser.email || selectedCommunity?.ownerEmail === currentUser.email) && (
               <button
                 onClick={() => {
                   setPostToDelete(post);

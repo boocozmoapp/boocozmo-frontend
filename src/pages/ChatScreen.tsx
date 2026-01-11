@@ -24,6 +24,11 @@ type Conversation = {
   user2: string;
   title?: string | null;
   offer_id?: number;
+  other_user?: {
+    name: string;
+    profilePhoto: string | null;
+    email: string;
+  };
 };
 
 type Props = {
@@ -124,7 +129,7 @@ export default function ChatScreen({ currentUser }: Props) {
   ];
 
   const filtered = conversations.filter(c => 
-    (c.other_user_name || "").toLowerCase().includes(searchQuery.toLowerCase()) || 
+    (c.other_user?.name || c.other_user_name || "").toLowerCase().includes(searchQuery.toLowerCase()) || 
     (c.offer_title || "").toLowerCase().includes(searchQuery.toLowerCase())
   );
 
@@ -167,12 +172,16 @@ export default function ChatScreen({ currentUser }: Props) {
                      onClick={() => handleChatClick(conv)}
                      className="bg-primary-light/30 backdrop-blur-md border border-white/5 rounded-2xl p-4 flex items-center gap-4 hover:bg-white/5 cursor-pointer transition-colors group relative overflow-hidden"
                   >
-                     <div className="w-12 h-12 rounded-full bg-gradient-to-br from-secondary to-secondary-hover flex items-center justify-center text-white font-bold text-lg">
-                        {conv.other_user_name ? conv.other_user_name.charAt(0) : '?'}
+                     <div className="w-12 h-12 rounded-full bg-gradient-to-br from-secondary to-secondary-hover flex items-center justify-center text-white font-bold text-lg overflow-hidden">
+                        {conv.other_user?.profilePhoto ? (
+                           <img src={conv.other_user.profilePhoto} alt="" className="w-full h-full object-cover" />
+                        ) : (
+                           (conv.other_user?.name || conv.other_user_name || "?").charAt(0)
+                        )}
                      </div>
                      <div className="flex-1 min-w-0">
                         <div className="flex justify-between items-start mb-1">
-                           <h3 className="font-bold text-white truncate">{conv.other_user_name || "Unknown"}</h3>
+                           <h3 className="font-bold text-white truncate">{conv.other_user?.name || conv.other_user_name || "Unknown"}</h3>
                            <span className="text-xs text-gray-500 whitespace-nowrap">{new Date(conv.last_message_at || conv.created_at).toLocaleDateString()}</span>
                         </div>
                         <p className="text-sm text-gray-400 truncate">{conv.offer_title || "Book Inquiry"}</p>

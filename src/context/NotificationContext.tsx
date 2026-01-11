@@ -197,18 +197,8 @@ export const NotificationProvider: React.FC<Props> = ({ children, currentUser })
 
     if (!currentUser?.token) return;
     
-    try {
-      await fetch(`${API_BASE}/mark-chat-read/${chatId}`, {
-        method: "POST",
-        headers: { 
-          "Authorization": `Bearer ${currentUser.token}`,
-          "Content-Type": "application/json"
-        }
-      });
-      // We don't wait for server response to update UI.
-    } catch (error) {
-      console.error("Failed to mark chat as read:", error);
-    }
+    // The backend automatically marks messages as read when we fetch them via /chat-messages/:id
+    // So we don't need a separate API call here, just the local optimistic update above.
   }, [currentUser?.token]);
 
   // Clear all notifications

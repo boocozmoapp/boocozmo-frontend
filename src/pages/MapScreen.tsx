@@ -127,17 +127,17 @@ const createStoreIcon = (() => {
       html: `
         <div style="
           width: ${size}px; height: ${size}px; border-radius: 50%;
-          background: linear-gradient(135deg, #7c3aed 0%, #a78bfa 100%);
+          background: linear-gradient(135deg, #d4af37 0%, #f4d03f 100%);
           border: 3px solid white;
           display: flex; align-items: center; justify-content: center;
-          box-shadow: 0 4px 16px rgba(124, 58, 237, 0.4);
+          box-shadow: 0 4px 16px rgba(212, 175, 55, 0.4);
           transition: all 0.2s;
           position: relative;
         ">
-          <i class="fa-solid fa-store" style="color: white; font-size: 20px;"></i>
+          <i class="fa-solid fa-store" style="color: #382110; font-size: 20px;"></i>
           <div style="
              position: absolute; bottom: -4px; right: -4px; 
-             background: #409d69; color: white; border-radius: 50%; 
+             background: #382110; color: white; border-radius: 50%; 
              width: 18px; height: 18px; font-size: 10px; font-weight: bold;
              display: flex; align-items: center; justify-content: center;
              border: 2px solid white;

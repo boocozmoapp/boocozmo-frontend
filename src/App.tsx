@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { BrowserRouter, Routes, Route, useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { FaSearch, FaUserCircle, FaEnvelope, FaSignOutAlt, FaTimes, FaMapMarkerAlt, FaBook, FaPlus, FaStore, FaLayerGroup } from "react-icons/fa";
+import { FaSearch, FaUserCircle, FaEnvelope, FaSignOutAlt, FaTimes, FaMapMarkerAlt, FaBook, FaPlus, FaStore, FaLayerGroup, FaUsers } from "react-icons/fa";
 import SplashScreen from "./pages/SplashScreen";
 import HomeScreen from "./pages/HomeScreen";
 import OfferScreen from "./pages/OfferScreen";
@@ -106,6 +106,7 @@ function App() {
 
               <div className="flex items-center gap-3 md:gap-4 text-[#382110]">
                 <button className="md:hidden" onClick={() => navigate("/my-library")}><FaLayerGroup size={18} /></button>
+                <button className="md:hidden" onClick={() => navigate("/communities")}><FaUsers size={18} /></button>
 
                 <div className="flex items-center gap-3 border-r border-[#ccc] pr-4 mr-1">
                   <button onClick={() => navigate("/chat")} className="text-[#382110] hover:text-white hover:bg-[#382110] p-1.5 rounded-full transition-colors relative">

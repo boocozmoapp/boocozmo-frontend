@@ -35,6 +35,38 @@ export default function SingleChat({ currentUser }: Props) {
   const [sending, setSending] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatInfo = location.state?.chat;
+  const [fetchedChatInfo, setFetchedChatInfo] = useState<any>(null);
+  const activeChatInfo = chatInfo || fetchedChatInfo;
+  const [offerDetails, setOfferDetails] = useState<any>(null);
+
+  // Fetch offer details to check ownership
+  useEffect(() => {
+    if (activeChatInfo?.offer_id) {
+      fetch(`${API_BASE}/offers/${activeChatInfo.offer_id}`, {
+        headers: { Authorization: `Bearer ${currentUser.token}` }
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (!data.error) setOfferDetails(data);
+      })
+      .catch(console.error);
+    }
+  }, [activeChatInfo?.offer_id, currentUser.token]);
+
+  const handleCloseDeal = async () => {
+    if (!offerDetails || !confirm("Mark this deal as closed? This will archive the book.")) return;
+    try {
+      const res = await fetch(`${API_BASE}/close-deal`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${currentUser.token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ offerId: offerDetails.id })
+      });
+      if (res.ok) {
+        setOfferDetails({ ...offerDetails, state: 'closed' });
+        alert("Deal closed successfully!");
+      }
+    } catch (e) { alert("Failed to close deal"); }
+  };
   
   // Use notification context
   const { markChatAsRead, socket, refreshUnreadCount } = useNotifications();
@@ -44,7 +76,21 @@ export default function SingleChat({ currentUser }: Props) {
     if (activeChatId && typeof activeChatId === "number") {
       markChatAsRead(activeChatId);
     }
-  }, [activeChatId, markChatAsRead]);
+    // If we rely on location state and it's missing (e.g. refresh), fetch chat details
+    if (!chatInfo && activeChatId && typeof activeChatId === "number") {
+       fetch(`${API_BASE}/chats?user=${encodeURIComponent(currentUser.email)}`, {
+         headers: { Authorization: `Bearer ${currentUser.token}` }
+       })
+       .then(res => res.json())
+       .then(data => {
+         if (Array.isArray(data)) {
+           const found = data.find((c: any) => c.id === activeChatId);
+           if (found) setFetchedChatInfo(found);
+         }
+       })
+       .catch(console.error);
+    }
+  }, [activeChatId, markChatAsRead, chatInfo, currentUser]);
 
   // Listen for new messages in this chat via socket
   useEffect(() => {
@@ -83,7 +129,7 @@ export default function SingleChat({ currentUser }: Props) {
   const fetchMessages = useCallback(async () => {
     if (!activeChatId) return;
     try {
-      const resp = await fetch(`${API_BASE}/chat-messages?chat_id=${activeChatId}`, { headers: { Authorization: `Bearer ${currentUser.token}` } });
+      const resp = await fetch(`${API_BASE}/chat-messages/${activeChatId}`, { headers: { Authorization: `Bearer ${currentUser.token}` } });
       if (resp.ok) {
          const data = await resp.json();
          setMessages(Array.isArray(data) ? data : data.messages || []);
@@ -114,11 +160,11 @@ export default function SingleChat({ currentUser }: Props) {
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${currentUser.token}` },
         body: JSON.stringify({ 
            sender: currentUser.email, 
-           receiver: chatInfo?.user1 === currentUser.email ? chatInfo?.user2 : chatInfo?.user1 || chatInfo?.ownerEmail, 
+           receiver: activeChatInfo?.user1 === currentUser.email ? activeChatInfo?.user2 : activeChatInfo?.user1 || activeChatInfo?.ownerEmail, 
            content: optimisticMsg.content, 
            // If we have an active numeric ID, use it. Otherwise 0 tells backend to create new.
            chat_id: activeChatId || 0, 
-           offer_id: chatInfo?.offer_id 
+           offer_id: activeChatInfo?.offer_id 
         }),
       });
       
@@ -144,9 +190,18 @@ export default function SingleChat({ currentUser }: Props) {
       <header className="h-16 px-4 flex items-center gap-4 bg-white border-b border-[#d8d8d8] z-20">
          <button onClick={() => navigate(-1)} className="p-2 -ml-2 text-[#555] hover:text-[#382110]"><FaArrowLeft /></button>
          <div className="flex-1">
-            <h1 className="font-serif font-bold text-[#382110] text-lg">{chatInfo?.other_user_name || chatInfo?.ownerName || "Chat"}</h1>
-            <p className="text-xs text-[#555] truncate max-w-[200px]">{chatInfo?.offer_title || chatInfo?.bookTitle || "Book Inquiry"}</p>
+            <h1 className="font-serif font-bold text-[#382110] text-lg">{activeChatInfo?.other_user_name || activeChatInfo?.ownerName || "Chat"}</h1>
+            <p className="text-xs text-[#555] truncate max-w-[200px]">{activeChatInfo?.offer_title || activeChatInfo?.bookTitle || "Book Inquiry"}</p>
          </div>
+          {offerDetails && offerDetails.ownerEmail?.toLowerCase() === currentUser.email.toLowerCase() && (
+             <button 
+                onClick={handleCloseDeal} 
+                className={`px-3 py-1 text-xs font-bold rounded shadow-sm flex-shrink-0 ${offerDetails.state === 'closed' ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-[#382110] text-white hover:bg-[#5a3e2b]'}`}
+                disabled={offerDetails.state === 'closed'}
+             >
+                {offerDetails.state === 'closed' ? "Deal Closed" : "Close Deal"}
+             </button>
+          )}
       </header>
 
       {/* Messages */}
@@ -154,7 +209,7 @@ export default function SingleChat({ currentUser }: Props) {
          {messages.length === 0 && <div className="text-center text-[#999] py-10">Start the conversation!</div>}
          {messages.map((m, i) => {
             // Handle both camelCase and snake_case from backend
-            const senderEmail = m.senderEmail || m.sender_email || '';
+            const senderEmail = (m as any).senderEmail || (m as any).sender_email || (m as any).senderemail || '';
             const isMe = senderEmail.toLowerCase() === currentUser.email.toLowerCase();
             return (
                <motion.div 
@@ -163,9 +218,9 @@ export default function SingleChat({ currentUser }: Props) {
                   animate={{ opacity: 1, y: 0 }}
                   className={`flex ${isMe ? 'justify-start' : 'justify-end'}`}
                >
-                  <div className={`max-w-[75%] px-4 py-3 rounded-2xl shadow-sm ${isMe ? 'bg-[#e8e4dd] text-[#333] rounded-bl-sm border border-[#d8d8d8]' : 'bg-[#382110] text-white rounded-br-sm'}`}>
+                  <div className={`max-w-[75%] px-4 py-3 rounded-2xl shadow-sm ${isMe ? 'bg-[#382110] text-white rounded-bl-sm' : 'bg-white text-[#333] border border-[#d8d8d8] rounded-br-sm'}`}>
                      <p className="text-sm leading-relaxed">{m.content}</p>
-                     <div className={`text-[10px] mt-1 flex items-center justify-end gap-1 ${isMe ? 'text-[#777]' : 'text-white/60'}`}>
+                     <div className={`text-[10px] mt-1 flex items-center justify-end gap-1 ${isMe ? 'text-white/70' : 'text-[#888]'}`}>
                         {new Date(m.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
                         {isMe && (m.is_read ? <FaCheckDouble /> : <FaCheck />)}
                      </div>
