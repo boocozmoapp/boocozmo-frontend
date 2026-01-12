@@ -111,40 +111,58 @@ export default function WelcomeScreen() {
         </div>
       </header>
 
-      <div className="relative z-10 pt-24 pb-32 px-6 md:px-12 max-w-5xl mx-auto flex flex-col items-center space-y-28">
+      <div className="relative z-10 pt-20 pb-20 px-6 md:px-12 max-w-5xl mx-auto flex flex-col items-center space-y-24">
         {/* Hero */}
         <section className="text-center max-w-3xl relative">
-          <motion.h2
-            initial={{ opacity: 0, y: 40 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 1.3, ease: "easeOut" }}
-            className="text-5xl md:text-7xl font-bold mb-8 leading-tight"
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 1.5, ease: "easeOut" }}
+            className="mb-6 inline-block"
           >
-            The Quiet Society <br/>
-            of <span className="italic text-[#5c4033]">Seekers</span>
+            <span className="text-xs uppercase tracking-[0.3em] text-[#8b6f47] font-semibold">ESTABLISHED 2026</span>
+          </motion.div>
+          
+          <motion.h2
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 1.2, ease: "easeOut" }}
+            className="text-4xl md:text-6xl font-bold mb-6 leading-[1.1]"
+          >
+            Where Stories <br/>
+            Find New <span className="italic text-[#8b4513]">Homes</span>
           </motion.h2>
 
           <motion.p
-            initial={{ opacity: 0, y: 40 }}
+            initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.5, duration: 1.3, ease: "easeOut" }}
-            className="text-xl md:text-2xl text-[#5c4033] mb-12 leading-relaxed font-light"
+            transition={{ delay: 0.4, duration: 1.2, ease: "easeOut" }}
+            className="text-lg md:text-xl text-[#5c4033] mb-10 leading-relaxed font-light max-w-2xl mx-auto"
           >
-            In a world that hurries, Boocozmo lingers.  
-            Catalog your shelves. Whisper offers to neighbors.  
-            Meet, exchange, speak of stories.  
-            Knowledge travels slowly — hand to hand, page to page.
+            A local haven for digital-weary readers. Catalog your shelves, 
+            discover treasures just steps away, and forge real connections 
+            one handed-over novel at a time.
           </motion.p>
 
-          <motion.button
-            initial={{ opacity: 0, y: 40 }}
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.9, duration: 1.3, ease: "easeOut" }}
-            onClick={handleNav}
-            className="px-10 py-4 bg-[#382110] text-white text-xl rounded hover:bg-[#2a1a0c] transition-all shadow-md"
+            transition={{ delay: 0.8, duration: 1.2, ease: "easeOut" }}
+            className="flex flex-col sm:flex-row gap-4 justify-center items-center"
           >
-            Step Inside
-          </motion.button>
+            <button
+              onClick={handleNav}
+              className="w-full sm:w-auto px-10 py-4 bg-[#382110] text-white text-lg rounded-full hover:bg-[#2a1a0c] transition-all shadow-lg hover:shadow-xl active:scale-95"
+            >
+              Step Inside
+            </button>
+            <button
+              onClick={() => navigate("/signup")}
+              className="w-full sm:w-auto px-10 py-4 bg-transparent text-[#382110] text-lg rounded-full border-2 border-[#382110] hover:bg-[#382110] hover:text-white transition-all active:scale-95"
+            >
+              Join the Society
+            </button>
+          </motion.div>
         </section>
 
         {/* Benefits */}

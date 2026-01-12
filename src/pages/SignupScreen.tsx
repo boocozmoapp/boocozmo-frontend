@@ -157,244 +157,232 @@ export default function SignupScreen({ onSignupSuccess, onGoToLogin }: Props) {
   }, []);
 
   return (
-    <div className="relative min-h-screen bg-[#fdfaf5] overflow-hidden font-serif text-[#382110] leading-relaxed">
-      {/* Background Layers */}
-      <div
-        className="absolute inset-0 bg-cover bg-center opacity-32 pointer-events-none mix-blend-multiply"
-        style={{
-          backgroundImage:
-            "url('https://media.istockphoto.com/id/1203011577/vector/newspaper-with-old-grunge-vintage-unreadable-paper-texture-background.jpg?s=612x612&w=0&k=20&c=b16KyYgiKLgpjf1Z18HDLjD4z3QfDB31e3tVgk-GoYk=')",
-        }}
-      />
-      <div
-        className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/old-paper.png')] opacity-18 pointer-events-none"
-      />
+    <div className="min-h-screen bg-[#fdfaf5] flex flex-col font-serif text-[#382110]">
+      {/* Top Half - Hero with Curved Bottom */}
+      <div className="relative h-[30vh] md:h-[35vh] w-full overflow-hidden">
+        <div 
+          className="absolute inset-0 bg-cover bg-center"
+          style={{ 
+            backgroundImage: "url('https://images.unsplash.com/photo-1516979187457-637abb4f9353?q=80&w=2000&auto=format&fit=crop')",
+          }}
+        >
+          {/* Overlay */}
+          <div className="absolute inset-0 bg-gradient-to-b from-[#382110]/50 to-[#382110]/20" />
+        </div>
+        
+        {/* Curved Bottom Mask */}
+        <div 
+          className="absolute bottom-[-1px] left-0 right-0 h-16 bg-[#fdfaf5]"
+          style={{ 
+            clipPath: "ellipse(70% 100% at 50% 100%)" 
+          }}
+        />
 
-      {/* Gentle vignette */}
-      <div
-        className="absolute inset-0 pointer-events-none z-0"
-        style={{
-          background: "radial-gradient(circle at 50% 50%, transparent 40%, rgba(139,69,19,0.08) 100%)",
-        }}
-      />
-
-      {/* Stitched side pages */}
-      <div
-        className="fixed top-0 bottom-0 left-0 w-[15vw] max-w-[190px] opacity-22 pointer-events-none z-0"
-        style={{
-          backgroundImage:
-            "url('https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?ixlib=rb-4.0.3&auto=format&fit=crop&q=80')",
-          backgroundSize: "cover",
-          backgroundPosition: "right center",
-          transform: "skew(-5deg) translateX(-10px)",
-          boxShadow: "inset -20px 0 40px rgba(0,0,0,0.28)",
-        }}
-      />
-      <div
-        className="fixed top-0 bottom-0 right-0 w-[15vw] max-w-[190px] opacity-22 pointer-events-none z-0"
-        style={{
-          backgroundImage:
-            "url('https://images.unsplash.com/photo-1589995632479-ab97cbddc28c?ixlib=rb-4.0.3&auto=format&fit=crop&q=80')",
-          backgroundSize: "cover",
-          backgroundPosition: "left center",
-          transform: "skew(5deg) translateX(10px)",
-          boxShadow: "inset 20px 0 40px rgba(0,0,0,0.28)",
-        }}
-      />
-
-      {/* Bookmark ribbon */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-6 h-48 opacity-35 pointer-events-none z-10">
-        <div className="w-full h-full bg-gradient-to-b from-[#8B0000] via-[#A52A2A] to-transparent rounded-t-full" />
+        {/* Identity in Hero */}
+        <div className="absolute inset-0 flex flex-col items-center justify-center text-white z-10 px-6">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 1 }}
+            className="w-12 h-12 bg-white/20 backdrop-blur-md rounded-xl flex items-center justify-center text-2xl mb-3 border border-white/30"
+          >
+            <FaFeatherAlt />
+          </motion.div>
+          <motion.h1 
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3, duration: 0.8 }}
+            className="text-3xl md:text-4xl font-bold tracking-tight"
+          >
+            Join Boocozmo
+          </motion.h1>
+        </div>
       </div>
 
-      {/* Header */}
-      <header className="sticky top-0 left-0 right-0 h-20 px-6 md:px-12 flex items-center justify-between z-50 bg-[#fdfaf5]/92 backdrop-blur-sm border-b border-[#d9c9b8]">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-[#382110] rounded-sm flex items-center justify-center text-white text-xl">
-            <FaFeatherAlt />
-          </div>
-          <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Boocozmo</h1>
-        </div>
-      </header>
-
-      <div className="relative z-10 pt-16 pb-16 px-6 md:px-12 max-w-lg mx-auto">
-        <motion.div
-          initial={{ opacity: 0, y: 40 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 1.2, ease: "easeOut" }}
-          className="w-full bg-white/65 backdrop-blur-sm border border-[#d9c9b8] rounded-lg p-8 md:p-10 shadow-md"
-        >
-          {/* Title */}
-          <div className="text-center mb-10">
-            <h2 className="text-3xl md:text-4xl font-bold mb-2">Join the Society</h2>
-            <p className="text-[#5c4033] text-sm md:text-base">Become a seeker of stories and connections</p>
-          </div>
-
-          {/* Error */}
-          {error && (
-            <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="mb-6 p-3 bg-red-50/80 border border-red-200 rounded text-red-700 text-sm text-center"
-            >
-              {error}
-            </motion.div>
-          )}
-
-          {/* Google Button */}
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={handleGoogleLogin}
-            disabled={googleLoading}
-            className="w-full mb-6 border border-[#4285F4]/40 bg-white/80 hover:bg-[#f8f9fa] text-[#4285F4] font-medium py-3 rounded shadow-sm transition-all flex items-center justify-center gap-3 disabled:opacity-60"
+      {/* Bottom Section - Form */}
+      <div className="flex-1 px-6 pb-12 -mt-6 relative z-20">
+        <div className="max-w-xl mx-auto">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4, duration: 0.8 }}
+            className="text-center mb-8"
           >
-            <FaGoogle size={20} />
-            {googleLoading ? "Redirecting..." : "Continue with Google"}
-          </motion.button>
+            <h2 className="text-2xl font-bold">Request Entry</h2>
+            <p className="text-[#8b6f47] mt-1 italic text-sm">Become a seeker of stories and connections</p>
+          </motion.div>
 
-          {/* Divider */}
-          <div className="relative flex items-center mb-6">
-            <div className="flex-grow border-t border-[#d9c9b8]"></div>
-            <span className="flex-shrink-0 mx-4 text-[#5c4033] text-xs uppercase tracking-wider">or</span>
-            <div className="flex-grow border-t border-[#d9c9b8]"></div>
-          </div>
+          <div className="space-y-6">
+            {/* Error Message */}
+            {error && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="p-4 bg-red-50 border border-red-100 rounded-xl text-red-600 text-sm text-center"
+              >
+                {error}
+              </motion.div>
+            )}
 
-          {/* Form */}
-          <form onSubmit={handleSignup} className="space-y-5">
-            <input
-              type="text"
-              placeholder="Your Name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="w-full border border-[#d9c9b8] rounded px-4 py-3 bg-white/70 focus:border-[#382110] focus:ring-1 focus:ring-[#382110]/50 outline-none text-[#382110] placeholder-[#8b6f47]"
-              autoComplete="name"
-              required
-            />
+            {/* Google Signup */}
+            <motion.button
+              whileHover={{ scale: 1.01 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={handleGoogleLogin}
+              disabled={googleLoading}
+              className="w-full bg-white border-2 border-[#eee] text-[#382110] font-bold py-4 rounded-2xl shadow-sm hover:shadow-md transition-all flex items-center justify-center gap-3 disabled:opacity-50"
+            >
+              <FaGoogle className="text-[#4285F4]" />
+              {googleLoading ? "Connecting..." : "Continue with Google"}
+            </motion.button>
 
-            <input
-              type="email"
-              placeholder="Email address"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full border border-[#d9c9b8] rounded px-4 py-3 bg-white/70 focus:border-[#382110] focus:ring-1 focus:ring-[#382110]/50 outline-none text-[#382110] placeholder-[#8b6f47]"
-              autoComplete="email"
-              required
-            />
+            {/* Divider */}
+            <div className="relative flex items-center">
+              <div className="flex-grow border-t border-[#d9c9b8]"></div>
+              <span className="flex-shrink-0 mx-4 text-[10px] uppercase font-bold tracking-[0.2em] text-[#8b6f47]">Or Registry Via</span>
+              <div className="flex-grow border-t border-[#d9c9b8]"></div>
+            </div>
 
-            <input
-              type="password"
-              placeholder="Password (min 6 characters)"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full border border-[#d9c9b8] rounded px-4 py-3 bg-white/70 focus:border-[#382110] focus:ring-1 focus:ring-[#382110]/50 outline-none text-[#382110] placeholder-[#8b6f47]"
-              autoComplete="new-password"
-              required
-            />
-
-            {/* Location Picker */}
-            <div className="border border-[#d9c9b8] rounded-lg p-4 bg-white/50">
-              <label className="block text-sm font-bold text-[#382110] mb-3 flex items-center gap-2">
-                <FaMapMarkerAlt /> Your Neighborhood (Optional)
-              </label>
-
-              {!showMap ? (
-                <div className="grid grid-cols-2 gap-3">
-                  <motion.button
-                    whileHover={{ scale: 1.03 }}
-                    type="button"
-                    onClick={handleAutoDetect}
-                    className="py-3 px-4 bg-[#fdfaf5] border border-[#d9c9b8] rounded text-[#382110] text-sm font-medium flex items-center justify-center gap-2 hover:bg-[#f5f0e8] transition-colors"
-                  >
-                    <FaCrosshairs size={16} />
-                    Auto Detect
-                  </motion.button>
-
-                  <motion.button
-                    whileHover={{ scale: 1.03 }}
-                    type="button"
-                    onClick={() => setShowMap(true)}
-                    className="py-3 px-4 bg-[#fdfaf5] border border-[#d9c9b8] rounded text-[#382110] text-sm font-medium hover:bg-[#f5f0e8] transition-colors"
-                  >
-                    Choose on Map
-                  </motion.button>
+            {/* Registration Form */}
+            <form onSubmit={handleSignup} className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-xs uppercase tracking-widest font-bold text-[#8b6f47] ml-1">Full Name</label>
+                  <input
+                    type="text"
+                    placeholder="Jane Doe"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    className="w-full bg-white border-2 border-transparent focus:border-[#382110] rounded-2xl py-4 px-6 outline-none transition-all shadow-sm focus:shadow-md placeholder-[#d9c9b8] text-[#382110]"
+                    required
+                  />
                 </div>
-              ) : (
-                <div className="space-y-3">
-                  <div className="h-64 w-full rounded-lg border border-[#d9c9b8] overflow-hidden shadow-inner bg-[#fdfaf5]/50 relative z-0">
-                    <MapContainer
-                      center={location || { lat: 37.7749, lng: -122.4194 }} // Default: San Francisco
-                      zoom={13}
-                      style={{ height: "100%", width: "100%" }}
-                      className="rounded-lg"
-                    >
-                      <TileLayer
-                        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-                      />
-                      <LocationMarker position={location} setPosition={setLocation} />
-                    </MapContainer>
-                  </div>
+                <div className="space-y-1">
+                  <label className="text-xs uppercase tracking-widest font-bold text-[#8b6f47] ml-1">Email</label>
+                  <input
+                    type="email"
+                    placeholder="jane@example.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="w-full bg-white border-2 border-transparent focus:border-[#382110] rounded-2xl py-4 px-6 outline-none transition-all shadow-sm focus:shadow-md placeholder-[#d9c9b8] text-[#382110]"
+                    required
+                  />
+                </div>
+              </div>
 
-                  <div className="flex justify-between items-center text-sm">
-                    <span className="text-[#5c4033]">
-                      {location ? "Location pinned" : "Click anywhere on the map"}
-                    </span>
-                    <button
-                      type="button"
+              <div className="space-y-1">
+                <label className="text-xs uppercase tracking-widest font-bold text-[#8b6f47] ml-1">Secure Password</label>
+                <input
+                  type="password"
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full bg-white border-2 border-transparent focus:border-[#382110] rounded-2xl py-4 px-6 outline-none transition-all shadow-sm focus:shadow-md placeholder-[#d9c9b8] text-[#382110]"
+                  required
+                />
+              </div>
+
+              {/* Enhanced Location Section */}
+              <div className="bg-[#f2ede4] rounded-3xl p-5 border border-[#d9c9b8]/50">
+                <div className="flex items-center justify-between mb-4 px-1">
+                  <div>
+                    <h3 className="text-sm font-bold flex items-center gap-2">
+                       <FaMapMarkerAlt className="text-[#8b4513]" /> Your Neighborhood
+                    </h3>
+                    <p className="text-[11px] text-[#8b6f47] italic">For local book exchanges</p>
+                  </div>
+                  {!showMap ? (
+                    <button 
+                      type="button" 
+                      onClick={() => setShowMap(true)}
+                      className="text-xs font-bold text-[#382110] underline"
+                    >
+                      Show Map
+                    </button>
+                  ) : (
+                    <button 
+                      type="button" 
                       onClick={() => setShowMap(false)}
-                      className="text-[#382110] hover:text-[#2a190c] underline text-sm transition-colors"
+                      className="text-xs font-bold text-[#382110] underline"
                     >
                       Hide Map
                     </button>
-                  </div>
+                  )}
                 </div>
-              )}
 
-              <p className="mt-3 text-xs text-[#5c4033]/80 leading-relaxed">
-                Your location helps us show nearby book offers and neighborhood exchanges.
+                {!showMap ? (
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={handleAutoDetect}
+                      className="flex-1 bg-white hover:bg-[#faf8f5] py-3 rounded-xl border border-[#d9c9b8] transition-all flex items-center justify-center gap-2 text-xs font-bold"
+                    >
+                      <FaCrosshairs className="text-[#382110]" /> Auto Detect
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowMap(true)}
+                      className="flex-1 bg-white hover:bg-[#faf8f5] py-3 rounded-xl border border-[#d9c9b8] transition-all text-xs font-bold"
+                    >
+                      Select Manually
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <div className="h-56 w-full rounded-2xl border-2 border-white overflow-hidden shadow-inner relative z-0">
+                      <MapContainer
+                        center={location || { lat: 37.7749, lng: -122.4194 }}
+                        zoom={13}
+                        style={{ height: "100%", width: "100%" }}
+                      >
+                        <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                        <LocationMarker position={location} setPosition={setLocation} />
+                      </MapContainer>
+                    </div>
+                    {location && (
+                      <p className="text-[10px] text-center bg-white/50 py-1 rounded-full text-[#8b6f47]">
+                        Pin set at {location.lat.toFixed(4)}, {location.lng.toFixed(4)}
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <motion.button
+                whileHover={{ scale: 1.01 }}
+                whileTap={{ scale: 0.98 }}
+                type="submit"
+                disabled={loading}
+                className="w-full bg-[#382110] text-white font-bold py-5 rounded-2xl shadow-lg hover:shadow-xl transition-all disabled:opacity-50 mt-4"
+              >
+                {loading ? "Creating Account..." : "Join the Society"}
+              </motion.button>
+            </form>
+
+            {/* Login Redirect */}
+            <div className="text-center pt-2">
+              <p className="text-sm text-[#8b6f47]">
+                Already a seeker?{" "}
+                <button
+                  onClick={onGoToLogin}
+                  className="text-[#382110] font-bold underline hover:no-underline underline-offset-4"
+                >
+                  Enter the Society
+                </button>
               </p>
             </div>
-
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              type="submit"
-              disabled={loading}
-              className="w-full bg-[#382110] hover:bg-[#2a190c] text-white font-medium py-3 rounded shadow-md transition-all disabled:opacity-60 mt-4"
-            >
-              {loading ? "Creating your place..." : "Join the Society"}
-            </motion.button>
-          </form>
-
-          {/* Login link */}
-          <div className="text-center mt-8 text-sm text-[#5c4033]">
-            Already part of the society?{" "}
-            <button
-              onClick={onGoToLogin}
-              className="text-[#382110] font-medium hover:underline transition-all"
-            >
-              Sign in
-            </button>
+            
+            <p className="text-[10px] text-center text-[#8b6f47]/60 px-8">
+              By joining, you agree to our Terms of Service & Privacy Policy. 
+              We respect your story and your data.
+            </p>
           </div>
-
-          {/* Privacy */}
-          <div className="text-center mt-6 text-xs text-[#5c4033]/80">
-            By joining, you agree to our{" "}
-            <a href="#" className="hover:underline">
-              Terms of Service
-            </a>{" "}
-            and{" "}
-            <a href="#" className="hover:underline">
-              Privacy Policy
-            </a>
-          </div>
-        </motion.div>
+        </div>
       </div>
 
-      {/* Footer */}
-      <footer className="relative z-10 mt-auto py-8 text-center text-sm text-[#5c4033]/80 border-t border-[#d9c9b8]/30">
-        <p>Boocozmo — Where Books Still Breathe • © 2026</p>
+      {/* Minimal Footer */}
+      <footer className="py-6 text-center text-[10px] uppercase tracking-widest text-[#8b6f47] opacity-60">
+        &copy; 2026 Boocozmo Society &bull; All Rights Reserved
       </footer>
     </div>
   );
