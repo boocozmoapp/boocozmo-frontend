@@ -197,6 +197,18 @@ export default function HomeScreen({ currentUser }: Props) {
     }
   }, [currentUser.token]);
 
+  const getImageSource = (offer: any) => {
+    const url = offer.imageUrl || offer.imageurl || offer.imageBase64;
+    if (url) {
+      if (typeof url === 'string') {
+        if (url.startsWith('http')) return url;
+        if (url.startsWith('data:')) return url;
+        return `data:image/jpeg;base64,${url}`;
+      }
+    }
+    return "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=300&h=400&fit=crop&q=80";
+  };
+
   const fetchOffers = useCallback(async () => {
    try {
      setLoading(true);
@@ -462,7 +474,7 @@ export default function HomeScreen({ currentUser }: Props) {
   );
 
   return (
-    <div className="pb-6 px-4 md:px-0 flex flex-col md:flex-row gap-8 max-w-[1100px] mx-auto min-h-[calc(100vh-50px)] md:min-h-[calc(100vh-60px)]">
+    <div className="pb-10 px-4 md:px-0 flex flex-col md:flex-row gap-8 max-w-[1100px] mx-auto h-[calc(100vh-110px)] md:h-[calc(100vh-60px)] overflow-y-auto">
        
        {/* Modal for Offer Details */}
        <AnimatePresence>
@@ -713,7 +725,7 @@ export default function HomeScreen({ currentUser }: Props) {
                            className="w-full h-[200px] relative shadow-md cursor-pointer overflow-hidden border border-[#eee]"
                          >
                             <img 
-                              src={offer.imageUrl || "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=300&q=80"} 
+                              src={getImageSource(offer)} 
                               alt={offer.bookTitle}
                               className="w-full h-full object-cover" 
                             />
@@ -741,7 +753,7 @@ export default function HomeScreen({ currentUser }: Props) {
                             <div className="flex items-center gap-1 flex-1 min-w-0">
                                <span className="text-[9px] font-bold text-[#382110] truncate">
                                   {offer.ownerName?.split(' ')[0] || "User"}
-                               </span>
+                                </span>
                                {offer.ownerBadges && offer.ownerBadges.length > 0 && (
                                   <span className="px-1 py-0.5 rounded text-[7px] font-bold bg-[#d37e2f]/20 text-[#d37e2f] border border-[#d37e2f]/30 flex-shrink-0 whitespace-nowrap">
                                      {offer.ownerBadges[offer.ownerBadges.length - 1]}
@@ -776,7 +788,7 @@ export default function HomeScreen({ currentUser }: Props) {
                         className="w-full h-[200px] md:h-[220px] relative rounded-lg overflow-hidden bg-[#f8f6f3]"
                       >
                          <img 
-                            src={offer.imageUrl || "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=300&q=80"} 
+                            src={getImageSource(offer)} 
                             alt={offer.bookTitle}
                             className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 opacity-95 group-hover:opacity-100" 
                          />

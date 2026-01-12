@@ -216,6 +216,19 @@ export default function MapScreen({ currentUser }: Props) {
      }
   }, []);
 
+  const getImageSource = (offer: any) => {
+    const url = offer.imageUrl || offer.imageurl || offer.imageBase64;
+    if (url) {
+      if (typeof url === 'string') {
+        if (url.startsWith('http')) return url;
+        if (url.startsWith('data:')) return url;
+        // If it's just a base64 string without data prefix
+        return `data:image/jpeg;base64,${url}`;
+      }
+    }
+    return "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=300&h=400&fit=crop&q=80";
+  };
+
   const fetchOffers = useCallback(async () => {
     if (abortControllerRef.current) abortControllerRef.current.abort();
     abortControllerRef.current = new AbortController();
@@ -280,14 +293,18 @@ export default function MapScreen({ currentUser }: Props) {
         .map((o: any) => ({
           ...o,
           id: o.id, 
-          type: o.type, 
-          bookTitle: o.bookTitle, 
+          type: o.type || o.type, 
+          bookTitle: o.bookTitle || o.booktitle || "Untitled Book",
+          author: o.author || "Unknown Author",
           price: o.price, 
+          condition: o.condition,
+          description: o.description,
           latitude: parseFloat(o.latitude), 
           longitude: parseFloat(o.longitude),
-          imageUrl: o.imageUrl || null,
-          ownerName: profileCache[o.ownerEmail]?.name || o.ownerName || "Unknown",
-          ownerPhoto: profileCache[o.ownerEmail]?.photo,
+          imageUrl: o.imageUrl || o.imageurl || o.imageBase64 || o.image_base64,
+          publishedAt: o.publishedat || o.publishedAt,
+          ownerName: profileCache[o.ownerEmail]?.name || o.ownerName || o.ownername || "Unknown",
+          ownerPhoto: profileCache[o.ownerEmail]?.photo || o.ownerphoto,
           ownerBadges: profileCache[o.ownerEmail]?.badges || [],
           distance: "Nearby"
         }));
@@ -588,7 +605,7 @@ export default function MapScreen({ currentUser }: Props) {
                            className="flex-shrink-0 w-[110px] bg-white rounded-xl shadow-lg border border-[#eee] overflow-hidden cursor-pointer group"
                         >
                            <div className="h-[120px] relative">
-                              <img src={offer.imageUrl || "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=200&q=80"} className="w-full h-full object-cover transition-transform group-hover:scale-110" />
+                              <img src={getImageSource(offer)} className="w-full h-full object-cover transition-transform group-hover:scale-110" />
                               <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-1.5">
                                  <p className="text-[8px] font-bold text-white flex items-center gap-1">
                                     <FaLocationArrow size={6} /> {offer.distance}
@@ -711,11 +728,11 @@ export default function MapScreen({ currentUser }: Props) {
                   </button>
 
                   {/* Left: Image Hero */}
-                  <div className="w-full md:w-1/2 bg-[#f4f1ea] relative flex items-center justify-center p-8">
-                     <img 
-                       src={selectedOffer.imageUrl || "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=600&q=80"} 
-                       className="max-h-full max-w-full shadow-lg object-contain" 
-                     />
+                   <div className="w-full md:w-1/2 bg-[#f4f1ea] relative flex items-center justify-center p-8">
+                      <img 
+                        src={getImageSource(selectedOffer)} 
+                        className="max-h-full max-w-full shadow-lg object-contain" 
+                      />
                      <div className="absolute bottom-4 left-4 bg-white/90 px-3 py-1 rounded text-xs font-bold text-[#382110] shadow-sm uppercase tracking-wide">
                         {selectedOffer.type}
                      </div>

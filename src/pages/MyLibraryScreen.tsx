@@ -160,15 +160,21 @@ export default function MyLibraryScreen({
         signal: abortControllerRef.current.signal,
       }, 15000);
 
+      if (response.status === 404) {
+        setStores([]);
+        return;
+      }
+      
       if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Failed to load collections: ${errorText}`);
+        throw new Error(`Failed to load collections: ${response.status}`);
       }
       
       const data = await response.json();
       console.log("Stores data received:", data);
       
-      const userStores = Array.isArray(data) ? data : (data.stores || []);
+      // Filter to only show user's stores if the API returns a generic list
+      const allStores = Array.isArray(data) ? data : (data.stores || []);
+      const userStores = allStores.filter((s: any) => s.ownerEmail === currentUser.email);
       
       // Ensure all stores have bookCount
       const storesWithCount = userStores.map((store: any) => ({
@@ -182,9 +188,7 @@ export default function MyLibraryScreen({
       }
     } catch (err: any) {
       console.error("Fetch stores error:", err);
-      if (err.name !== "AbortError") {
-        alert(`Error loading collections: ${err.message}`);
-      }
+      setStores([]);
     } finally {
       setLoading(false);
     }
