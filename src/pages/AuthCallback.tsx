@@ -1,25 +1,43 @@
-// src/pages/AuthCallback.tsx - SIMPLE WORKING VERSION
+// src/pages/AuthCallback.tsx - FIXED VERSION
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 
 const API_BASE = "https://boocozmo-api.onrender.com";
 
-const AuthCallback = () => {
+const AuthCallback = ({ onLoginSuccess }: { onLoginSuccess: (user: any) => void }) => {
   const navigate = useNavigate();
 
   useEffect(() => {
     console.log("🔄 AuthCallback: Starting...");
     console.log("🔍 Full URL:", window.location.href);
+    console.log("🔍 Hash:", window.location.hash);
+    console.log("🔍 Search:", window.location.search);
     
-    // Check HASH for token (Supabase puts it here)
+    // Parse BOTH hash AND query parameters
     const hash = window.location.hash.substring(1);
-    const hashParams = new URLSearchParams(hash);
+    const search = window.location.search.substring(1);
     
-    const accessToken = hashParams.get("access_token");
-    const error = hashParams.get("error");
+    // Supabase puts token in hash, but let's check both
+    let accessToken = null;
+    let error = null;
     
-    console.log("Hash params:", hashParams.toString());
-    console.log("Access token:", accessToken ? "FOUND ✓" : "NOT FOUND ✗");
+    // First, try to parse hash (most common for Supabase)
+    if (hash) {
+      // Parse hash fragment manually
+      const hashParams = new URLSearchParams(hash);
+      accessToken = hashParams.get("access_token");
+      error = hashParams.get("error");
+    }
+    
+    // If not in hash, check query params
+    if (!accessToken && search) {
+      const searchParams = new URLSearchParams(search);
+      accessToken = searchParams.get("access_token") || accessToken;
+      error = searchParams.get("error") || error;
+    }
+    
+    console.log("Access token found:", accessToken ? "YES ✓" : "NO ✗");
+    console.log("Error found:", error || "None");
     
     if (error) {
       console.error("❌ Error:", error);
@@ -29,22 +47,38 @@ const AuthCallback = () => {
     }
     
     if (!accessToken) {
-      console.error("❌ No access token in hash");
-      alert("Login failed: No token received");
+      console.error("❌ No access token found");
+      console.log("Hash content:", hash);
+      console.log("Search content:", search);
+      
+      // Check if we have a refresh token instead
+      const refreshToken = hash.includes("refresh_token") || search.includes("refresh_token");
+      if (refreshToken) {
+        console.log("Found refresh token instead");
+      }
+      
+      alert("Login failed: No token received. Please try again.");
       navigate("/login");
       return;
     }
     
-    console.log("✅ Got Supabase token from hash");
+    console.log("✅ Got Supabase token");
     
     // Process the token
     try {
       // Decode JWT to get user info
-      const payload = JSON.parse(atob(accessToken.split('.')[1]));
+      const parts = accessToken.split('.');
+      if (parts.length !== 3) {
+        throw new Error("Invalid token format");
+      }
+      
+      const payload = JSON.parse(atob(parts[1]));
       console.log("📋 Token payload:", payload);
       
       const userEmail = payload.email;
-      const userName = payload.user_metadata?.name || payload.email?.split('@')[0] || "User";
+      const userName = payload.user_metadata?.name || 
+                      payload.email?.split('@')[0] || 
+                      "User";
       const userId = payload.sub; // Supabase user ID
       
       if (!userEmail) {
@@ -67,14 +101,15 @@ const AuthCallback = () => {
       
       console.log("💾 Saved user to localStorage:", userEmail);
       
-      // Clean the URL (remove hash)
-      window.history.replaceState({}, document.title, "/auth/callback");
+      // Update application state immediately
+      onLoginSuccess(user);
       
-      // Redirect to home
-      setTimeout(() => {
-        console.log("🚀 Redirecting to home...");
-        window.location.href = "/home";
-      }, 100);
+      // Clean the URL (remove hash and query params)
+      window.history.replaceState({}, document.title, "/home");
+      
+      // Navigate to home immediately
+      console.log("🚀 Navigating to home...");
+      navigate("/home", { replace: true });
       
     } catch (err) {
       console.error("❌ Error processing token:", err);

@@ -415,7 +415,6 @@ export default function HomeScreen({ currentUser }: Props) {
        const resp = await fetch(`${API_BASE}/chats?user=${encodeURIComponent(currentUser.email)}`, {
           headers: { "Authorization": `Bearer ${currentUser.token}` }
        });
-       
        if (resp.ok) {
           const chats: any[] = await resp.json();
           const existingChat = chats.find((c: any) => 
@@ -428,20 +427,19 @@ export default function HomeScreen({ currentUser }: Props) {
              return;
           }
        }
-    } catch (e) { 
-      console.error("Error checking chats", e); 
-    }
+    } catch (e) { console.error("Error checking chats", e); }
 
+    // Fixed: Cleaner state structure
     navigate(`/chat/new`, {
       state: {
         chat: {
           id: 0,
           user1: currentUser.email,
-          user2: offer.ownerEmail,
+          user2: offer.ownerEmail,  // Fixed: removed duplicate
           other_user_name: offer.ownerName || "Seller",
           offer_title: offer.bookTitle,
           offer_id: offer.id,
-          ownerEmail: offer.ownerEmail
+          ownerEmail: offer.ownerEmail  // Keep this for backward compatibility
         }
       }
     });

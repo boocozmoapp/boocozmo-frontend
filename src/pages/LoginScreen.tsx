@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-// src/pages/LoginScreen.tsx
+// src/pages/LoginScreen.tsx - UPDATED WITH FIXED GOOGLE OAUTH
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { FaGoogle, FaEnvelope, FaFeatherAlt } from "react-icons/fa";
@@ -33,7 +33,6 @@ export default function LoginScreen({ onLoginSuccess, onGoToSignup }: Props) {
 
           if (response.ok) {
             onLoginSuccess(user);
-            // FIXED: Redirect immediately if session is valid
             navigate("/home", { replace: true });
           }
         }
@@ -44,15 +43,25 @@ export default function LoginScreen({ onLoginSuccess, onGoToSignup }: Props) {
     checkExistingSession();
   }, [onLoginSuccess, navigate]);
 
-  // Google OAuth - Direct to Supabase
+  // Google OAuth - Fixed Supabase URL
   const handleGoogleLogin = () => {
     setGoogleLoading(true);
     setError(null);
 
     const frontendUrl = window.location.origin;
     const redirectUrl = `${frontendUrl}/auth/callback`;
-    const supabaseUrl = `https://ffbilizmhmnkjapgdzdk.supabase.co/auth/v1/authorize?provider=google&redirect_to=${encodeURIComponent(redirectUrl)}`;
-
+    
+    // FIXED: Added response_type=token and proper encoding
+    const supabaseUrl = `https://ffbilizmhmnkjapgdzdk.supabase.co/auth/v1/authorize?provider=google&redirect_to=${encodeURIComponent(redirectUrl)}&response_type=token`;
+    
+    console.log("🔐 Google OAuth: Redirecting to Supabase");
+    console.log("📋 Redirect URL:", redirectUrl);
+    console.log("🔗 Supabase URL:", supabaseUrl);
+    
+    // Clear any existing errors
+    window.history.replaceState({}, document.title, "/login");
+    
+    // Redirect to Supabase
     window.location.href = supabaseUrl;
   };
 
@@ -106,7 +115,7 @@ export default function LoginScreen({ onLoginSuccess, onGoToSignup }: Props) {
       localStorage.setItem("user", JSON.stringify(user));
       onLoginSuccess(user);
 
-      // FIXED: Immediately redirect to home after success
+      // Immediately redirect to home after success
       navigate("/home", { replace: true });
 
     } catch (err: any) {
@@ -116,19 +125,38 @@ export default function LoginScreen({ onLoginSuccess, onGoToSignup }: Props) {
     }
   };
 
-  // Handle OAuth callback errors
+  // Handle OAuth callback errors from URL params
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const errorParam = urlParams.get("error");
+    const errorDescription = urlParams.get("error_description");
+    
     if (errorParam) {
-      setError(`Authentication error: ${errorParam}`);
+      const errorMsg = errorDescription || errorParam;
+      setError(`Authentication error: ${errorMsg}`);
+      // Clean the URL
       window.history.replaceState({}, document.title, "/login");
+    }
+  }, []);
+
+  // Also check hash for errors (common with OAuth)
+  useEffect(() => {
+    const hash = window.location.hash.substring(1);
+    if (hash) {
+      const hashParams = new URLSearchParams(hash);
+      const errorHash = hashParams.get("error");
+      const errorDesc = hashParams.get("error_description");
+      
+      if (errorHash) {
+        setError(`OAuth error: ${errorDesc || errorHash}`);
+        window.history.replaceState({}, document.title, "/login");
+      }
     }
   }, []);
 
   return (
     <div className="relative min-h-screen bg-[#fdfaf5] overflow-hidden font-serif text-[#382110] leading-relaxed">
-      {/* Background Layers – same universe as Welcome */}
+      {/* Background Layers */}
       <div
         className="absolute inset-0 bg-cover bg-center opacity-32 pointer-events-none mix-blend-multiply"
         style={{
@@ -208,6 +236,11 @@ export default function LoginScreen({ onLoginSuccess, onGoToSignup }: Props) {
               className="mb-6 p-3 bg-red-50/80 border border-red-200 rounded text-red-700 text-sm text-center"
             >
               {error}
+              {error.includes("Google") && (
+                <p className="mt-1 text-xs">
+                  If this persists, try clearing browser cache or using a different browser.
+                </p>
+              )}
             </motion.div>
           )}
 
@@ -217,10 +250,10 @@ export default function LoginScreen({ onLoginSuccess, onGoToSignup }: Props) {
             whileTap={{ scale: 0.98 }}
             onClick={handleGoogleLogin}
             disabled={googleLoading}
-            className="w-full mb-6 border border-[#4285F4]/40 bg-white/80 hover:bg-[#f8f9fa] text-[#4285F4] font-medium py-3 rounded shadow-sm transition-all flex items-center justify-center gap-3 disabled:opacity-60"
+            className="w-full mb-6 border border-[#4285F4]/40 bg-white/80 hover:bg-[#f8f9fa] text-[#4285F4] font-medium py-3 rounded shadow-sm transition-all flex items-center justify-center gap-3 disabled:opacity-60 disabled:cursor-not-allowed"
           >
             <FaGoogle size={20} />
-            {googleLoading ? "Redirecting..." : "Continue with Google"}
+            {googleLoading ? "Redirecting to Google..." : "Continue with Google"}
           </motion.button>
 
           {/* Divider */}
@@ -240,6 +273,7 @@ export default function LoginScreen({ onLoginSuccess, onGoToSignup }: Props) {
               className="w-full border border-[#d9c9b8] rounded px-4 py-3 bg-white/70 focus:border-[#382110] focus:ring-1 focus:ring-[#382110]/50 outline-none text-[#382110] placeholder-[#8b6f47]"
               autoComplete="email"
               required
+              disabled={loading}
             />
 
             <input
@@ -250,13 +284,15 @@ export default function LoginScreen({ onLoginSuccess, onGoToSignup }: Props) {
               className="w-full border border-[#d9c9b8] rounded px-4 py-3 bg-white/70 focus:border-[#382110] focus:ring-1 focus:ring-[#382110]/50 outline-none text-[#382110] placeholder-[#8b6f47]"
               autoComplete="current-password"
               required
+              disabled={loading}
             />
 
             <div className="flex justify-end">
               <button
                 type="button"
-                onClick={() => setError("Password reset coming soon...")}
-                className="text-sm text-[#5c4033] hover:text-[#382110] transition-colors"
+                onClick={() => setError("Password reset feature coming soon. For now, please contact support.")}
+                className="text-sm text-[#5c4033] hover:text-[#382110] transition-colors disabled:opacity-50"
+                disabled={loading}
               >
                 Forgot password?
               </button>
@@ -267,7 +303,7 @@ export default function LoginScreen({ onLoginSuccess, onGoToSignup }: Props) {
               whileTap={{ scale: 0.98 }}
               type="submit"
               disabled={loading}
-              className="w-full bg-[#382110] hover:bg-[#2a190c] text-white font-medium py-3 rounded shadow-md transition-all disabled:opacity-60 flex items-center justify-center gap-2"
+              className="w-full bg-[#382110] hover:bg-[#2a190c] text-white font-medium py-3 rounded shadow-md transition-all disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               <FaEnvelope size={16} />
               {loading ? "Signing in..." : "Sign in with Email"}
@@ -279,7 +315,8 @@ export default function LoginScreen({ onLoginSuccess, onGoToSignup }: Props) {
             Not yet part of the society?{" "}
             <button
               onClick={onGoToSignup}
-              className="text-[#382110] font-medium hover:underline transition-all"
+              className="text-[#382110] font-medium hover:underline transition-all disabled:opacity-50"
+              disabled={loading || googleLoading}
             >
               Create an account
             </button>
@@ -291,6 +328,15 @@ export default function LoginScreen({ onLoginSuccess, onGoToSignup }: Props) {
             <p>Email: demo@boocozmo.com</p>
             <p>Password: demo123</p>
           </div>
+
+          {/* OAuth Debug Info (remove in production) */}
+          {import.meta.env.DEV && (
+            <div className="mt-6 p-3 bg-yellow-50/50 border border-yellow-200 rounded text-xs text-yellow-700 text-center">
+              <p className="font-medium">Debug Info:</p>
+              <p>Current Origin: {window.location.origin}</p>
+              <p>Callback URL: {window.location.origin}/auth/callback</p>
+            </div>
+          )}
         </motion.div>
       </div>
 

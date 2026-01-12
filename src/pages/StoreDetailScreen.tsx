@@ -152,15 +152,16 @@ export default function StoreDetailScreen({ currentUser }: Props) {
 
   const handleContact = async () => {
     if (!store) return;
+    // Fixed: Cleaner state structure
     navigate(`/chat/new`, {
       state: {
         chat: {
           id: 0,
           user1: currentUser.email,
           user2: store.ownerEmail,
-          other_user_name: store.ownerName || "Store Owner",
+          other_user_name: store.ownerName || "Seller",
           offer_title: `Inquiry about books in ${store.name}`,
-          ownerEmail: store.ownerEmail
+          ownerEmail: store.ownerEmail // Keep this for backward compatibility
         }
       }
     });

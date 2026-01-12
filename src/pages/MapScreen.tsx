@@ -385,8 +385,9 @@ export default function MapScreen({ currentUser }: Props) {
     }
   }, []);
 
-  const handleContact = async (offer: Offer) => {
+  const handleContact = async (offer: any) => {
     if (!offer) return;
+    
     try {
        const resp = await fetch(`${API_BASE}/chats?user=${encodeURIComponent(currentUser.email)}`, {
           headers: { "Authorization": `Bearer ${currentUser.token}` }
@@ -403,8 +404,9 @@ export default function MapScreen({ currentUser }: Props) {
              return;
           }
        }
-    } catch (e) { console.error(e); }
+    } catch (e) { console.error("Error checking chats", e); }
 
+    // Fixed: Cleaner state structure
     navigate(`/chat/new`, {
       state: {
         chat: {

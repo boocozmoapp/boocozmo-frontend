@@ -147,8 +147,16 @@ export default function SingleChat({ currentUser }: Props) {
 
   const handleSend = async () => {
     if (!newMessage.trim() || sending) return;
+    
     const tempId = Date.now();
-    const optimisticMsg: Message = { id: tempId, senderEmail: currentUser.email, sender_email: currentUser.email, content: newMessage, created_at: new Date().toISOString(), is_read: false };
+    const optimisticMsg: Message = { 
+      id: tempId, 
+      senderEmail: currentUser.email, 
+      sender_email: currentUser.email, 
+      content: newMessage, 
+      created_at: new Date().toISOString(), 
+      is_read: false 
+    };
     
     setMessages(prev => [...prev, optimisticMsg]);
     setNewMessage("");
@@ -157,46 +165,98 @@ export default function SingleChat({ currentUser }: Props) {
     try {
       let currentChatId = activeChatId;
 
-      // 1. If this is a new chat (id 0 from state), create it first
+      // 1. If this is a new chat (id 0 or null), create it first
       if (!currentChatId || currentChatId === 0) {
+        // Determine the other user's email
+        let otherUserEmail = "";
+        
+        if (activeChatInfo?.user1 && activeChatInfo?.user2) {
+          // If we have both users, determine which one is not the current user
+          otherUserEmail = activeChatInfo.user1 === currentUser.email 
+            ? activeChatInfo.user2 
+            : activeChatInfo.user1;
+        } else if (activeChatInfo?.ownerEmail) {
+          // If it's from an offer, use the owner email
+          otherUserEmail = activeChatInfo.ownerEmail;
+        } else if (activeChatInfo?.user2) {
+          // Fallback to user2
+          otherUserEmail = activeChatInfo.user2;
+        } else {
+          throw new Error("Cannot determine other user for chat");
+        }
+
+        console.log("Creating chat with:", {
+          otherUserEmail,
+          offer_id: activeChatInfo?.offer_id,
+          title: activeChatInfo?.offer_title
+        });
+
         const createRes = await fetch(`${API_BASE}/create-chat`, {
           method: "POST",
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${currentUser.token}` },
+          headers: { 
+            "Content-Type": "application/json", 
+            Authorization: `Bearer ${currentUser.token}` 
+          },
           body: JSON.stringify({
-            otherUserEmail: activeChatInfo?.user1 === currentUser.email ? activeChatInfo?.user2 : activeChatInfo?.user1 || activeChatInfo?.ownerEmail,
-            offer_id: activeChatInfo?.offer_id,
-            title: activeChatInfo?.offer_title || activeChatInfo?.bookTitle
+            otherUserEmail: otherUserEmail.toLowerCase(),
+            offer_id: activeChatInfo?.offer_id || null,
+            title: activeChatInfo?.offer_title || activeChatInfo?.bookTitle || null
           })
         });
 
-        if (!createRes.ok) throw new Error("Failed to create chat");
+        if (!createRes.ok) {
+          const errorData = await createRes.json().catch(() => ({}));
+          throw new Error(`Failed to create chat: ${errorData.error || createRes.statusText}`);
+        }
+        
         const createData = await createRes.json();
+        console.log("Chat created:", createData);
+        
         currentChatId = createData.id || createData.chat_id;
         
         if (currentChatId) {
           setActiveChatId(currentChatId);
+          // Update URL without reloading
           window.history.replaceState(null, "", `/chat/${currentChatId}`);
+        } else {
+          throw new Error("No chat ID returned from server");
         }
       }
 
       // 2. Send the message to the (now existing) chat
+      console.log("Sending message to chat:", currentChatId);
+      
       const res = await fetch(`${API_BASE}/send-message`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${currentUser.token}` },
+        headers: { 
+          "Content-Type": "application/json", 
+          Authorization: `Bearer ${currentUser.token}` 
+        },
         body: JSON.stringify({ 
-           chat_id: currentChatId, 
-           content: optimisticMsg.content 
+          chat_id: currentChatId, 
+          content: optimisticMsg.content 
         }),
       });
       
-      if (!res.ok) throw new Error("Failed to send message");
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(`Failed to send message: ${errorData.error || res.statusText}`);
+      }
       
-      fetchMessages(); // Sync
+      // Refresh messages after sending
+      await fetchMessages();
+      
+      // Also refresh unread count in notifications
+      refreshUnreadCount && refreshUnreadCount();
+      
     } catch (e: any) {
-       console.error("Chat error:", e);
-       setMessages(prev => prev.filter(m => m.id !== tempId)); // Revert on fail
-       alert(`Error: ${e.message}`);
-    } finally { setSending(false); }
+      console.error("Chat error details:", e);
+      // Revert optimistic update
+      setMessages(prev => prev.filter(m => m.id !== tempId));
+      alert(`Error: ${e.message || "Failed to send message"}`);
+    } finally { 
+      setSending(false); 
+    }
   };
 
   return (
