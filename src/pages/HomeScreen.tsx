@@ -233,7 +233,7 @@ export default function HomeScreen({ currentUser }: Props) {
                    }
                    profileCache[email as string] = { 
                       name: pData.name || "Unknown", 
-                      photo: pData.profilePhotoURL || pData.photo || pData.profileImageUrl,
+                      photo: pData.profilePhoto || pData.profilePhotoURL || pData.photo || pData.profileImageUrl,
                       badges
                    };
                 }
@@ -241,7 +241,9 @@ export default function HomeScreen({ currentUser }: Props) {
           })
        );
 
-       const processed: Offer[] = raw.map((o: any) => ({
+       const processed: Offer[] = raw
+         .filter((o: any) => !o.store_id) // Only show standalone offers
+         .map((o: any) => ({
          id: o.id,
          bookTitle: o.bookTitle || "Untitled Book",
          author: o.author || "Unknown Author",

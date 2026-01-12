@@ -266,7 +266,7 @@ export default function MapScreen({ currentUser }: Props) {
                   }
                   profileCache[email as string] = {
                      name: pData.name || "Unknown",
-                     photo: pData.profilePhotoURL || pData.photo || pData.profileImageUrl,
+                     photo: pData.profilePhoto || pData.profilePhotoURL || pData.photo || pData.profileImageUrl,
                      badges
                   };
                }
@@ -274,8 +274,9 @@ export default function MapScreen({ currentUser }: Props) {
          })
       );
 
-      const processed = rawOffers
+      const processed: Offer[] = rawOffers
         .filter((o: any) => o.visibility === "public" && o.state === "open" && o.latitude && o.longitude)
+        .filter((o: any) => !o.store_id) // Only show standalone offers
         .map((o: any) => ({
           ...o,
           id: o.id, 

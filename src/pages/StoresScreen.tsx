@@ -109,7 +109,7 @@ export default function StoresScreen({ currentUser }: Props) {
                 const pData = await pResp.json();
                 profileCache[email as string] = { 
                   name: pData.name || "Store Owner", 
-                  photo: pData.profilePhotoURL || pData.photo || pData.profileImageUrl 
+                  photo: pData.profilePhoto || pData.profilePhotoURL || pData.photo || pData.profileImageUrl 
                 };
               }
             } catch (err) { console.error("Profile fetch error", err); }

@@ -64,11 +64,10 @@ export default function OfferDetailScreen({ currentUser, wishlist, toggleWishlis
 
   const handleChat = () => {
     if (!offer) return;
-    const mockChatId = Date.now();
-    navigate(`/chat/${mockChatId}`, {
+    navigate(`/chat/new`, {
       state: {
         chat: {
-          id: mockChatId,
+          id: 0,
           user1: currentUser.email,
           user2: offer.ownerEmail,
           other_user_name: offer.ownerName || "Book Seller",

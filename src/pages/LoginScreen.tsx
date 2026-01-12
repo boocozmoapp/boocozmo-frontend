@@ -8,7 +8,7 @@ import { useNavigate } from "react-router-dom";
 const API_BASE = "https://boocozmo-api.onrender.com";
 
 type Props = {
-  onLoginSuccess: (user: { email: string; name: string; id: string; token: string }) => void;
+  onLoginSuccess: (user: { email: string; name: string; id: string; token: string; profilePhoto?: string | null }) => void;
   onGoToSignup: () => void;
 };
 
@@ -77,19 +77,27 @@ export default function LoginScreen({ onLoginSuccess, onGoToSignup }: Props) {
       }
 
       let user;
-      if (data.user && data.token) {
-        user = {
-          id: data.user.id.toString(),
-          name: data.user.name || data.user.username || "User",
-          email: data.user.email,
-          token: data.token,
-        };
-      } else if (data.id && data.token) {
+      if (data.id && data.token) {
+        // Fetch full profile to get profilePhoto since /login doesn't return it
+        let profilePhoto = null;
+        try {
+          const pResp = await fetch(`${API_BASE}/profile/${data.email}`, {
+            headers: { Authorization: `Bearer ${data.token}` }
+          });
+          if (pResp.ok) {
+            const pData = await pResp.json();
+            profilePhoto = pData.profilePhoto;
+          }
+        } catch (e) {
+          console.warn("Could not fetch profile photo on login", e);
+        }
+
         user = {
           id: data.id.toString(),
-          name: data.name || data.username || "User",
+          name: data.name || "User",
           email: data.email,
           token: data.token,
+          profilePhoto: profilePhoto
         };
       } else {
         throw new Error("Invalid login response");

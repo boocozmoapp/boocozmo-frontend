@@ -110,7 +110,7 @@ export default function DiscoverScreen({ currentUser, wishlist = [], toggleWishl
                   }
                   profileCache[email as string] = { 
                      name: pData.name || "Neighbor", 
-                     photo: pData.profilePhotoURL || pData.photo || pData.profileImageUrl,
+                     photo: pData.profilePhoto || pData.profilePhotoURL || pData.photo || pData.profileImageUrl,
                      badges
                   };
                }
@@ -118,7 +118,9 @@ export default function DiscoverScreen({ currentUser, wishlist = [], toggleWishl
          })
       );
 
-      const processed: Offer[] = raw.map((o: any) => ({
+      const processed: Offer[] = raw
+        .filter((o: any) => !o.store_id) // Only show standalone offers
+        .map((o: any) => ({
         ...o,
         ownerName: profileCache[o.ownerEmail]?.name || "Neighbor",
         ownerPhoto: profileCache[o.ownerEmail]?.photo,

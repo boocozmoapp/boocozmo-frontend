@@ -74,24 +74,9 @@ export default function StoreDetailScreen({ currentUser }: Props) {
 
       const storeData = await storeResponse.json();
 
-      // 2. Fetch owner profile (for name/photo)
-      let ownerName = storeData.ownerName;
-      let ownerPhoto = storeData.ownerPhoto;
-
-      if (storeData.ownerEmail && !ownerName) {
-        try {
-          const profileResp = await fetch(`${API_BASE}/profile/${storeData.ownerEmail}`, {
-            headers: { "Authorization": `Bearer ${currentUser.token}` }
-          });
-          if (profileResp.ok) {
-            const profileData = await profileResp.json();
-            ownerName = profileData.name || "Store Owner";
-            ownerPhoto = profileData.profilePhotoURL || profileData.photo || profileData.profileImageUrl;
-          }
-        } catch (profileErr) {
-          console.warn("Owner profile fetch failed:", profileErr);
-        }
-      }
+      // 2. Extract owner details (Backend now provides these in /stores/:id)
+      const ownerName = storeData.ownerName || "Store Owner";
+      const ownerPhoto = storeData.ownerPhoto || storeData.profilePhoto || storeData.profilePhotoURL || storeData.photo;
 
       // 3. Fetch offers for this store (using query param)
       // IMPORTANT: Adjust "?store_id=" to match your backend's actual query param

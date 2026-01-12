@@ -155,32 +155,47 @@ export default function SingleChat({ currentUser }: Props) {
     setSending(true);
 
     try {
+      let currentChatId = activeChatId;
+
+      // 1. If this is a new chat (id 0 from state), create it first
+      if (!currentChatId || currentChatId === 0) {
+        const createRes = await fetch(`${API_BASE}/create-chat`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${currentUser.token}` },
+          body: JSON.stringify({
+            otherUserEmail: activeChatInfo?.user1 === currentUser.email ? activeChatInfo?.user2 : activeChatInfo?.user1 || activeChatInfo?.ownerEmail,
+            offer_id: activeChatInfo?.offer_id,
+            title: activeChatInfo?.offer_title || activeChatInfo?.bookTitle
+          })
+        });
+
+        if (!createRes.ok) throw new Error("Failed to create chat");
+        const createData = await createRes.json();
+        currentChatId = createData.id || createData.chat_id;
+        
+        if (currentChatId) {
+          setActiveChatId(currentChatId);
+          window.history.replaceState(null, "", `/chat/${currentChatId}`);
+        }
+      }
+
+      // 2. Send the message to the (now existing) chat
       const res = await fetch(`${API_BASE}/send-message`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${currentUser.token}` },
         body: JSON.stringify({ 
-           sender: currentUser.email, 
-           receiver: activeChatInfo?.user1 === currentUser.email ? activeChatInfo?.user2 : activeChatInfo?.user1 || activeChatInfo?.ownerEmail, 
-           content: optimisticMsg.content, 
-           // If we have an active numeric ID, use it. Otherwise 0 tells backend to create new.
-           chat_id: activeChatId || 0, 
-           offer_id: activeChatInfo?.offer_id 
+           chat_id: currentChatId, 
+           content: optimisticMsg.content 
         }),
       });
       
-      if (!res.ok) throw new Error("Failed");
+      if (!res.ok) throw new Error("Failed to send message");
       
-      const data = await res.json();
-      // If backend returns a new chat ID (e.g. data.chat_id or data.id), update activeChatId
-      if (!activeChatId && data.chat_id) {
-         setActiveChatId(data.chat_id);
-         // Optionally update URL without reload
-         window.history.replaceState(null, "", `/chat/${data.chat_id}`);
-      }
-
       fetchMessages(); // Sync
-    } catch {
+    } catch (e: any) {
+       console.error("Chat error:", e);
        setMessages(prev => prev.filter(m => m.id !== tempId)); // Revert on fail
+       alert(`Error: ${e.message}`);
     } finally { setSending(false); }
   };
 
