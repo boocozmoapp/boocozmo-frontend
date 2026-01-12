@@ -1,8 +1,12 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-// src/App.tsx - POLISHED UI VERSION
+// src/App.tsx - FIXED WITH COMMUNITY ICON IN MOBILE TOP NAV
 import React, { useEffect, useState, useCallback, useMemo } from "react";
 import { BrowserRouter, Routes, Route, useNavigate, useLocation, Navigate } from "react-router-dom";
-import { FaSearch, FaUserCircle, FaEnvelope, FaSignOutAlt, FaMapMarkerAlt, FaBook, FaPlus, FaStore, FaLayerGroup, FaUsers } from "react-icons/fa";
+import { 
+  FaSearch, FaUserCircle, FaEnvelope, FaSignOutAlt, 
+  FaMapMarkerAlt, FaBook, FaPlus, FaStore, FaLayerGroup, 
+  FaUsers, FaUserFriends 
+} from "react-icons/fa";
 import HomeScreen from "./pages/HomeScreen";
 import OfferScreen from "./pages/OfferScreen";
 import ProfileScreen from "./pages/ProfileScreen";
@@ -83,7 +87,10 @@ const AppContent = () => {
                 <h1 onClick={() => navigate("/home")} className="text-2xl font-serif font-bold text-[#382110] cursor-pointer">Boocozmo</h1>
                 <nav className="hidden md:flex items-center gap-1 text-[#382110] text-[14px]">
                   <button onClick={() => navigate("/home")} className="px-3 py-2 hover:bg-white/50 rounded">Home</button>
-                  <button onClick={() => navigate("/communities")} className="px-3 py-2 hover:bg-white/50 rounded">Communities</button>
+                  <button onClick={() => navigate("/communities")} className="px-3 py-2 hover:bg-white/50 rounded flex items-center gap-1">
+                    <FaUserFriends size={12} />
+                    Communities
+                  </button>
                   <button onClick={() => navigate("/my-library")} className="px-3 py-2 hover:bg-white/50 rounded">My Books</button>
                   <button onClick={() => navigate("/stores")} className="px-3 py-2 hover:bg-white/50 rounded">Stores</button>
                 </nav>
@@ -105,8 +112,16 @@ const AppContent = () => {
               </div>
 
               <div className="flex items-center gap-3 md:gap-4">
-                <button className="md:hidden text-[#382110]" onClick={() => navigate("/discover")}><FaSearch size={18} /></button>
-                <button className="md:hidden text-[#382110]" onClick={() => navigate("/my-library")}><FaLayerGroup size={18} /></button>
+                {/* Mobile Top Navigation Icons */}
+                <button className="md:hidden text-[#382110] hover:text-[#5a3e2b]" onClick={() => navigate("/discover")}>
+                  <FaSearch size={18} />
+                </button>
+                <button className="md:hidden text-[#382110] hover:text-[#5a3e2b]" onClick={() => navigate("/communities")}>
+                  <FaUserFriends size={18} />
+                </button>
+                <button className="md:hidden text-[#382110] hover:text-[#5a3e2b]" onClick={() => navigate("/my-library")}>
+                  <FaLayerGroup size={18} />
+                </button>
                 
                 <div className="flex items-center gap-3 border-r border-[#ccc] pr-4 mr-1">
                   <button onClick={() => navigate("/chat")} className="text-[#382110] hover:bg-white/50 p-1.5 rounded-full transition-colors relative">
@@ -116,12 +131,12 @@ const AppContent = () => {
                 </div>
 
                 <div 
-                  className="w-8 h-8 rounded-full bg-[#382110] text-white flex items-center justify-center text-xs font-bold cursor-pointer"
+                  className="w-8 h-8 rounded-full bg-[#382110] text-white flex items-center justify-center text-xs font-bold cursor-pointer hover:bg-[#5a3e2b] transition-colors"
                   onClick={() => navigate("/profile")}
                 >
                   {user.name.charAt(0)}
                 </div>
-                <button onClick={handleLogout} className="text-[#382110] opacity-60 hover:opacity-100 hidden md:block">
+                <button onClick={handleLogout} className="text-[#382110] opacity-60 hover:opacity-100 hidden md:block transition-opacity">
                   <FaSignOutAlt />
                 </button>
               </div>
@@ -169,7 +184,7 @@ const AppContent = () => {
             <div className="relative -top-5">
               <button 
                 onClick={() => navigate("/offer")} 
-                className="w-12 h-12 bg-[#382110] text-white rounded-full flex items-center justify-center shadow-lg border-4 border-[#fdfaf5] active:scale-95 transition-transform"
+                className="w-12 h-12 bg-[#382110] text-white rounded-full flex items-center justify-center shadow-lg border-4 border-[#fdfaf5] active:scale-95 transition-transform hover:bg-[#5a3e2b]"
               >
                 <FaPlus size={20} />
               </button>

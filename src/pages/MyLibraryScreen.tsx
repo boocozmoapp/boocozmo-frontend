@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
-// src/pages/MyLibraryScreen.tsx - UPDATED FOR NEW BACKEND & DB STRUCTURE
+// src/pages/MyLibraryScreen.tsx - UPDATED WITH PROPER DATA NORMALIZATION
 import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -68,6 +68,8 @@ type Store = {
   latitude?: number | null;
   longitude?: number | null;
   bookCount?: number;
+  offerIds?: number[];
+  offers?: any[];
 };
 
 type Props = {
@@ -170,29 +172,59 @@ export default function MyLibraryScreen({
       }
       
       const data = await response.json();
-      console.log("Stores data received:", data);
+      console.log("Stores data received (raw):", data);
       
-      // Filter to only show user's stores if the API returns a generic list
-      const allStores = Array.isArray(data) ? data : (data.stores || []);
-      const userStores = allStores.filter((s: any) => s.ownerEmail === currentUser.email);
+      // Handle both array and object response formats
+      const rawStores = Array.isArray(data) ? data : (data.stores || data || []);
+      console.log("Raw stores array:", rawStores);
       
-      // Ensure all stores have bookCount
-      const storesWithCount = userStores.map((store: any) => ({
-        ...store,
-        bookCount: store.bookCount || store.offers?.length || 0
-      }));
+      // Normalize the store data - handle snake_case to camelCase conversion
+      const normalizedStores = rawStores.map((store: any) => {
+        // Check if store belongs to current user (using case-insensitive comparison)
+        const ownerEmail = store.owneremail || store.ownerEmail || '';
+        const isCurrentUserStore = ownerEmail.toLowerCase() === currentUser.email.toLowerCase();
+        
+        // Only return stores that belong to the current user
+        if (!isCurrentUserStore) return null;
+        
+        // Normalize all field names to camelCase
+        const normalizedStore: Store = {
+          id: store.id,
+          name: store.name || '',
+          ownerEmail: store.owneremail || store.ownerEmail || currentUser.email,
+          created_at: store.created_at || store.createdAt || new Date().toISOString(),
+          updated_at: store.updated_at || store.updatedAt,
+          visibility: (store.visibility || 'private') as "public" | "private",
+          location: store.location || null,
+          latitude: store.latitude ? parseFloat(store.latitude) : null,
+          longitude: store.longitude ? parseFloat(store.longitude) : null,
+          bookCount: store.bookCount || store.bookcount || store.offers?.length || 0,
+          offerIds: store.offerIds || store.offer_ids || [],
+          offers: store.offers || []
+        };
+        
+        return normalizedStore;
+      }).filter((store: Store | null): store is Store => store !== null);
       
-      setStores(storesWithCount);
-      if (storesWithCount.length > 0 && !selectedStore) {
-        setSelectedStore(storesWithCount[0]);
+      console.log("Normalized stores for current user:", normalizedStores);
+      
+      setStores(normalizedStores);
+      
+      // Set the first store as selected if available
+      if (normalizedStores.length > 0 && !selectedStore) {
+        setSelectedStore(normalizedStores[0]);
+      } else if (selectedStore && normalizedStores.length === 0) {
+        // Clear selected store if user has no stores
+        setSelectedStore(null);
       }
     } catch (err: any) {
       console.error("Fetch stores error:", err);
       setStores([]);
+      setSelectedStore(null);
     } finally {
       setLoading(false);
     }
-  }, [currentUser.token, selectedStore]);
+  }, [currentUser.token, currentUser.email, selectedStore]);
 
   // ==================== FETCH STORE OFFERS ====================
   const fetchStoreOffers = useCallback(async (store: Store) => {
@@ -217,33 +249,50 @@ export default function MyLibraryScreen({
       }
       
       const data = await response.json();
-      console.log("Store offers data:", data);
+      console.log("Store offers data (raw):", data);
       
-      const offers = data.offers || data || [];
+      // Handle different response formats
+      let offers: any[] = [];
+      if (Array.isArray(data)) {
+        offers = data;
+      } else if (data.offers) {
+        offers = data.offers;
+      } else if (typeof data === 'object' && data.id) {
+        // If it's a single object, wrap it in an array
+        offers = [data];
+      }
       
-      const processed: StoreOffer[] = offers.map((o: any) => ({
-        id: o.id,
-        storeId: o.store_id || o.storeId,
-        offerId: o.offer_id || o.offerId,
-        type: o.type || "sell",
-        bookTitle: o.booktitle || o.bookTitle || '',
-        exchangeBook: o.exchangebook || o.exchangeBook,
-        price: o.price ? parseFloat(o.price) : null,
-        condition: o.condition,
-        ownerEmail: o.owneremail || o.ownerEmail,
-        imageUrl: o.imageurl || o.imageUrl,
-        state: o.state || "open",
-        visibility: o.visibility || "private",
-        publishedAt: o.publishedat || o.publishedAt,
-        isPrimary: o.is_primary || o.isPrimary || false,
-        originalOfferId: o.original_offer_id || o.originalOfferId,
-        position: o.position || 0,
-        notes: o.notes,
-        createdAt: o.created_at || o.createdAt,
-        updatedAt: o.updated_at || o.updatedAt
-      }));
+      console.log(`Processing ${offers.length} store offers`);
       
-      console.log(`Processed ${processed.length} store offers`);
+      // Normalize store offer data
+      const processed: StoreOffer[] = offers.map((o: any) => {
+        // Handle both snake_case and camelCase field names
+        const storeOffer: StoreOffer = {
+          id: o.id,
+          storeId: o.store_id || o.storeId || store.id,
+          offerId: o.offer_id || o.offerId,
+          type: (o.type || "sell") as "sell" | "exchange" | "buy",
+          bookTitle: o.booktitle || o.bookTitle || 'Untitled Book',
+          exchangeBook: o.exchangebook || o.exchangeBook || null,
+          price: o.price ? parseFloat(o.price) : null,
+          condition: o.condition || null,
+          ownerEmail: o.owneremail || o.ownerEmail || currentUser.email,
+          imageUrl: o.imageurl || o.imageUrl || o.image || null,
+          state: (o.state || "open") as "open" | "closed",
+          visibility: (o.visibility || store.visibility || "private") as "public" | "private",
+          publishedAt: o.publishedat || o.publishedAt,
+          isPrimary: o.is_primary || o.isPrimary || false,
+          originalOfferId: o.original_offer_id || o.originalOfferId,
+          position: o.position || 0,
+          notes: o.notes || null,
+          createdAt: o.created_at || o.createdAt,
+          updatedAt: o.updated_at || o.updatedAt
+        };
+        
+        return storeOffer;
+      });
+      
+      console.log(`Processed ${processed.length} store offers:`, processed);
       setStoreOffers(processed);
     } catch (err) {
       console.error("Fetch store offers error:", err);
@@ -251,7 +300,7 @@ export default function MyLibraryScreen({
     } finally {
       setLoadingOffers(false);
     }
-  }, [currentUser.token]);
+  }, [currentUser.token, currentUser.email]);
 
   // ==================== TOGGLE STORE VISIBILITY ====================
   const handleToggleStoreVisibility = async (store: Store) => {
@@ -595,55 +644,69 @@ export default function MyLibraryScreen({
         {/* Collections List - Compact Horizontal Scroll */}
         <div className="px-6 py-4 bg-white border-b border-[#eee]">
           <div className="mb-3">
-            <h3 className="text-sm font-bold text-[#382110] uppercase tracking-wider">Collections</h3>
+            <h3 className="text-sm font-bold text-[#382110] uppercase tracking-wider">
+              Collections ({stores.length})
+            </h3>
           </div>
           <div className="flex overflow-x-auto gap-3 pb-2 custom-scrollbar">
             {loading ? (
               <div className="text-[#999] text-sm py-4">Loading collections...</div>
             ) : stores.length > 0 ? (
-              stores.map(store => (
-                <motion.div
-                  key={store.id}
-                  onClick={() => setSelectedStore(store)}
-                  className={`min-w-[180px] p-3 rounded-lg cursor-pointer border-2 transition-all relative flex-shrink-0
-                    ${selectedStore?.id === store.id 
-                      ? 'bg-[#f4f1ea] border-[#382110] shadow-md' 
-                      : 'bg-white border-[#e8e0d5] hover:border-[#382110]/40 hover:shadow-sm'}`}
-                  whileHover={{ y: -2 }}
-                >
-                  <div className="flex items-center gap-3 mb-2">
-                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0
-                      ${selectedStore?.id === store.id ? 'bg-[#382110] text-white' : 'bg-[#f4f1ea] text-[#382110]'}`}>
-                      <FaFolder size={16} />
+              stores.map(store => {
+                console.log("Rendering store:", store);
+                return (
+                  <motion.div
+                    key={store.id}
+                    onClick={() => setSelectedStore(store)}
+                    className={`min-w-[180px] p-3 rounded-lg cursor-pointer border-2 transition-all relative flex-shrink-0
+                      ${selectedStore?.id === store.id 
+                        ? 'bg-[#f4f1ea] border-[#382110] shadow-md' 
+                        : 'bg-white border-[#e8e0d5] hover:border-[#382110]/40 hover:shadow-sm'}`}
+                    whileHover={{ y: -2 }}
+                  >
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0
+                        ${selectedStore?.id === store.id ? 'bg-[#382110] text-white' : 'bg-[#f4f1ea] text-[#382110]'}`}>
+                        <FaFolder size={16} />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <h3 className="font-bold text-[#382110] text-sm truncate mb-0.5">{store.name}</h3>
+                        <p className="text-[10px] text-[#777] font-medium">
+                          {store.bookCount || 0} {store.bookCount === 1 ? 'book' : 'books'}
+                        </p>
+                      </div>
                     </div>
-                    <div className="min-w-0 flex-1">
-                      <h3 className="font-bold text-[#382110] text-sm truncate mb-0.5">{store.name}</h3>
-                      <p className="text-[10px] text-[#777] font-medium">
-                        {store.bookCount || 0} {store.bookCount === 1 ? 'book' : 'books'}
-                      </p>
-                    </div>
-                  </div>
 
-                  <div className="pt-2 border-t border-[#eee]">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleToggleStoreVisibility(store);
-                      }}
-                      className={`w-full text-[10px] px-2 py-1.5 rounded-md flex items-center justify-center gap-1.5 font-medium transition-all ${
-                        store.visibility === "public" 
-                          ? "bg-[#e0f2fe] text-[#00635d] hover:bg-[#bae6fd] border border-[#bae6fd]" 
-                          : "bg-[#382110] text-white hover:bg-[#2a180c]"
-                      }`}
-                    >
-                      {store.visibility === "public" ? <FaLock size={9} /> : <FaGlobe size={9} />}
-                      {store.visibility === "public" ? "Make Private" : "Make Public"}
-                    </button>
-                  </div>
-                </motion.div>
-              ))
+                    <div className="pt-2 border-t border-[#eee]">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleToggleStoreVisibility(store);
+                        }}
+                        className={`w-full text-[10px] px-2 py-1.5 rounded-md flex items-center justify-center gap-1.5 font-medium transition-all ${
+                          store.visibility === "public" 
+                            ? "bg-[#e0f2fe] text-[#00635d] hover:bg-[#bae6fd] border border-[#bae6fd]" 
+                            : "bg-[#382110] text-white hover:bg-[#2a180c]"
+                        }`}
+                      >
+                        {store.visibility === "public" ? <FaLock size={9} /> : <FaGlobe size={9} />}
+                        {store.visibility === "public" ? "Make Private" : "Make Public"}
+                      </button>
+                    </div>
+                  </motion.div>
+                );
+              })
             ) : (
-              <div className="text-[#999] italic text-sm py-4">No collections yet. Create one!</div>
+              <div className="flex flex-col items-center justify-center min-w-full py-8 text-center">
+                <FaFolder className="text-[#999] text-3xl mb-3" />
+                <p className="text-[#999] text-sm mb-4">No collections yet</p>
+                <button
+                  onClick={() => setShowCreateStoreModal(true)}
+                  className="px-4 py-2 bg-[#382110] text-white rounded-lg text-xs font-bold hover:bg-[#2a180c] transition-colors"
+                >
+                  Create Your First Collection
+                </button>
+              </div>
             )}
           </div>
         </div>
