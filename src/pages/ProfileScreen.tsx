@@ -177,14 +177,37 @@ export default function ProfileScreen({ currentUser, wishlist = [], toggleWishli
   const fetchStores = useCallback(async () => {
     setLoadingStores(true);
     try {
-      const response = await fetchWithTimeout(`${API_BASE}/stores?includeOffers=false`, { headers: { "Authorization": `Bearer ${currentUser.token}` } });
-      if (!response.ok) throw new Error("Failed");
+      const response = await fetchWithTimeout(`${API_BASE}/stores?includeOffers=true`, {
+        method: 'GET',
+        headers: { 
+          'Authorization': `Bearer ${currentUser.token}`,
+          'Content-Type': 'application/json'
+        },
+      }, 15000);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Failed to load collections: ${errorText}`);
+      }
+      
       const data = await response.json();
-      // Filter to only show user's stores
-      const userStores = (Array.isArray(data) ? data : []).filter((s: Store) => s.ownerEmail === currentUser.email);
-      setStores(userStores);
-    } catch { setStores([]); } finally { setLoadingStores(false); }
-  }, [currentUser.token, currentUser.email]);
+      const userStores = Array.isArray(data) ? data : (data.stores || []);
+      
+      // Ensure all stores have bookCount from offers
+      const processedStores = userStores.map((store: any) => ({
+        ...store,
+        bookCount: store.bookCount || store.offers?.length || 0,
+        offerIds: store.offerIds || store.offers?.map((o: any) => o.id) || []
+      }));
+      
+      setStores(processedStores);
+    } catch (err: any) {
+      console.error("Fetch stores error:", err);
+      setStores([]);
+    } finally {
+      setLoadingStores(false);
+    }
+  }, [currentUser.token]);
 
   // Initial fetch - only once
   useEffect(() => {
@@ -326,9 +349,22 @@ export default function ProfileScreen({ currentUser, wishlist = [], toggleWishli
     return Array.from(uniqueMap.values());
   }, [myOffers]);
 
-  const getImageSource = (offer: Offer) => {
-    if (offer.imageUrl) return offer.imageUrl;
-    if (offer.imageBase64) return offer.imageBase64.startsWith('data:') ? offer.imageBase64 : `data:image/jpeg;base64,${offer.imageBase64}`;
+  const getImageSource = (offer: any) => {
+    const url = offer.imageUrl || offer.imageurl;
+    if (url) {
+      if (url.startsWith('http')) return url;
+      if (url.startsWith('data:')) return url;
+      // If it's just a base64 string without data prefix
+      return `data:image/jpeg;base64,${url}`;
+    }
+    
+    // Fallback for imageBase64 field if exists
+    if (offer.imageBase64) {
+      return offer.imageBase64.startsWith('data:') 
+        ? offer.imageBase64 
+        : `data:image/jpeg;base64,${offer.imageBase64}`;
+    }
+
     return "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=300&h=400&fit=crop&q=80";
   };
 
@@ -343,7 +379,7 @@ export default function ProfileScreen({ currentUser, wishlist = [], toggleWishli
   ];
 
   return (
-    <div className="h-[calc(100vh-50px)] md:h-[calc(100vh-60px)] w-full bg-primary text-text-main flex overflow-hidden font-sans">
+    <div className="h-[calc(100vh-110px)] md:h-[calc(100vh-60px)] w-full bg-primary text-text-main flex overflow-hidden font-sans">
       {/* Sidebar */}
       <AnimatePresence>
         {sidebarOpen && <motion.div initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} onClick={() => setSidebarOpen(false)} className="fixed inset-0 bg-black/50 z-40 lg:hidden" />}
@@ -529,10 +565,10 @@ export default function ProfileScreen({ currentUser, wishlist = [], toggleWishli
                                        <div className="w-12 h-12 bg-secondary/20 rounded-xl flex items-center justify-center text-secondary group-hover:scale-110 transition-transform">
                                           <FaFolder size={20} />
                                        </div>
-                                       <div className="flex-1 min-w-0">
-                                          <h3 className="font-bold text-white truncate mb-1">{store.name}</h3>
-                                          <p className="text-xs text-gray-500">{store.offerIds?.length || 0} {store.offerIds?.length === 1 ? 'book' : 'books'}</p>
-                                       </div>
+                                        <div className="flex-1 min-w-0">
+                                           <h3 className="font-bold text-white truncate mb-1">{store.name}</h3>
+                                           <p className="text-xs text-gray-500">{(store as any).bookCount || store.offerIds?.length || 0} {(store as any).bookCount === 1 ? 'book' : 'books'}</p>
+                                        </div>
                                     </div>
                                     <div className="flex items-center justify-between text-xs text-gray-500">
                                        <span>{new Date(store.created_at).toLocaleDateString()}</span>

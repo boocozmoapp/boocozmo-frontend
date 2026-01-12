@@ -542,13 +542,21 @@ export default function MyLibraryScreen({
   }, [selectedStore, fetchStoreOffers]);
 
   // ==================== IMAGE HELPER ====================
-  const getImageSource = (offer: StoreOffer) => {
-    if (offer.imageUrl) return offer.imageUrl;
+  const getImageSource = (offer: any) => {
+    const url = offer.imageUrl || offer.imageurl;
+    if (url) {
+      if (typeof url === 'string') {
+        if (url.startsWith('http')) return url;
+        if (url.startsWith('data:')) return url;
+        // If it's just a base64 string without data prefix
+        return `data:image/jpeg;base64,${url}`;
+      }
+    }
     return "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=300&h=400&fit=crop&q=80";
   };
 
   return (
-    <div className="h-[calc(100vh-50px)] md:h-[calc(100vh-60px)] w-full bg-primary text-text-main flex flex-col overflow-hidden font-sans">
+    <div className="h-[calc(100vh-110px)] md:h-[calc(100vh-60px)] w-full bg-primary text-text-main flex flex-col overflow-hidden font-sans">
       {/* Header */}
       <header className="h-20 px-6 flex items-center justify-between border-b border-[#eee] bg-[#f4f1ea] sticky top-0 z-30">
         <div className="flex items-center gap-4">

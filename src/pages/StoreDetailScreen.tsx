@@ -116,7 +116,7 @@ export default function StoreDetailScreen({ currentUser }: Props) {
         bookTitle: o.bookTitle || "Untitled Book",
         author: o.author || "Unknown Author",
         type: o.type || "sell",
-        imageUrl: o.imageUrl,
+        imageUrl: o.imageUrl || o.imageurl || o.imageBase64 || o.image_base64,
         price: o.price ? parseFloat(o.price) : null,
         condition: o.condition,
         description: o.notes || o.description, // Backend uses 'notes' for store_offers
@@ -136,6 +136,19 @@ export default function StoreDetailScreen({ currentUser }: Props) {
   useEffect(() => {
     fetchStoreAndOffers();
   }, [fetchStoreAndOffers]);
+
+  const getImageSource = (offer: any) => {
+    const url = offer.imageUrl || offer.imageurl || offer.imageBase64;
+    if (url) {
+      if (typeof url === 'string') {
+        if (url.startsWith('http')) return url;
+        if (url.startsWith('data:')) return url;
+        // If it's just a base64 string without data prefix
+        return `data:image/jpeg;base64,${url}`;
+      }
+    }
+    return "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=400&q=80";
+  };
 
   const handleContact = async () => {
     if (!store) return;
@@ -257,7 +270,7 @@ export default function StoreDetailScreen({ currentUser }: Props) {
                   >
                     <div className="aspect-[3/4] relative overflow-hidden bg-[#f9f9f9]">
                       <img
-                        src={offer.imageUrl || "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=400&q=80"}
+                        src={getImageSource(offer)}
                         className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                         alt={offer.bookTitle}
                       />
@@ -389,7 +402,7 @@ export default function StoreDetailScreen({ currentUser }: Props) {
 
               <div className="w-full md:w-5/12 bg-[#f4f1ea] flex items-center justify-center p-8 md:p-12">
                 <img
-                  src={selectedOffer.imageUrl || "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=600&q=80"}
+                  src={getImageSource(selectedOffer)}
                   className="max-h-full max-w-full rounded-xl shadow-2xl object-contain"
                   alt={selectedOffer.bookTitle}
                 />

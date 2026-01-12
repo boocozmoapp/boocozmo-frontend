@@ -195,7 +195,7 @@ export default function StoresScreen({ currentUser }: Props) {
   };
 
   return (
-    <div className="min-h-screen bg-[#f4f1ea] font-sans">
+    <div className="min-h-[calc(100vh-110px)] md:min-h-[calc(100vh-60px)] bg-[#f4f1ea] font-sans">
       {/* Header */}
       <header className="bg-white border-b border-[#eee] sticky top-0 z-30 px-4 py-4">
         <div className="max-w-6xl mx-auto">
@@ -335,31 +335,6 @@ export default function StoresScreen({ currentUser }: Props) {
         )}
       </main>
 
-      {/* Bottom Navigation - Mobile */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-[#eee] px-4 py-2 z-40">
-        <div className="flex justify-around items-center">
-          <button onClick={() => navigate("/home")} className="flex flex-col items-center gap-1 text-[#999]">
-            <FaHome size={18} />
-            <span className="text-[10px]">Home</span>
-          </button>
-          <button onClick={() => navigate("/stores")} className="flex flex-col items-center gap-1 text-[#d4af37]">
-            <FaStore size={18} />
-            <span className="text-[10px] font-bold">Stores</span>
-          </button>
-          <button onClick={() => navigate("/map")} className="flex flex-col items-center gap-1 text-[#999]">
-            <FaMapMarkedAlt size={18} />
-            <span className="text-[10px]">Map</span>
-          </button>
-          <button onClick={() => navigate("/my-library")} className="flex flex-col items-center gap-1 text-[#999]">
-            <FaBookOpen size={18} />
-            <span className="text-[10px]">Library</span>
-          </button>
-          <button onClick={() => navigate("/chat")} className="flex flex-col items-center gap-1 text-[#999]">
-            <FaComments size={18} />
-            <span className="text-[10px]">Chat</span>
-          </button>
-        </div>
-      </nav>
     </div>
   );
 }

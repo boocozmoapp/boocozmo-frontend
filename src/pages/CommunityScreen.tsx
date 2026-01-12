@@ -705,7 +705,7 @@ export default function CommunityScreen({ currentUser }: Props) {
     const isMember = selectedCommunity.is_member || selectedCommunity.is_owner;
     
     return (
-      <div className="min-h-[calc(100vh-50px)] md:min-h-[calc(100vh-60px)] bg-gradient-to-b from-[#f9f6f0] to-white flex flex-col">
+      <div className="h-[calc(100vh-110px)] md:h-[calc(100vh-60px)] bg-gradient-to-b from-[#f9f6f0] to-white flex flex-col overflow-hidden">
         {/* Clean Header */}
         <div className="sticky top-0 z-40 bg-white/95 backdrop-blur-sm border-b border-[#e8e0d5] shadow-sm flex-shrink-0">
           <div className="max-w-3xl mx-auto px-4 w-full py-3">
@@ -1002,7 +1002,7 @@ export default function CommunityScreen({ currentUser }: Props) {
 
   // ==================== MAIN COMMUNITIES LIST VIEW ====================
   return (
-    <div className="min-h-[calc(100vh-50px)] md:min-h-[calc(100vh-60px)] bg-gradient-to-b from-[#f9f6f0] to-white py-6 px-4 md:px-6">
+    <div className="min-h-[calc(100vh-110px)] md:min-h-[calc(100vh-60px)] bg-gradient-to-b from-[#f9f6f0] to-white py-6 px-4 md:px-6">
       <div className="max-w-7xl mx-auto">
         <div className="mb-8">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">

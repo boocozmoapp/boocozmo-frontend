@@ -134,7 +134,7 @@ export default function ChatScreen({ currentUser }: Props) {
   );
 
   return (
-    <div className="h-screen w-full bg-primary text-text-main flex overflow-hidden font-sans">
+    <div className="h-[calc(100vh-110px)] md:h-[calc(100vh-60px)] w-full bg-primary text-text-main flex overflow-hidden font-sans">
       <AnimatePresence>
         {sidebarOpen && <motion.div initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} onClick={() => setSidebarOpen(false)} className="fixed inset-0 bg-black/50 z-40 lg:hidden" />}
       </AnimatePresence>

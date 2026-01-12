@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-// src/pages/HomeScreen.tsx - BOOCOZMO FINAL (MODALS & ARTISTIC)
+// src/pages/HomeScreen.tsx - BOOCOZMO FINAL (MODALS & ARTISTIC) - FIXED
 import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
@@ -27,7 +27,6 @@ L.Marker.prototype.options.icon = DefaultIcon;
 const API_BASE = "https://boocozmo-api.onrender.com";
 
 type Offer = {
-  ownerBadges: any;
   id: number;
   bookTitle: string;
   author: string;
@@ -36,13 +35,19 @@ type Offer = {
   description?: string;
   price: number | null;
   condition?: string;
-  ownerName?: string;
-  ownerEmail?: string;
+  ownerName: string;
+  ownerEmail: string;
   ownerPhoto?: string;
   publishedAt?: string;
   distance?: string;
   latitude?: number;
   longitude?: number;
+  ownerBadges: string[];
+  owner?: {
+    name: string;
+    profilePhoto?: string;
+    location?: string;
+  };
 };
 
 type Store = {
@@ -68,20 +73,19 @@ type Props = {
 // Haversine Distance Helper
 function getDistanceFromLatLonInKm(lat1: number, lon1: number, lat2: number, lon2: number) {
   var R = 6371; // Radius of the earth in km
-  var dLat = deg2rad(lat2-lat1);  // deg2rad below
+  var dLat = deg2rad(lat2-lat1);
   var dLon = deg2rad(lon2-lon1); 
   var a = 
     Math.sin(dLat/2) * Math.sin(dLat/2) +
     Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) * 
-    Math.sin(dLon/2) * Math.sin(dLon/2)
-    ; 
+    Math.sin(dLon/2) * Math.sin(dLon/2);
   var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); 
   var d = R * c; // Distance in km
   return d;
 }
 
 function deg2rad(deg: number) {
-  return deg * (Math.PI/180)
+  return deg * (Math.PI/180);
 }
 
 function LocationMarker({ position, setPosition }: { position: { lat: number; lng: number } | null, setPosition: (pos: { lat: number; lng: number }) => void }) {
@@ -195,75 +199,98 @@ export default function HomeScreen({ currentUser }: Props) {
 
   const fetchOffers = useCallback(async () => {
    try {
+     setLoading(true);
      const response = await fetch(`${API_BASE}/offers?limit=100`, {
        headers: { "Authorization": `Bearer ${currentUser.token}` }
      });
-     const data = await response.json();
-     const raw = Array.isArray(data) ? data : (data.offers || []);
      
-     // Get unique owner emails to fetch profiles for
-     const uniqueEmails = [...new Set(raw.map((o: any) => o.ownerEmail).filter(Boolean))];
-     const profileCache: Record<string, { name: string; photo?: string; badges?: string[] }> = {};
-
-     // Helper to calculate badges from stats
-     const calculateBadges = (offersPosted: number): string[] => {
-        const badges: string[] = [];
-        if (offersPosted >= 3) badges.push("Contributor");
-        if (offersPosted >= 20) badges.push("Verified");
-        return badges;
-     };
-
-     // Fetch profiles in batches
-     await Promise.all(
-        uniqueEmails.map(async (email) => {
-           try {
-              const pResp = await fetch(`${API_BASE}/profile/${email}`, {
-                 headers: { "Authorization": `Bearer ${currentUser.token}` }
-              });
-              if (pResp.ok) {
-                 const pData = await pResp.json();
-                 // Parse badges if string, or calculate from offersPosted
-                 let badges: string[] = [];
-                 if (pData.badges) {
-                    badges = typeof pData.badges === 'string' ? JSON.parse(pData.badges) : pData.badges;
-                 }
-                 // If no badges stored, calculate from offersPosted
-                 if (!badges.length && pData.offersPosted) {
-                    badges = calculateBadges(pData.offersPosted);
-                 }
-                 profileCache[email as string] = { 
-                    name: pData.name || "Unknown", 
-                    photo: pData.profilePhoto || pData.profilePhotoURL || pData.photo || pData.profileImageUrl,
-                    badges
-                 };
-              }
-           } catch (err) { console.error("Profile fetch error", err); }
-        })
+     if (!response.ok) {
+       throw new Error(`Failed to fetch offers: ${response.status}`);
+     }
+     
+     const data = await response.json();
+     const rawOffers = Array.isArray(data.offers) ? data.offers : [];
+     
+     // Process offers with owner information
+     const processedOffers = await Promise.all(
+       rawOffers.map(async (offer: any) => {
+         try {
+           // Fetch owner profile for badges and additional info
+           const profileResponse = await fetch(`${API_BASE}/profile/${offer.owneremail}`, {
+             headers: { "Authorization": `Bearer ${currentUser.token}` }
+           });
+           
+           let ownerName = offer.ownername || "Unknown";
+           let ownerPhoto = offer.ownerphoto || offer.profilePhoto;
+           let ownerBadges: string[] = [];
+           
+           if (profileResponse.ok) {
+             const profileData = await profileResponse.json();
+             ownerName = profileData.name || ownerName;
+             ownerPhoto = profileData.profilePhoto || ownerPhoto;
+             
+             // Parse badges if they exist
+             if (profileData.badges) {
+               ownerBadges = typeof profileData.badges === 'string' 
+                 ? JSON.parse(profileData.badges) 
+                 : profileData.badges;
+             }
+             
+             // Calculate badges based on offersPosted if no badges stored
+             if (!ownerBadges.length && profileData.offersPosted) {
+               if (profileData.offersPosted >= 20) {
+                 ownerBadges.push("Verified");
+               } else if (profileData.offersPosted >= 3) {
+                 ownerBadges.push("Contributor");
+               }
+             }
+           }
+           
+           return {
+             id: offer.id,
+             bookTitle: offer.booktitle || offer.bookTitle || "Untitled Book",
+             author: offer.author || "Unknown Author",
+             type: offer.type || "sell",
+             imageUrl: offer.imageurl || offer.imageUrl || null,
+             description: offer.description,
+             price: offer.price,
+             condition: offer.condition,
+             ownerName,
+             ownerEmail: offer.owneremail,
+             ownerPhoto,
+             ownerBadges,
+             publishedAt: offer.publishedat || offer.publishedAt,
+             latitude: offer.latitude,
+             longitude: offer.longitude,
+             distance: "Unknown"
+           };
+         } catch (error) {
+           console.error("Error processing offer:", error);
+           return {
+             id: offer.id,
+             bookTitle: offer.booktitle || offer.bookTitle || "Untitled Book",
+             author: offer.author || "Unknown Author",
+             type: offer.type || "sell",
+             imageUrl: offer.imageurl || offer.imageUrl || null,
+             description: offer.description,
+             price: offer.price,
+             condition: offer.condition,
+             ownerName: offer.ownername || "Unknown",
+             ownerEmail: offer.owneremail,
+             ownerPhoto: offer.ownerphoto || null,
+             ownerBadges: [],
+             publishedAt: offer.publishedat || offer.publishedAt,
+             latitude: offer.latitude,
+             longitude: offer.longitude,
+             distance: "Unknown"
+           };
+         }
+       })
      );
-
-     const processed: Offer[] = raw
-       .filter((o: any) => !o.store_id) // Only show standalone offers (already filtered by backend)
-       .map((o: any) => ({
-       id: o.id,
-       bookTitle: o.bookTitle || "Untitled Book",
-       author: o.author || "Unknown Author",
-       type: o.type || "sell",
-       imageUrl: o.imageUrl,
-       description: o.description,
-       price: o.price,
-       condition: o.condition,
-       ownerName: profileCache[o.ownerEmail]?.name || o.ownerName || "Unknown",
-       ownerEmail: o.ownerEmail,
-       ownerPhoto: profileCache[o.ownerEmail]?.photo,
-       ownerBadges: profileCache[o.ownerEmail]?.badges || [],
-       publishedAt: o.publishedAt,
-       distance: "Unknown",
-       latitude: o.latitude,
-       longitude: o.longitude
-     }));
-     setOffers(processed);
+     
+     setOffers(processedOffers);
    } catch (err) {
-     console.error(err);
+     console.error("Error fetching offers:", err);
    } finally {
      setLoading(false);
    }
@@ -292,7 +319,7 @@ export default function HomeScreen({ currentUser }: Props) {
            return { ...o, distVal: dist, distance: `${dist.toFixed(1)} km` };
         }
         return { ...o, distVal: 99999, distance: "Unknown" };
-     }).sort((a, b) => a.distVal - b.distVal).slice(0, 5); // Top 5 nearest
+     }).sort((a, b) => a.distVal - b.distVal).slice(0, 5);
   }, [offers, userLocation]);
 
   const sortedStores = useMemo(() => {
@@ -324,7 +351,6 @@ export default function HomeScreen({ currentUser }: Props) {
         behavior: 'smooth'
       });
       
-      // Update button states after scrolling
       setTimeout(checkScrollButtons, 300);
     }
   };
@@ -334,26 +360,40 @@ export default function HomeScreen({ currentUser }: Props) {
      setUserLocation(tempLocation);
      setShowLocationModal(false);
      
-     // Save to backend
      try {
         await fetch(`${API_BASE}/update-profile`, {
            method: 'PATCH',
-           headers: { 'Authorization': `Bearer ${currentUser.token}`, 'Content-Type': 'application/json' },
+           headers: { 
+             'Authorization': `Bearer ${currentUser.token}`, 
+             'Content-Type': 'application/json' 
+           },
            body: JSON.stringify({
               location: `Lat: ${tempLocation.lat.toFixed(6)}, Lng: ${tempLocation.lng.toFixed(6)}`,
               latitude: tempLocation.lat,
               longitude: tempLocation.lng
            })
         });
-     } catch (e) { console.error("Failed to save loc", e); }
+     } catch (e) { 
+        console.error("Failed to save location", e); 
+     }
   };
 
   const handleAutoDetect = () => {
      if ("geolocation" in navigator) {
-        navigator.geolocation.getCurrentPosition((pos) => {
-           setTempLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
-        });
-     } else { alert("Geolocation not supported"); }
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            setTempLocation({ 
+              lat: pos.coords.latitude, 
+              lng: pos.coords.longitude 
+            });
+          },
+          (error) => {
+            alert(`Geolocation error: ${error.message}`);
+          }
+        );
+     } else { 
+        alert("Geolocation not supported by your browser"); 
+     }
   };
 
   const handleContact = async (offer: Offer) => {
@@ -363,6 +403,7 @@ export default function HomeScreen({ currentUser }: Props) {
        const resp = await fetch(`${API_BASE}/chats?user=${encodeURIComponent(currentUser.email)}`, {
           headers: { "Authorization": `Bearer ${currentUser.token}` }
        });
+       
        if (resp.ok) {
           const chats: any[] = await resp.json();
           const existingChat = chats.find((c: any) => 
@@ -375,14 +416,16 @@ export default function HomeScreen({ currentUser }: Props) {
              return;
           }
        }
-    } catch (e) { console.error("Error checking chats", e); }
+    } catch (e) { 
+      console.error("Error checking chats", e); 
+    }
 
     navigate(`/chat/new`, {
       state: {
         chat: {
           id: 0,
           user1: currentUser.email,
-          user2: offer.ownerEmail || offer.ownerEmail,
+          user2: offer.ownerEmail,
           other_user_name: offer.ownerName || "Seller",
           offer_title: offer.bookTitle,
           offer_id: offer.id,
@@ -396,7 +439,7 @@ export default function HomeScreen({ currentUser }: Props) {
     navigate(`/store/${store.id}`, { state: { store } });
   };
 
-  // Store Card Component - Smaller, Clean Shop Icon
+  // Store Card Component
   const StoreCard = ({ store }: { store: Store }) => (
     <motion.div
       whileHover={{ scale: 1.05, y: -2 }}
@@ -409,7 +452,7 @@ export default function HomeScreen({ currentUser }: Props) {
         <FaStore size={16} className="text-white" />
       </div>
       
-      {/* Store Name - Positioned below */}
+      {/* Store Name */}
       <div className="absolute -bottom-5 left-1/2 -translate-x-1/2 w-24 md:w-28">
         <h3 className="text-[9px] md:text-[10px] font-semibold text-[#382110] text-center truncate w-full leading-tight">
           {store.name}
@@ -438,7 +481,10 @@ export default function HomeScreen({ currentUser }: Props) {
                onClick={(e) => e.stopPropagation()}
                className="bg-[#fff] w-full max-w-4xl rounded-[4px] shadow-2xl overflow-hidden flex flex-col md:flex-row max-h-[90vh] md:max-h-[600px] relative"
              >
-                <button onClick={() => setSelectedOffer(null)} className="absolute top-4 right-4 z-10 text-white md:text-[#333] bg-black/20 md:bg-gray-100 p-2 rounded-full hover:bg-black/40 md:hover:bg-gray-200 transition-colors">
+                <button 
+                  onClick={() => setSelectedOffer(null)} 
+                  className="absolute top-4 right-4 z-10 text-white md:text-[#333] bg-black/20 md:bg-gray-100 p-2 rounded-full hover:bg-black/40 md:hover:bg-gray-200 transition-colors"
+                >
                    <FaTimes size={16} />
                 </button>
 
@@ -446,6 +492,7 @@ export default function HomeScreen({ currentUser }: Props) {
                 <div className="w-full md:w-1/2 bg-[#f4f1ea] relative flex items-center justify-center p-8">
                    <img 
                      src={selectedOffer.imageUrl || "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=600&q=80"} 
+                     alt={selectedOffer.bookTitle}
                      className="max-h-full max-w-full shadow-lg object-contain" 
                    />
                    <div className="absolute bottom-4 left-4 bg-white/90 px-3 py-1 rounded text-xs font-bold text-[#382110] shadow-sm uppercase tracking-wide">
@@ -456,41 +503,45 @@ export default function HomeScreen({ currentUser }: Props) {
                 {/* Right: Details */}
                 <div className="w-full md:w-1/2 p-8 flex flex-col bg-white overflow-y-auto">
                    <div className="mb-6">
-                      <h2 className="font-serif font-bold text-3xl text-[#382110] mb-2 leading-tight">{selectedOffer.bookTitle}</h2>
-                      <p className="text-lg text-[#555]">by <span className="font-bold underline decoration-[#382110]">{selectedOffer.author}</span></p>
+                      <h2 className="font-serif font-bold text-3xl text-[#382110] mb-2 leading-tight">
+                        {selectedOffer.bookTitle}
+                      </h2>
+                      <p className="text-lg text-[#555]">
+                        by <span className="font-bold underline decoration-[#382110]">{selectedOffer.author}</span>
+                      </p>
                    </div>
 
-                    <div className="flex gap-4 mb-6 text-sm text-[#555] border-y border-[#eee] py-4">
+                   <div className="flex gap-4 mb-6 text-sm text-[#555] border-y border-[#eee] py-4">
                        <div className="flex items-center gap-2">
                           <div className="w-10 h-10 rounded-full overflow-hidden bg-[#382110]/10 border border-[#eee] flex-shrink-0">
                              {selectedOffer.ownerPhoto ? (
-                                <img src={selectedOffer.ownerPhoto} className="w-full h-full object-cover" alt={selectedOffer.ownerName} />
+                                <img 
+                                  src={selectedOffer.ownerPhoto} 
+                                  className="w-full h-full object-cover" 
+                                  alt={selectedOffer.ownerName} 
+                                />
                              ) : (
                                 <div className="w-full h-full flex items-center justify-center bg-[#382110] text-white font-bold text-sm">
                                    {selectedOffer.ownerName?.charAt(0) || "U"}
                                 </div>
                              )}
                           </div>
-                          <div className="flex items-center gap-2">
-                             <div className="flex items-center gap-2">
-                             <span className="font-bold text-[#382110] text-base">{selectedOffer.ownerName || "Community Member"}</span>
-                             {selectedOffer.ownerBadges && Array.isArray(selectedOffer.ownerBadges) && selectedOffer.ownerBadges.length > 0 && (
-                                <span className="px-2 py-0.5 rounded text-[9px] font-bold bg-[#d37e2f]/20 text-[#d37e2f] border border-[#d37e2f]/30 whitespace-nowrap">
-                                   {selectedOffer.ownerBadges[selectedOffer.ownerBadges.length - 1]}
-                                </span>
-                             )}
-                          </div>
-                             {selectedOffer.ownerBadges && selectedOffer.ownerBadges.length > 0 && (
-                                <span className="px-2 py-0.5 rounded text-[9px] font-bold bg-[#d37e2f]/20 text-[#d37e2f] border border-[#d37e2f]/30 whitespace-nowrap">
-                                   {selectedOffer.ownerBadges[selectedOffer.ownerBadges.length - 1]}
-                                </span>
-                             )}
+                          <div className="flex flex-col">
+                            <span className="font-bold text-[#382110] text-base">{selectedOffer.ownerName}</span>
+                            {selectedOffer.ownerBadges && selectedOffer.ownerBadges.length > 0 && (
+                              <div className="flex flex-wrap gap-1 mt-1">
+                                {selectedOffer.ownerBadges.map((badge, index) => (
+                                  <span 
+                                    key={index}
+                                    className="px-2 py-0.5 rounded text-[9px] font-bold bg-[#d37e2f]/20 text-[#d37e2f] border border-[#d37e2f]/30"
+                                  >
+                                    {badge}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
                           </div>
                        </div>
-                      <div className="border-l border-[#eee] pl-4 flex items-center gap-2">
-                         <FaMapMarkerAlt className="text-[#999]" />
-                         {selectedOffer.distance || "Nearby"}
-                      </div>
                    </div>
 
                    <div className="prose prose-sm prose-stone flex-1 mb-6">
@@ -498,7 +549,11 @@ export default function HomeScreen({ currentUser }: Props) {
                          {selectedOffer.description || "No description provided. Contact the seller for more details about condition and edition."}
                       </p>
                       <div className="mt-4 flex gap-2">
-                         {selectedOffer.condition && <span className="px-2 py-1 bg-[#f4f1ea] text-[#382110] text-xs font-bold rounded">{selectedOffer.condition}</span>}
+                         {selectedOffer.condition && (
+                           <span className="px-2 py-1 bg-[#f4f1ea] text-[#382110] text-xs font-bold rounded">
+                             {selectedOffer.condition}
+                           </span>
+                         )}
                       </div>
                    </div>
 
@@ -533,25 +588,50 @@ export default function HomeScreen({ currentUser }: Props) {
        <AnimatePresence>
          {showLocationModal && (
            <div className="fixed inset-0 z-[100] bg-black/60 flex items-center justify-center p-4">
-              <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} className="bg-white p-6 rounded-[2px] w-full max-w-lg shadow-2xl">
+              <motion.div 
+                initial={{ scale: 0.9 }} 
+                animate={{ scale: 1 }} 
+                className="bg-white p-6 rounded-[2px] w-full max-w-lg shadow-2xl"
+              >
                  <h3 className="font-serif font-bold text-xl text-[#382110] mb-4">Pinpoint Your Location</h3>
                  
                  <div className="flex gap-2 mb-4">
-                   <button type="button" onClick={handleAutoDetect} className="flex-1 bg-white border border-[#ccc] py-2 text-xs font-bold text-[#555] hover:bg-[#eee] flex items-center justify-center gap-1">
+                   <button 
+                     type="button" 
+                     onClick={handleAutoDetect} 
+                     className="flex-1 bg-white border border-[#ccc] py-2 text-xs font-bold text-[#555] hover:bg-[#eee] flex items-center justify-center gap-1"
+                   >
                       <FaCrosshairs /> Auto Detect
                    </button>
                  </div>
 
                  <div className="h-64 border border-[#ccc] mb-4 relative z-0">
-                    <MapContainer center={userLocation || { lat: 40.7128, lng: -74.0060 }} zoom={13} style={{ height: "100%", width: "100%" }}>
+                    <MapContainer 
+                      center={userLocation || { lat: 40.7128, lng: -74.0060 }} 
+                      zoom={13} 
+                      style={{ height: "100%", width: "100%" }}
+                    >
                          <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-                         <LocationMarker position={tempLocation || userLocation} setPosition={setTempLocation} />
+                         <LocationMarker 
+                           position={tempLocation || userLocation} 
+                           setPosition={setTempLocation} 
+                         />
                     </MapContainer>
                  </div>
                  
                  <div className="flex justify-end gap-3">
-                    <button onClick={() => setShowLocationModal(false)} className="text-[#999] text-sm hover:text-[#382110]">Cancel</button>
-                    <button onClick={updateLocation} className="bg-[#382110] text-white px-4 py-2 rounded-full text-sm font-bold shadow-lg hover:scale-105 transition-transform">Save Location</button>
+                    <button 
+                      onClick={() => setShowLocationModal(false)} 
+                      className="text-[#999] text-sm hover:text-[#382110]"
+                    >
+                      Cancel
+                    </button>
+                    <button 
+                      onClick={updateLocation} 
+                      className="bg-[#382110] text-white px-4 py-2 rounded-full text-sm font-bold shadow-lg hover:scale-105 transition-transform"
+                    >
+                      Save Location
+                    </button>
                  </div>
               </motion.div>
            </div>
@@ -561,7 +641,7 @@ export default function HomeScreen({ currentUser }: Props) {
        {/* Main Feed */}
        <div className="flex-1 md:pr-6">
           
-          {/* Stores Section - Top of Screen */}
+          {/* Stores Section */}
           {sortedStores.length > 0 && (
             <div className="mb-8 pt-2">
               <div className="flex justify-between items-center mb-3">
@@ -598,17 +678,24 @@ export default function HomeScreen({ currentUser }: Props) {
             </div>
           )}
           
-          {/* Mobile Artistic Grid (Stickers) - Removed */}
-          
           {/* Location Banner or Nearest Books */}
           {!userLocation ? (
-             <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="mb-8 bg-gradient-to-r from-[#f4f1ea] to-white border border-[#d8d8d8] p-4 shadow-sm flex items-center gap-4 rounded-[2px] relative overflow-hidden">
-                <div className="bg-[#382110] p-3 rounded-full text-white z-10"><FaLocationArrow /></div>
+             <motion.div 
+               initial={{ opacity: 0, y: -10 }} 
+               animate={{ opacity: 1, y: 0 }} 
+               className="mb-8 bg-gradient-to-r from-[#f4f1ea] to-white border border-[#d8d8d8] p-4 shadow-sm flex items-center gap-4 rounded-[2px] relative overflow-hidden"
+             >
+                <div className="bg-[#382110] p-3 rounded-full text-white z-10">
+                  <FaLocationArrow />
+                </div>
                 <div className="flex-1 z-10">
                    <h2 className="font-serif font-bold text-[#382110] text-sm md:text-base">Enhance Your Experience</h2>
                    <p className="text-xs text-[#555]">Enter your location to see books available in your immediate neighborhood.</p>
                 </div>
-                <button onClick={() => setShowLocationModal(true)} className="relative z-10 px-4 py-2 bg-[#d37e2f] text-white text-xs font-bold rounded-full hover:bg-[#b56b25] transition-colors shadow-sm">
+                <button 
+                  onClick={() => setShowLocationModal(true)} 
+                  className="relative z-10 px-4 py-2 bg-[#d37e2f] text-white text-xs font-bold rounded-full hover:bg-[#b56b25] transition-colors shadow-sm"
+                >
                    Set Location
                 </button>
                 <div className="absolute top-0 right-0 w-32 h-32 bg-[#d37e2f]/5 rounded-full blur-2xl -mr-10 -mt-10" />
@@ -621,17 +708,30 @@ export default function HomeScreen({ currentUser }: Props) {
                 <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide">
                    {nearestOffers.length > 0 ? nearestOffers.map(offer => (
                       <div key={offer.id} className="min-w-[140px] w-[140px] flex flex-col gap-2 group">
-                         <div onClick={() => setSelectedOffer(offer)} className="w-full h-[200px] relative shadow-md cursor-pointer overflow-hidden border border-[#eee]">
-                            <img src={offer.imageUrl || "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=300&q=80"} className="w-full h-full object-cover" />
+                         <div 
+                           onClick={() => setSelectedOffer(offer)} 
+                           className="w-full h-[200px] relative shadow-md cursor-pointer overflow-hidden border border-[#eee]"
+                         >
+                            <img 
+                              src={offer.imageUrl || "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=300&q=80"} 
+                              alt={offer.bookTitle}
+                              className="w-full h-full object-cover" 
+                            />
                             <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-[10px] p-1 text-center font-bold">
                                {offer.distance} away
                             </div>
                          </div>
-                         <h3 className="font-serif font-bold text-[#382110] text-xs leading-tight truncate">{offer.bookTitle}</h3>
+                         <h3 className="font-serif font-bold text-[#382110] text-xs leading-tight truncate">
+                           {offer.bookTitle}
+                         </h3>
                          <div className="flex items-center gap-1.5 opacity-80">
                             <div className="w-4 h-4 rounded-full overflow-hidden bg-[#382110]/10 flex-shrink-0">
                                {offer.ownerPhoto ? (
-                                  <img src={offer.ownerPhoto} className="w-full h-full object-cover" />
+                                  <img 
+                                    src={offer.ownerPhoto} 
+                                    alt={offer.ownerName}
+                                    className="w-full h-full object-cover" 
+                                  />
                                ) : (
                                   <div className="w-full h-full flex items-center justify-center text-[7px] font-bold text-[#382110]">
                                      {offer.ownerName?.charAt(0).toUpperCase() || "U"}
@@ -650,7 +750,9 @@ export default function HomeScreen({ currentUser }: Props) {
                             </div>
                          </div>
                       </div>
-                   )) : <div className="text-sm text-[#777] italic">No books in your immediate radius yet.</div>}
+                   )) : (
+                     <div className="text-sm text-[#777] italic">No books in your immediate radius yet.</div>
+                   )}
                 </div>
              </div>
           )}
@@ -673,11 +775,10 @@ export default function HomeScreen({ currentUser }: Props) {
                         onClick={() => setSelectedOffer(offer)}
                         className="w-full h-[200px] md:h-[220px] relative rounded-lg overflow-hidden bg-[#f8f6f3]"
                       >
-                         {/* Image with slight zoom on hover */}
                          <img 
                             src={offer.imageUrl || "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=300&q=80"} 
-                            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 opacity-95 group-hover:opacity-100" 
                             alt={offer.bookTitle}
+                            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 opacity-95 group-hover:opacity-100" 
                          />
                          
                          {/* Type Badge */}
@@ -691,7 +792,8 @@ export default function HomeScreen({ currentUser }: Props) {
                          {/* Distance Badge */}
                          {userLocation && offer.latitude !== undefined && offer.longitude !== undefined && (
                             <div className="absolute bottom-2 left-2 bg-black/60 backdrop-blur-sm text-white px-2 py-0.5 rounded-md text-[10px] font-bold flex items-center gap-1.5 shadow-sm">
-                               <FaLocationArrow size={8} /> {getDistanceFromLatLonInKm(userLocation.lat, userLocation.lng, offer.latitude, offer.longitude).toFixed(1)} km
+                               <FaLocationArrow size={8} /> 
+                               {getDistanceFromLatLonInKm(userLocation.lat, userLocation.lng, offer.latitude, offer.longitude).toFixed(1)} km
                             </div>
                          )}
                       </div>
@@ -703,13 +805,19 @@ export default function HomeScreen({ currentUser }: Props) {
                          >
                             {offer.bookTitle}
                          </h3>
-                         <div className="text-xs text-[#777] mb-3 truncate font-medium">by {offer.author}</div>
+                         <div className="text-xs text-[#777] mb-3 truncate font-medium">
+                           by {offer.author}
+                         </div>
                          
                          {/* Owner Info Section */}
                          <div className="flex items-center gap-2 pt-2 border-t border-[#f4f4f4]">
                             <div className="w-7 h-7 rounded-full overflow-hidden bg-[#f4f1ea] border border-[#e5e5e5] flex-shrink-0 shadow-sm">
                                {offer.ownerPhoto ? (
-                                  <img src={offer.ownerPhoto} className="w-full h-full object-cover" alt={offer.ownerName} />
+                                  <img 
+                                    src={offer.ownerPhoto} 
+                                    alt={offer.ownerName}
+                                    className="w-full h-full object-cover" 
+                                  />
                                ) : (
                                   <div className="w-full h-full flex items-center justify-center text-[10px] font-bold text-[#382110]">
                                      {offer.ownerName?.charAt(0).toUpperCase() || "U"}
@@ -731,10 +839,9 @@ export default function HomeScreen({ currentUser }: Props) {
                          </div>
                       </div>
                    </motion.div>
-                )) : <div className="text-[#777] italic">No offers found.</div>}
-                
-                {/* Spacers for flex justification on mobile 2-col */}
-                <div className="w-[48%] md:hidden h-0" />
+                )) : (
+                  <div className="text-[#777] italic col-span-full">No offers found.</div>
+                )}
              </div>
           )}
        </div>
@@ -774,8 +881,18 @@ export default function HomeScreen({ currentUser }: Props) {
           <div className="mt-8 border-t border-[#d8d8d8] pt-6">
              <h4 className="font-bold text-[#382110] mb-4 uppercase text-xs tracking-widest">Marketplace Utils</h4>
              <ul className="space-y-2 text-sm text-[#00635d] font-bold">
-                <li><a href="/offer" className="hover:underline flex items-center gap-2"><div className="w-1.5 h-1.5 bg-[#00635d] rounded-full"></div> Post a Book for Sale</a></li>
-                <li><a href="/offer" className="hover:underline flex items-center gap-2"><div className="w-1.5 h-1.5 bg-[#00635d] rounded-full"></div> Request a Book (ISO)</a></li>
+                <li>
+                  <a href="/offer" className="hover:underline flex items-center gap-2">
+                    <div className="w-1.5 h-1.5 bg-[#00635d] rounded-full"></div> 
+                    Post a Book for Sale
+                  </a>
+                </li>
+                <li>
+                  <a href="/offer" className="hover:underline flex items-center gap-2">
+                    <div className="w-1.5 h-1.5 bg-[#00635d] rounded-full"></div> 
+                    Request a Book (ISO)
+                  </a>
+                </li>
              </ul>
           </div>
        </aside>
