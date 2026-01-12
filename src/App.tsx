@@ -334,9 +334,9 @@ function App() {
             )}
           </AnimatePresence>
 
-          <div className="bg-[#f4f1ea] pb-24 top-gap-fix">
-            <div className="max-w-[1100px] mx-auto bg-white min-h-[calc(100vh-120px)] shadow-[0_0_10px_rgba(0,0,0,0.02)] border-x border-[#ebebeb]">
-              <Routes>
+          <div className="bg-[#f4f1ea]">
+            <div className="max-w-[1100px] mx-auto bg-white shadow-[0_0_10px_rgba(0,0,0,0.02)] border-x border-[#ebebeb] min-h-[calc(100vh-110px)] md:min-h-[calc(100vh-60px)]">
+               <Routes>
                 <Route path="/auth/callback" element={<AuthCallback />} />
 
                 <Route path="/login" element={<LoginScreen onLoginSuccess={handleAuth} onGoToSignup={() => navigate("/signup")} />} />

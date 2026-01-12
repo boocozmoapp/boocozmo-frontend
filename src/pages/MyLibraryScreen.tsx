@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
-// src/pages/MyLibraryScreen.tsx - FIXED FOR NEW BACKEND
+// src/pages/MyLibraryScreen.tsx - UPDATED FOR NEW BACKEND & DB STRUCTURE
 import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -35,22 +35,26 @@ function LocationMarker({ position, setPosition }: { position: { lat: number; ln
 
 const API_BASE = "https://boocozmo-api.onrender.com";
 
-type Offer = {
+type StoreOffer = {
   id: number;
-  type: "sell" | "exchange";
+  storeId: number;
+  offerId: number | null;
+  type: "sell" | "exchange" | "buy";
   bookTitle: string;
   exchangeBook: string | null;
   price: number | null;
   condition: string | null;
   ownerEmail: string;
   imageUrl: string | null;
-  latitude: number | null;
-  longitude: number | null;
-  visibility: "public" | "private";
   state: "open" | "closed";
+  visibility: "public" | "private";
   publishedAt?: string;
-  created_at?: string;
-  updated_at?: string;
+  isPrimary: boolean;
+  originalOfferId: number | null;
+  position: number;
+  notes: string | null;
+  createdAt?: string;
+  updatedAt?: string;
 };
 
 type Store = {
@@ -58,11 +62,12 @@ type Store = {
   name: string;
   ownerEmail: string;
   created_at: string;
+  updated_at?: string;
   visibility: "public" | "private";
   location?: string | null;
   latitude?: number | null;
   longitude?: number | null;
-  offers?: Offer[];
+  bookCount?: number;
 };
 
 type Props = {
@@ -97,8 +102,7 @@ export default function MyLibraryScreen({
 
   const [stores, setStores] = useState<Store[]>([]);
   const [selectedStore, setSelectedStore] = useState<Store | null>(null);
-  const [storeOffers, setStoreOffers] = useState<Offer[]>([]);
-  const [userOffers, setUserOffers] = useState<Offer[]>([]);
+  const [storeOffers, setStoreOffers] = useState<StoreOffer[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingOffers, setLoadingOffers] = useState(false);
 
@@ -116,12 +120,14 @@ export default function MyLibraryScreen({
   const [newBookForm, setNewBookForm] = useState({
     bookTitle: "",
     author: "",
-    genre: "Fiction",
     condition: "Good",
     description: "",
+    price: "0",
+    type: "sell" as "sell" | "exchange" | "buy",
+    exchangeBook: "",
     imageFile: null as File | null,
     imagePreview: null as string | null,
-    storeId: null as number | null,
+    notes: "",
   });
   const [addingBook, setAddingBook] = useState(false);
 
@@ -145,7 +151,7 @@ export default function MyLibraryScreen({
 
     setLoading(true);
     try {
-      const response = await fetchWithTimeout(`${API_BASE}/stores`, {
+      const response = await fetchWithTimeout(`${API_BASE}/stores?includeOffers=true`, {
         method: 'GET',
         headers: { 
           'Authorization': `Bearer ${currentUser.token}`,
@@ -156,47 +162,33 @@ export default function MyLibraryScreen({
 
       if (!response.ok) {
         const errorText = await response.text();
-        throw new Error(`Failed to load libraries: ${errorText}`);
+        throw new Error(`Failed to load collections: ${errorText}`);
       }
       
       const data = await response.json();
       console.log("Stores data received:", data);
       
-      // Use whatever format the backend returns (could be array or object with stores property)
       const userStores = Array.isArray(data) ? data : (data.stores || []);
       
-      setStores(userStores);
-      if (userStores.length > 0 && !selectedStore) {
-        setSelectedStore(userStores[0]);
+      // Ensure all stores have bookCount
+      const storesWithCount = userStores.map((store: any) => ({
+        ...store,
+        bookCount: store.bookCount || store.offers?.length || 0
+      }));
+      
+      setStores(storesWithCount);
+      if (storesWithCount.length > 0 && !selectedStore) {
+        setSelectedStore(storesWithCount[0]);
       }
     } catch (err: any) {
       console.error("Fetch stores error:", err);
       if (err.name !== "AbortError") {
-        alert(`Error loading libraries: ${err.message}`);
+        alert(`Error loading collections: ${err.message}`);
       }
     } finally {
       setLoading(false);
     }
   }, [currentUser.token, selectedStore]);
-
-  // ==================== FETCH USER OFFERS ====================
-  const fetchUserOffers = useCallback(async () => {
-    try {
-      const response = await fetchWithTimeout(`${API_BASE}/my-offers`, {
-        headers: { 
-          "Authorization": `Bearer ${currentUser.token}`,
-          "Content-Type": "application/json"
-        }
-      });
-      if (response.ok) {
-        const data = await response.json();
-        const offers = Array.isArray(data.offers) ? data.offers : (data.offers || []);
-        setUserOffers(offers);
-      }
-    } catch (err) {
-      console.error("Error fetching user offers:", err);
-    }
-  }, [currentUser.token]);
 
   // ==================== FETCH STORE OFFERS ====================
   const fetchStoreOffers = useCallback(async (store: Store) => {
@@ -207,7 +199,7 @@ export default function MyLibraryScreen({
     
     setLoadingOffers(true);
     try {
-      const response = await fetchWithTimeout(`${API_BASE}/offers-by-store?store_id=${store.id}`, {
+      const response = await fetchWithTimeout(`${API_BASE}/my-store-offers/${store.id}`, {
         method: 'GET',
         headers: {
           "Authorization": `Bearer ${currentUser.token}`,
@@ -223,25 +215,31 @@ export default function MyLibraryScreen({
       const data = await response.json();
       console.log("Store offers data:", data);
       
-      // Process offers - they already have correct visibility from backend
-      const processed = (data.offers || []).map((o: any) => ({
+      const offers = data.offers || data || [];
+      
+      const processed: StoreOffer[] = offers.map((o: any) => ({
         id: o.id,
-        type: o.type,
-        bookTitle: o.bookTitle,
-        exchangeBook: o.exchangeBook,
+        storeId: o.store_id || o.storeId,
+        offerId: o.offer_id || o.offerId,
+        type: o.type || "sell",
+        bookTitle: o.booktitle || o.bookTitle || '',
+        exchangeBook: o.exchangebook || o.exchangeBook,
         price: o.price ? parseFloat(o.price) : null,
         condition: o.condition,
-        ownerEmail: o.ownerEmail,
-        imageUrl: o.imageUrl,
-        latitude: o.latitude ? parseFloat(o.latitude) : null,
-        longitude: o.longitude ? parseFloat(o.longitude) : null,
-        visibility: o.visibility || "private",
+        ownerEmail: o.owneremail || o.ownerEmail,
+        imageUrl: o.imageurl || o.imageUrl,
         state: o.state || "open",
-        publishedAt: o.publishedAt,
-        created_at: o.created_at,
-        updated_at: o.updated_at
+        visibility: o.visibility || "private",
+        publishedAt: o.publishedat || o.publishedAt,
+        isPrimary: o.is_primary || o.isPrimary || false,
+        originalOfferId: o.original_offer_id || o.originalOfferId,
+        position: o.position || 0,
+        notes: o.notes,
+        createdAt: o.created_at || o.createdAt,
+        updatedAt: o.updated_at || o.updatedAt
       }));
       
+      console.log(`Processed ${processed.length} store offers`);
       setStoreOffers(processed);
     } catch (err) {
       console.error("Fetch store offers error:", err);
@@ -256,7 +254,6 @@ export default function MyLibraryScreen({
     const newVisibility = (store.visibility === "public" ? "private" : "public") as "public" | "private";
     
     if (newVisibility === "private") {
-      // Making private - no location needed
       const confirmMessage = "Make this collection private? Others will no longer see it.";
       if (!confirm(confirmMessage)) return;
 
@@ -287,7 +284,6 @@ export default function MyLibraryScreen({
         alert(`Failed to update collection visibility: ${err.message}`);
       }
     } else {
-      // Making public - need location
       const confirmMessage = "Make this collection public? You'll need to set a location so others can find it on the map.";
       if (!confirm(confirmMessage)) return;
       
@@ -314,7 +310,8 @@ export default function MyLibraryScreen({
         },
         body: JSON.stringify({ 
           latitude: tempLocation.lat,
-          longitude: tempLocation.lng 
+          longitude: tempLocation.lng,
+          location: `Lat: ${tempLocation.lat.toFixed(6)}, Lng: ${tempLocation.lng.toFixed(6)}`
         }),
       });
 
@@ -323,7 +320,7 @@ export default function MyLibraryScreen({
         throw new Error(`Failed to update location: ${errorText}`);
       }
 
-      // Then update visibility
+      // Then update visibility to public
       const visibilityResponse = await fetchWithTimeout(`${API_BASE}/stores/${storeToMakePublic.id}/visibility`, {
         method: "PATCH",
         headers: {
@@ -342,7 +339,8 @@ export default function MyLibraryScreen({
         ...storeToMakePublic, 
         visibility: "public" as const,
         latitude: tempLocation.lat,
-        longitude: tempLocation.lng
+        longitude: tempLocation.lng,
+        location: `Lat: ${tempLocation.lat.toFixed(6)}, Lng: ${tempLocation.lng.toFixed(6)}`
       };
       
       setStores(prev => prev.map(s => s.id === storeToMakePublic.id ? updatedStore : s));
@@ -367,7 +365,7 @@ export default function MyLibraryScreen({
       return;
     }
     
-    const link = `${window.location.origin}/library/${store.id}`;
+    const link = `${window.location.origin}/store/${store.id}`;
     setShareLink(link);
     setShowShareModal(true);
   };
@@ -411,24 +409,24 @@ export default function MyLibraryScreen({
       setNewStoreName("");
       setNewStoreVisibility("private");
       setShowCreateStoreModal(false);
-      alert("Store created successfully!");
+      alert("Collection created successfully!");
       
     } catch (e: any) { 
       console.error("Create store error:", e);
-      alert(`Error creating store: ${e.message}`); 
+      alert(`Error creating collection: ${e.message}`); 
     } finally { 
       setCreatingStore(false); 
     }
   };
 
   // ==================== REMOVE BOOK FROM STORE ====================
-  const handleRemove = async (offerId: number) => {
+  const handleRemoveBook = async (storeOfferId: number) => {
     if (!selectedStore) return;
     if (!confirm("Remove this book from the collection?")) return;
     
     try {
-      const response = await fetchWithTimeout(`${API_BASE}/remove-from-store/${selectedStore.id}/${offerId}`, {
-        method: 'POST',
+      const response = await fetchWithTimeout(`${API_BASE}/store-offers/${storeOfferId}`, {
+        method: 'DELETE',
         headers: { 
           "Authorization": `Bearer ${currentUser.token}`,
           "Content-Type": "application/json"
@@ -441,6 +439,7 @@ export default function MyLibraryScreen({
       }
       
       await fetchStoreOffers(selectedStore);
+      await fetchStores(); // Refresh store count
       alert("Book removed from collection");
     } catch (e: any) {
       console.error(e);
@@ -453,89 +452,70 @@ export default function MyLibraryScreen({
     if (!selectedStore) return;
     setAddingBook(true);
     try {
-      // 1. Check if the book already exists in user's offers
-      const existingOffer = userOffers.find(o => 
-        o.bookTitle.toLowerCase() === newBookForm.bookTitle.toLowerCase()
-      );
-      
-      let offerId = existingOffer?.id;
-
-      if (!offerId) {
-        // 2. If not present, create new offer with storeId for automatic visibility inheritance
-        let imageBase64 = null;
-        if (newBookForm.imageFile) {
-          imageBase64 = await new Promise<string>((resolve) => {
-            const reader = new FileReader();
-            reader.onloadend = () => resolve(reader.result as string);
-            reader.readAsDataURL(newBookForm.imageFile!);
-          });
-        }
-        
-        const payload = {
-          bookTitle: newBookForm.bookTitle,
-          condition: newBookForm.condition,
-          type: 'sell',
-          image: imageBase64,
-          price: 0,
-          exchangeBook: null,
-          latitude: null,
-          longitude: null,
-          storeId: selectedStore.id // Pass storeId so backend sets correct visibility
-        };
-        
-        console.log("Creating offer with payload:", payload);
-        
-        const offerRes = await fetchWithTimeout(`${API_BASE}/submit-offer`, {
-          method: 'POST', 
-          headers: { 
-            "Authorization": `Bearer ${currentUser.token}`, 
-            "Content-Type": "application/json" 
-          },
-          body: JSON.stringify(payload)
+      let imageBase64 = null;
+      if (newBookForm.imageFile) {
+        imageBase64 = await new Promise<string>((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            const result = reader.result as string;
+            // Extract base64 data without the data URL prefix
+            const base64Data = result.split(',')[1] || result;
+            resolve(base64Data);
+          };
+          reader.readAsDataURL(newBookForm.imageFile!);
         });
-        
-        if (!offerRes.ok) {
-          const errorText = await offerRes.text();
-          throw new Error(`Failed to create book: ${errorText}`);
-        }
-        
-        const newOfferData = await offerRes.json();
-        console.log("New offer created:", newOfferData);
-        
-        offerId = newOfferData.offer?.id || newOfferData.id;
-        
-        // Refresh user offers for future checks
-        await fetchUserOffers();
-      } else {
-        // 3. If offer exists, add it to store using add-to-store route
-        const response = await fetchWithTimeout(`${API_BASE}/add-to-store/${selectedStore.id}`, {
-          method: 'POST', 
-          headers: { 
-            "Authorization": `Bearer ${currentUser.token}`, 
-            "Content-Type": "application/json" 
-          },
-          body: JSON.stringify({ offerIds: [offerId] })
-        });
-        
-        if (!response.ok) {
-          const err = await response.json();
-          if (err.error !== "Already in store") {
-            throw new Error(err.error || "Failed to add to store");
-          }
-        }
       }
+      
+      const payload = {
+        storeId: selectedStore.id,
+        type: newBookForm.type,
+        bookTitle: newBookForm.bookTitle.trim(),
+        exchangeBook: newBookForm.type === "exchange" ? newBookForm.exchangeBook.trim() : null,
+        price: newBookForm.type === "sell" ? parseFloat(newBookForm.price) : null,
+        image: imageBase64,
+        condition: newBookForm.condition,
+        notes: newBookForm.notes || null,
+        position: 0
+      };
+      
+      console.log("Creating store offer with payload:", { 
+        ...payload, 
+        image: imageBase64 ? "base64 image present" : "no image" 
+      });
+      
+      const response = await fetchWithTimeout(`${API_BASE}/add-store-offer`, {
+        method: 'POST', 
+        headers: { 
+          "Authorization": `Bearer ${currentUser.token}`, 
+          "Content-Type": "application/json" 
+        },
+        body: JSON.stringify(payload)
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("Create store offer error response:", errorText);
+        throw new Error(`Failed to add book: ${errorText}`);
+      }
+      
+      const newStoreOffer = await response.json();
+      console.log("New store offer created:", newStoreOffer);
 
       await fetchStoreOffers(selectedStore);
+      await fetchStores(); // Refresh store count
+      
       setShowAddBookModal(false);
-      setNewBookForm({ 
-        bookTitle: "", 
-        author: "", 
-        genre: "Fiction", 
-        condition: "Good", 
-        description: "", 
-        imageFile: null, 
+      setNewBookForm({
+        bookTitle: "",
+        author: "",
+        condition: "Good",
+        description: "",
+        price: "0",
+        type: "sell",
+        exchangeBook: "",
+        imageFile: null,
         imagePreview: null,
-        storeId: null 
+        notes: "",
       });
       
       alert("Book added to collection successfully!");
@@ -550,9 +530,8 @@ export default function MyLibraryScreen({
   // ==================== EFFECTS ====================
   useEffect(() => {
     fetchStores();
-    fetchUserOffers();
     return () => abortControllerRef.current?.abort();
-  }, [fetchStores, fetchUserOffers]);
+  }, [fetchStores]);
 
   useEffect(() => {
     if (selectedStore) {
@@ -562,24 +541,14 @@ export default function MyLibraryScreen({
     }
   }, [selectedStore, fetchStoreOffers]);
 
-  // ==================== MEMOS ====================
-  const booksWithQueueStatus = useMemo(() => {
-    return storeOffers.map(book => {
-      const isQueued = userOffers.some(offer => 
-        offer.bookTitle?.toLowerCase() === book.bookTitle?.toLowerCase()
-      );
-      return { ...book, isQueued };
-    });
-  }, [storeOffers, userOffers]);
-
   // ==================== IMAGE HELPER ====================
-  const getImageSource = (offer: Offer) => {
+  const getImageSource = (offer: StoreOffer) => {
     if (offer.imageUrl) return offer.imageUrl;
     return "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=300&h=400&fit=crop&q=80";
   };
 
   return (
-    <div className="h-screen w-full bg-primary text-text-main flex flex-col overflow-hidden font-sans">
+    <div className="h-[calc(100vh-50px)] md:h-[calc(100vh-60px)] w-full bg-primary text-text-main flex flex-col overflow-hidden font-sans">
       {/* Header */}
       <header className="h-20 px-6 flex items-center justify-between border-b border-[#eee] bg-[#f4f1ea] sticky top-0 z-30">
         <div className="flex items-center gap-4">
@@ -611,7 +580,7 @@ export default function MyLibraryScreen({
           </div>
         </div>
 
-        {/* Libraries List - Compact Horizontal Scroll */}
+        {/* Collections List - Compact Horizontal Scroll */}
         <div className="px-6 py-4 bg-white border-b border-[#eee]">
           <div className="mb-3">
             <h3 className="text-sm font-bold text-[#382110] uppercase tracking-wider">Collections</h3>
@@ -638,7 +607,7 @@ export default function MyLibraryScreen({
                     <div className="min-w-0 flex-1">
                       <h3 className="font-bold text-[#382110] text-sm truncate mb-0.5">{store.name}</h3>
                       <p className="text-[10px] text-[#777] font-medium">
-                        {store.offers?.length || 0} books
+                        {store.bookCount || 0} {store.bookCount === 1 ? 'book' : 'books'}
                       </p>
                     </div>
                   </div>
@@ -683,6 +652,15 @@ export default function MyLibraryScreen({
                   }`}>
                     {selectedStore.visibility === "public" ? "PUBLIC" : "PRIVATE"}
                   </span>
+                  {selectedStore.location && (
+                    <>
+                      <span>•</span>
+                      <span className="flex items-center gap-1">
+                        <FaMapMarkerAlt size={8} />
+                        <span className="truncate max-w-[120px]">{selectedStore.location}</span>
+                      </span>
+                    </>
+                  )}
                 </div>
               </div>
 
@@ -733,17 +711,10 @@ export default function MyLibraryScreen({
                     <span className="text-[10px] font-bold text-[#777] uppercase tracking-wider text-center px-2">Add Book</span>
                   </motion.div>
                   
-                  {booksWithQueueStatus.map(book => (
+                  {storeOffers.map(book => (
                     <div key={book.id} className="group relative rounded-lg overflow-hidden bg-white border border-[#eee] hover:border-[#382110]/40 transition-all shadow-sm">
                       <div className="aspect-[2/3] relative">
                         <img src={getImageSource(book)} className="w-full h-full object-cover" alt={book.bookTitle} />
-                        {book.isQueued && (
-                          <div className="absolute top-2 right-2 z-10">
-                            <span className="text-[8px] font-bold px-1.5 py-0.5 rounded shadow-sm text-white bg-[#d37e2f]">
-                              QUEUED
-                            </span>
-                          </div>
-                        )}
                         {book.visibility === "public" && (
                           <div className="absolute top-2 left-2 z-10">
                             <span className="text-[8px] font-bold px-1.5 py-0.5 rounded shadow-sm text-white bg-[#00635d]">
@@ -757,12 +728,14 @@ export default function MyLibraryScreen({
                               setNewBookForm({
                                 bookTitle: book.bookTitle || "",
                                 author: "",
-                                genre: "Fiction",
                                 condition: book.condition || "Good",
                                 description: "",
+                                price: book.price?.toString() || "0",
+                                type: book.type,
+                                exchangeBook: book.exchangeBook || "",
                                 imageFile: null,
                                 imagePreview: book.imageUrl || null,
-                                storeId: selectedStore.id
+                                notes: book.notes || ""
                               });
                               setShowAddBookModal(true);
                             }}
@@ -772,9 +745,9 @@ export default function MyLibraryScreen({
                             <FaEdit size={14} />
                           </button>
                           <button 
-                            onClick={() => handleRemove(book.id)}
+                            onClick={() => handleRemoveBook(book.id)}
                             className="w-9 h-9 bg-[#e74c3c] text-white rounded-full flex items-center justify-center hover:scale-110 transition-transform shadow-lg"
-                            title="Remove from Library"
+                            title="Remove from Collection"
                           >
                             <FaTrash size={14} />
                           </button>
@@ -786,12 +759,15 @@ export default function MyLibraryScreen({
                         {book.price && book.price > 0 && (
                           <p className="text-[10px] font-bold text-[#d37e2f] mt-1">PKR {book.price}</p>
                         )}
+                        {book.type === "exchange" && book.exchangeBook && (
+                          <p className="text-[9px] text-[#00635d] truncate mt-0.5">For: {book.exchangeBook}</p>
+                        )}
                       </div>
                     </div>
                   ))}
                 </div>
               )}
-              {booksWithQueueStatus.length === 0 && !loadingOffers && (
+              {storeOffers.length === 0 && !loadingOffers && (
                 <div className="text-center py-16">
                   <FaBookOpen size={40} className="mx-auto text-[#999] opacity-30 mb-3" />
                   <p className="text-[#999] text-sm italic">No books in this collection yet</p>
@@ -855,7 +831,7 @@ export default function MyLibraryScreen({
                 </div>
                 <p className="text-xs text-[#777] mt-2">
                   {newStoreVisibility === "public"
-                    ? "Anyone can browse this collection"
+                    ? "Anyone can browse this collection (requires location)"
                     : "Only you can see this collection"}
                 </p>
               </div>
@@ -883,18 +859,64 @@ export default function MyLibraryScreen({
                   onChange={e => setNewBookForm({...newBookForm, bookTitle: e.target.value})} 
                   placeholder="Book Title *" 
                   className="w-full bg-[#f9f9f9] border border-[#ddd] rounded-lg p-3 text-[#333] placeholder:text-black/50 outline-none" 
+                  required
                 />
-                <input 
-                  value={newBookForm.author} 
-                  onChange={e => setNewBookForm({...newBookForm, author: e.target.value})} 
-                  placeholder="Author (Optional)" 
-                  className="w-full bg-[#f9f9f9] border border-[#ddd] rounded-lg p-3 text-[#333] placeholder:text-black/50 outline-none" 
-                />
+                
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-medium text-[#777] mb-1">Type</label>
+                    <select 
+                      value={newBookForm.type}
+                      onChange={e => setNewBookForm({...newBookForm, type: e.target.value as "sell" | "exchange" | "buy"})}
+                      className="w-full bg-[#f9f9f9] border border-[#ddd] rounded-lg p-3 text-[#333] text-sm outline-none"
+                    >
+                      <option value="sell">Sell</option>
+                      <option value="exchange">Exchange</option>
+                      <option value="buy">Buy</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-[#777] mb-1">Condition</label>
+                    <select 
+                      value={newBookForm.condition}
+                      onChange={e => setNewBookForm({...newBookForm, condition: e.target.value})}
+                      className="w-full bg-[#f9f9f9] border border-[#ddd] rounded-lg p-3 text-[#333] text-sm outline-none"
+                    >
+                      <option value="New">New</option>
+                      <option value="Like New">Like New</option>
+                      <option value="Good">Good</option>
+                      <option value="Fair">Fair</option>
+                      <option value="Poor">Poor</option>
+                    </select>
+                  </div>
+                </div>
+
+                {newBookForm.type === "sell" && (
+                  <input 
+                    type="number"
+                    value={newBookForm.price}
+                    onChange={e => setNewBookForm({...newBookForm, price: e.target.value})}
+                    placeholder="Price (PKR)" 
+                    className="w-full bg-[#f9f9f9] border border-[#ddd] rounded-lg p-3 text-[#333] placeholder:text-black/50 outline-none" 
+                    min="0"
+                    step="0.01"
+                  />
+                )}
+
+                {newBookForm.type === "exchange" && (
+                  <input 
+                    value={newBookForm.exchangeBook}
+                    onChange={e => setNewBookForm({...newBookForm, exchangeBook: e.target.value})}
+                    placeholder="Book you want in exchange *" 
+                    className="w-full bg-[#f9f9f9] border border-[#ddd] rounded-lg p-3 text-[#333] placeholder:text-black/50 outline-none" 
+                  />
+                )}
+
                 <textarea 
-                  value={newBookForm.description} 
-                  onChange={e => setNewBookForm({...newBookForm, description: e.target.value})} 
-                  placeholder="Description (Optional)" 
-                  className="w-full bg-[#f9f9f9] border border-[#ddd] rounded-lg p-3 text-[#333] placeholder:text-black/50 outline-none h-24" 
+                  value={newBookForm.notes}
+                  onChange={e => setNewBookForm({...newBookForm, notes: e.target.value})}
+                  placeholder="Notes about this book (optional)" 
+                  className="w-full bg-[#f9f9f9] border border-[#ddd] rounded-lg p-3 text-[#333] placeholder:text-black/50 outline-none h-20" 
                 />
                 
                 <div className="border-2 border-dashed border-[#ddd] rounded-xl p-4 text-center cursor-pointer hover:border-[#382110]/30 transition-colors relative bg-[#f9f9f9]">
@@ -914,9 +936,15 @@ export default function MyLibraryScreen({
                     }} 
                   />
                   {newBookForm.imagePreview ? (
-                    <img src={newBookForm.imagePreview} className="h-32 mx-auto rounded-lg object-contain" alt="Preview" />
+                    <div>
+                      <img src={newBookForm.imagePreview} className="h-32 mx-auto rounded-lg object-contain mb-2" alt="Preview" />
+                      <p className="text-[#777] text-sm">Click to change image</p>
+                    </div>
                   ) : (
-                    <div className="text-[#777]"><FaImage className="mx-auto text-2xl mb-1"/>Upload Cover (Optional)</div>
+                    <div className="text-[#777]">
+                      <FaImage className="mx-auto text-2xl mb-1"/>
+                      <p className="text-sm">Upload Cover (Optional)</p>
+                    </div>
                   )}
                 </div>
               </div>
@@ -926,12 +954,14 @@ export default function MyLibraryScreen({
                   setNewBookForm({
                     bookTitle: "",
                     author: "",
-                    genre: "Fiction",
                     condition: "Good",
                     description: "",
+                    price: "0",
+                    type: "sell",
+                    exchangeBook: "",
                     imageFile: null,
                     imagePreview: null,
-                    storeId: null
+                    notes: "",
                   });
                 }} className="text-[#777] hover:text-[#382110]">Cancel</button>
                 <button onClick={handleAddBook} disabled={addingBook} className="px-4 py-2 bg-[#382110] text-white rounded-lg font-medium">
@@ -947,10 +977,10 @@ export default function MyLibraryScreen({
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
             <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} className="bg-white border border-[#eee] rounded-xl p-6 w-full max-w-lg shadow-xl">
               <h3 className="text-xl font-serif font-bold text-[#382110] mb-2">
-                Set Store Location
+                Set Collection Location
               </h3>
               <p className="text-[#777] text-sm mb-4">
-                Pinpoint your store location on the map so others can find it.
+                Pinpoint your collection location on the map so others can find it.
               </p>
 
               <div className="flex gap-2 mb-4">

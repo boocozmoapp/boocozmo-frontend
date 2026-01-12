@@ -262,7 +262,7 @@ export default function DiscoverScreen({ currentUser, wishlist = [], toggleWishl
   };
 
   return (
-    <div className="flex flex-col min-h-screen bg-white">
+    <div className="flex flex-col min-h-[calc(100vh-50px)] md:min-h-[calc(100vh-60px)] bg-white">
       {/* Search Header */}
       <div className="sticky top-0 z-40 bg-white border-b border-[#eee] px-4 py-3 md:px-8">
         <div className="max-w-4xl mx-auto flex items-center gap-3">

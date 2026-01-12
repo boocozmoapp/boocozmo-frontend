@@ -152,8 +152,8 @@ export default function HomeScreen({ currentUser }: Props) {
         const data = await response.json();
         const stores = data.stores || data || [];
         
-        // Fetch owner names and photos and parse locations
-        const storesWithOwners = stores.map((store: any) => {
+        // Parse locations and process store data
+        const storesWithLocation = stores.map((store: any) => {
           let lat = null;
           let lng = null;
           
@@ -177,14 +177,14 @@ export default function HomeScreen({ currentUser }: Props) {
             created_at: store.created_at,
             visibility: store.visibility || "public",
             offerIds: store.offerIds || [],
-            bookCount: store.offerIds?.length || 0,
+            bookCount: store.bookCount || store.offerIds?.length || 0,
             location: store.location,
             latitude: lat,
             longitude: lng
           };
         });
         
-        setPublicStores(storesWithOwners);
+        setPublicStores(storesWithLocation);
       }
     } catch (err) {
       console.error("Error fetching public stores:", err);
@@ -194,80 +194,80 @@ export default function HomeScreen({ currentUser }: Props) {
   }, [currentUser.token]);
 
   const fetchOffers = useCallback(async () => {
-     try {
-       const response = await fetch(`${API_BASE}/offers?limit=100`, {
-         headers: { "Authorization": `Bearer ${currentUser.token}` }
-       });
-       const data = await response.json();
-       const raw = Array.isArray(data) ? data : (data.offers || []);
-       
-       // Get unique owner emails to fetch profiles for
-       const uniqueEmails = [...new Set(raw.map((o: any) => o.ownerEmail).filter(Boolean))];
-       const profileCache: Record<string, { name: string; photo?: string; badges?: string[] }> = {};
+   try {
+     const response = await fetch(`${API_BASE}/offers?limit=100`, {
+       headers: { "Authorization": `Bearer ${currentUser.token}` }
+     });
+     const data = await response.json();
+     const raw = Array.isArray(data) ? data : (data.offers || []);
+     
+     // Get unique owner emails to fetch profiles for
+     const uniqueEmails = [...new Set(raw.map((o: any) => o.ownerEmail).filter(Boolean))];
+     const profileCache: Record<string, { name: string; photo?: string; badges?: string[] }> = {};
 
-       // Helper to calculate badges from stats
-       const calculateBadges = (offersPosted: number): string[] => {
-          const badges: string[] = [];
-          if (offersPosted >= 3) badges.push("Contributor");
-          if (offersPosted >= 20) badges.push("Verified");
-          return badges;
-       };
+     // Helper to calculate badges from stats
+     const calculateBadges = (offersPosted: number): string[] => {
+        const badges: string[] = [];
+        if (offersPosted >= 3) badges.push("Contributor");
+        if (offersPosted >= 20) badges.push("Verified");
+        return badges;
+     };
 
-       // Fetch profiles in batches
-       await Promise.all(
-          uniqueEmails.map(async (email) => {
-             try {
-                const pResp = await fetch(`${API_BASE}/profile/${email}`, {
-                   headers: { "Authorization": `Bearer ${currentUser.token}` }
-                });
-                if (pResp.ok) {
-                   const pData = await pResp.json();
-                   // Parse badges if string, or calculate from offersPosted
-                   let badges: string[] = [];
-                   if (pData.badges) {
-                      badges = typeof pData.badges === 'string' ? JSON.parse(pData.badges) : pData.badges;
-                   }
-                   // If no badges stored, calculate from offersPosted
-                   if (!badges.length && pData.offersPosted) {
-                      badges = calculateBadges(pData.offersPosted);
-                   }
-                   profileCache[email as string] = { 
-                      name: pData.name || "Unknown", 
-                      photo: pData.profilePhoto || pData.profilePhotoURL || pData.photo || pData.profileImageUrl,
-                      badges
-                   };
-                }
-             } catch (err) { console.error("Profile fetch error", err); }
-          })
-       );
+     // Fetch profiles in batches
+     await Promise.all(
+        uniqueEmails.map(async (email) => {
+           try {
+              const pResp = await fetch(`${API_BASE}/profile/${email}`, {
+                 headers: { "Authorization": `Bearer ${currentUser.token}` }
+              });
+              if (pResp.ok) {
+                 const pData = await pResp.json();
+                 // Parse badges if string, or calculate from offersPosted
+                 let badges: string[] = [];
+                 if (pData.badges) {
+                    badges = typeof pData.badges === 'string' ? JSON.parse(pData.badges) : pData.badges;
+                 }
+                 // If no badges stored, calculate from offersPosted
+                 if (!badges.length && pData.offersPosted) {
+                    badges = calculateBadges(pData.offersPosted);
+                 }
+                 profileCache[email as string] = { 
+                    name: pData.name || "Unknown", 
+                    photo: pData.profilePhoto || pData.profilePhotoURL || pData.photo || pData.profileImageUrl,
+                    badges
+                 };
+              }
+           } catch (err) { console.error("Profile fetch error", err); }
+        })
+     );
 
-       const processed: Offer[] = raw
-         .filter((o: any) => !o.store_id) // Only show standalone offers
-         .map((o: any) => ({
-         id: o.id,
-         bookTitle: o.bookTitle || "Untitled Book",
-         author: o.author || "Unknown Author",
-         type: o.type || "sell",
-         imageUrl: o.imageUrl,
-         description: o.description,
-         price: o.price,
-         condition: o.condition,
-         ownerName: profileCache[o.ownerEmail]?.name || o.ownerName || "Unknown",
-         ownerEmail: o.ownerEmail,
-         ownerPhoto: profileCache[o.ownerEmail]?.photo,
-         ownerBadges: profileCache[o.ownerEmail]?.badges || [],
-         publishedAt: o.publishedAt,
-         distance: "Unknown",
-         latitude: o.latitude,
-         longitude: o.longitude
-       }));
-       setOffers(processed);
-     } catch (err) {
-       console.error(err);
-     } finally {
-       setLoading(false);
-     }
-   }, [currentUser.token]);
+     const processed: Offer[] = raw
+       .filter((o: any) => !o.store_id) // Only show standalone offers (already filtered by backend)
+       .map((o: any) => ({
+       id: o.id,
+       bookTitle: o.bookTitle || "Untitled Book",
+       author: o.author || "Unknown Author",
+       type: o.type || "sell",
+       imageUrl: o.imageUrl,
+       description: o.description,
+       price: o.price,
+       condition: o.condition,
+       ownerName: profileCache[o.ownerEmail]?.name || o.ownerName || "Unknown",
+       ownerEmail: o.ownerEmail,
+       ownerPhoto: profileCache[o.ownerEmail]?.photo,
+       ownerBadges: profileCache[o.ownerEmail]?.badges || [],
+       publishedAt: o.publishedAt,
+       distance: "Unknown",
+       latitude: o.latitude,
+       longitude: o.longitude
+     }));
+     setOffers(processed);
+   } catch (err) {
+     console.error(err);
+   } finally {
+     setLoading(false);
+   }
+ }, [currentUser.token]);
 
   useEffect(() => {
     fetchProfile();
@@ -419,7 +419,7 @@ export default function HomeScreen({ currentUser }: Props) {
   );
 
   return (
-    <div className="pb-6 px-4 md:px-0 flex flex-col md:flex-row gap-8 max-w-[1100px] mx-auto min-h-screen">
+    <div className="pb-6 px-4 md:px-0 flex flex-col md:flex-row gap-8 max-w-[1100px] mx-auto min-h-[calc(100vh-50px)] md:min-h-[calc(100vh-60px)]">
        
        {/* Modal for Offer Details */}
        <AnimatePresence>

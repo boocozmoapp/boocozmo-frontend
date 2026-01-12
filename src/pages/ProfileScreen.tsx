@@ -63,6 +63,7 @@ type Store = {
   name: string;
   ownerEmail: string;
   created_at: string;
+  visibility: "public" | "private";
   offerIds?: number[];
   offers?: Offer[];
 };
@@ -342,7 +343,7 @@ export default function ProfileScreen({ currentUser, wishlist = [], toggleWishli
   ];
 
   return (
-    <div className="h-screen w-full bg-primary text-text-main flex overflow-hidden font-sans">
+    <div className="h-[calc(100vh-50px)] md:h-[calc(100vh-60px)] w-full bg-primary text-text-main flex overflow-hidden font-sans">
       {/* Sidebar */}
       <AnimatePresence>
         {sidebarOpen && <motion.div initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} onClick={() => setSidebarOpen(false)} className="fixed inset-0 bg-black/50 z-40 lg:hidden" />}
