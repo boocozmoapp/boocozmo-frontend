@@ -207,13 +207,19 @@ export default function OfferDetailScreen({ currentUser, wishlist, toggleWishlis
                      </div>
                    </div>
 
-                   <button 
-                     onClick={handleChat}
-                     className="w-full py-3 bg-[#409d69] hover:bg-[#358759] text-white rounded-[3px] font-bold text-md shadow-sm transition-all active:scale-95 flex items-center justify-center gap-2 mb-3"
-                   >
-                      <FaComments /> 
-                      Message {offer.type === 'sell' ? 'Seller' : 'Owner'}
-                   </button>
+                   {offer.ownerEmail === currentUser.email ? (
+                      <div className="w-full py-3 bg-[#f4f1ea] border border-[#d8d8d8] text-[#382110] rounded-[3px] font-bold text-center mb-3">
+                        📚 This is your offer
+                      </div>
+                   ) : (
+                     <button 
+                       onClick={handleChat}
+                       className="w-full py-3 bg-[#409d69] hover:bg-[#358759] text-white rounded-[3px] font-bold text-md shadow-sm transition-all active:scale-95 flex items-center justify-center gap-2 mb-3"
+                     >
+                        <FaComments /> 
+                        Message {offer.type === 'sell' ? 'Seller' : 'Owner'}
+                     </button>
+                   )}
                    
                    <button 
                       onClick={() => toggleWishlist(offer.bookTitle)}
@@ -250,9 +256,15 @@ export default function OfferDetailScreen({ currentUser, wishlist, toggleWishlis
           </div>
           <div className="flex gap-2">
              <button onClick={() => toggleWishlist(offer.bookTitle)} className={`p-2.5 rounded ${isInWishlist ? 'bg-[#382110] text-white' : 'bg-white border border-[#d8d8d8]'}`}><FaBookmark /></button>
-             <button onClick={handleChat} className="px-8 py-2.5 bg-[#409d69] text-white rounded-[3px] font-bold shadow-sm">
-                Contact
-             </button>
+             {offer.ownerEmail === currentUser.email ? (
+                <div className="bg-[#f4f1ea] px-4 py-2.5 rounded-[3px] font-bold text-[#382110] text-sm">
+                   Your Listing
+                </div>
+             ) : (
+                <button onClick={handleChat} className="px-8 py-2.5 bg-[#409d69] text-white rounded-[3px] font-bold shadow-sm">
+                   Contact
+                </button>
+             )}
           </div>
        </div>
     </div>

@@ -151,16 +151,44 @@ export default function ProfileScreen({ currentUser, wishlist = [], toggleWishli
   const fetchProfile = useCallback(async () => {
     setLoadingProfile(true);
     try {
-      const response = await fetchWithTimeout(`${API_BASE}/profile/${currentUser.email}`, { headers: { "Authorization": `Bearer ${currentUser.token}` } });
+      const response = await fetchWithTimeout(`${API_BASE}/profile/${currentUser.email}`, { 
+        headers: { "Authorization": `Bearer ${currentUser.token}` } 
+      });
       if (!response.ok) throw new Error("Failed");
       const data = await response.json();
-      setProfile({
+      
+      // Handle the multiple possible field names for photos and parse badges
+      const photo = data.profilePhoto || data.profilePhotoURL || data.photo || data.profileImageUrl || data.imageUrl;
+      let badges: string[] = [];
+      if (data.badges) {
+        badges = typeof data.badges === "string" ? JSON.parse(data.badges) : data.badges;
+      }
+      
+      const processedProfile = {
         ...data,
-        badges: data.badges || []
+        profilePhoto: photo,
+        badges: badges
+      };
+      
+      setProfile(processedProfile);
+      setEditForm({ 
+        profilePhotoFile: null, 
+        profilePhotoPreview: photo || "", 
+        bio: data.bio || "", 
+        location: data.location || "" 
       });
-      setEditForm({ profilePhotoFile: null, profilePhotoPreview: data.profilePhoto || "", bio: data.bio || "", location: data.location || "" });
-    } catch {
-       setProfile({ name: currentUser.name, profilePhoto: null, bio: "No bio yet", location: "Unknown", joinedAt: new Date().toISOString(), offersPosted: 0, dealsCompleted: 0, badges: [] });
+    } catch (err) {
+       console.error("Profile fetch error:", err);
+       setProfile({ 
+         name: currentUser.name, 
+         profilePhoto: null, 
+         bio: "No bio yet", 
+         location: "Unknown", 
+         joinedAt: new Date().toISOString(), 
+         offersPosted: 0, 
+         dealsCompleted: 0, 
+         badges: [] 
+       });
     } finally { setLoadingProfile(false); }
   }, [currentUser.email, currentUser.token, currentUser.name]);
 
@@ -425,10 +453,12 @@ export default function ProfileScreen({ currentUser, wishlist = [], toggleWishli
                   <div className="absolute inset-0 bg-gradient-to-r from-secondary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                   
                   <div className="relative">
-                     <div className="w-32 h-32 rounded-full border-4 border-secondary/30 overflow-hidden shadow-2xl">
+                     <div className="w-32 h-32 rounded-full border-4 border-secondary/30 overflow-hidden shadow-2xl bg-white">
                         {profile?.profilePhoto ? 
-                           <img src={profile.profilePhoto} className="w-full h-full object-cover" /> : 
-                           <div className="w-full h-full bg-primary flex items-center justify-center text-4xl font-bold text-secondary">{currentUser.name.charAt(0)}</div>
+                           <img src={profile.profilePhoto} className="w-full h-full object-cover" onError={(e) => {
+                              (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=200&h=200&fit=crop&q=80";
+                           }} /> : 
+                           <div className="w-full h-full bg-[#f4f1ea] flex items-center justify-center text-4xl font-bold text-secondary">{currentUser.name.charAt(0)}</div>
                         }
                      </div>
                      <button 
@@ -441,7 +471,7 @@ export default function ProfileScreen({ currentUser, wishlist = [], toggleWishli
 
                   <div className="flex-1 text-center md:text-left z-10">
                      <div className="flex items-center gap-3 justify-center md:justify-start flex-wrap mb-2">
-                        <h2 className="text-3xl font-serif font-bold text-white">{profile?.name}</h2>
+                        <h2 className="text-3xl font-serif font-bold text-[#382110]">{profile?.name}</h2>
                         {profile?.badges && Array.isArray(profile.badges) && profile.badges.length > 0 && (
                            <div className="flex items-center gap-2 flex-wrap">
                               {profile.badges.map((badge, idx) => (
@@ -452,21 +482,21 @@ export default function ProfileScreen({ currentUser, wishlist = [], toggleWishli
                            </div>
                         )}
                      </div>
-                     <p className="text-text-muted mb-4 max-w-lg mx-auto md:mx-0">{profile?.bio || "No bio yet."}</p>
+                     <p className="text-[#555] mb-4 max-w-lg mx-auto md:mx-0 font-medium">{profile?.bio || "No bio yet."}</p>
                      
-                     <div className="flex flex-wrap justify-center md:justify-start gap-4 text-sm text-gray-400 mb-6">
-                        <span className="flex items-center gap-1"><FaMapMarkerAlt /> {profile?.location || "Unknown"}</span>
-                        <span className="flex items-center gap-1"><FaCalendarAlt /> Joined {new Date(profile?.joinedAt || Date.now()).toLocaleDateString()}</span>
+                     <div className="flex flex-wrap justify-center md:justify-start gap-4 text-sm text-[#777] mb-6">
+                        <span className="flex items-center gap-1 font-bold"><FaMapMarkerAlt /> {profile?.location || "Unknown"}</span>
+                        <span className="flex items-center gap-1 font-bold"><FaCalendarAlt /> Joined {new Date(profile?.joinedAt || Date.now()).toLocaleDateString()}</span>
                      </div>
                      
                      <div className="flex justify-center md:justify-start gap-6">
                         <div className="text-center">
-                           <div className="text-2xl font-bold text-white">{profile?.offersPosted || 0}</div>
-                           <div className="text-xs text-secondary uppercase tracking-wider">Books</div>
+                           <div className="text-2xl font-bold text-[#382110]">{profile?.offersPosted || 0}</div>
+                           <div className="text-xs text-secondary uppercase tracking-wider font-bold">Books</div>
                         </div>
                         <div className="text-center">
-                           <div className="text-2xl font-bold text-white">{profile?.dealsCompleted || 0}</div>
-                           <div className="text-xs text-secondary uppercase tracking-wider">Deals</div>
+                           <div className="text-2xl font-bold text-[#382110]">{profile?.dealsCompleted || 0}</div>
+                           <div className="text-xs text-secondary uppercase tracking-wider font-bold">Deals</div>
                         </div>
                      </div>
                   </div>
@@ -688,13 +718,13 @@ export default function ProfileScreen({ currentUser, wishlist = [], toggleWishli
       <AnimatePresence>
          {showEditModal && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
-               <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} className="bg-primary border border-white/10 rounded-2xl p-6 w-full max-w-md">
-                  <h3 className="text-xl font-bold text-white mb-6">Edit Profile</h3>
+               <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} className="bg-white border border-[#d8d8d8] rounded-2xl p-6 w-full max-w-md shadow-2xl">
+                  <h3 className="text-2xl font-serif font-bold text-[#382110] mb-6 border-b pb-2">Edit Profile</h3>
                   
                   <div className="flex justify-center mb-6">
-                     <div className="relative w-24 h-24 rounded-full overflow-hidden border-2 border-dashed border-white/20 hover:border-secondary cursor-pointer"
+                     <div className="relative w-28 h-28 rounded-full overflow-hidden border-2 border-[#d8d8d8] hover:border-secondary cursor-pointer shadow-inner bg-[#f4f1ea]"
                         onClick={() => photoInputRef.current?.click()}>
-                        {editForm.profilePhotoPreview ? <img src={editForm.profilePhotoPreview} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-gray-500"><FaCamera /></div>}
+                        {editForm.profilePhotoPreview ? <img src={editForm.profilePhotoPreview} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-gray-400"><FaCamera size={30} /></div>}
                         <input ref={photoInputRef} type="file" hidden accept="image/*" onChange={(e: any) => {
                            const file = e.target.files[0];
                            if(file) {
@@ -706,8 +736,27 @@ export default function ProfileScreen({ currentUser, wishlist = [], toggleWishli
                      </div>
                   </div>
 
-                  <input value={editForm.bio} onChange={e => setEditForm({...editForm, bio: e.target.value})} placeholder="Bio" className="w-full bg-primary-light/50 border border-white/10 rounded-xl p-3 text-white mb-3" />
-                  <input value={editForm.location} onChange={e => setEditForm({...editForm, location: e.target.value})} placeholder="Location" className="w-full bg-primary-light/50 border border-white/10 rounded-xl p-3 text-white mb-6" />
+                  <div className="space-y-4 mb-6">
+                    <div>
+                      <label className="text-[10px] font-bold uppercase text-[#777] mb-1 block">Bio / Story</label>
+                      <textarea 
+                        value={editForm.bio} 
+                        onChange={e => setEditForm({...editForm, bio: e.target.value})} 
+                        placeholder="Tell your story..." 
+                        rows={3}
+                        className="w-full bg-white border border-[#ddd] rounded-xl p-3 text-black placeholder:text-black/40 outline-none focus:border-secondary transition-all" 
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold uppercase text-[#777] mb-1 block">Location</label>
+                      <input 
+                        value={editForm.location} 
+                        onChange={e => setEditForm({...editForm, location: e.target.value})} 
+                        placeholder="e.g. Lahore, Pakistan" 
+                        className="w-full bg-white border border-[#ddd] rounded-xl p-3 text-black placeholder:text-black/40 outline-none focus:border-secondary transition-all" 
+                      />
+                    </div>
+                  </div>
 
                   <div className="flex justify-end gap-3">
                      <button onClick={() => setShowEditModal(false)} className="text-gray-400 hover:text-white">Cancel</button>

@@ -229,13 +229,19 @@ export default function StoreDetailScreen({ currentUser }: Props) {
             </div>
           </div>
 
-          <button
-            onClick={handleContact}
-            className="px-5 py-2.5 bg-[#409d69] hover:bg-[#358759] text-white rounded-xl font-bold text-sm flex items-center gap-2 transition-all shadow-md active:scale-95"
-          >
-            <FaComments />
-            Message Owner
-          </button>
+          {store.ownerEmail === currentUser.email ? (
+            <div className="px-5 py-2.5 bg-[#f4f1ea] border border-[#d8d8d8] text-[#382110] rounded-xl font-bold text-sm">
+              🏢 Your Store
+            </div>
+          ) : (
+            <button
+              onClick={handleContact}
+              className="px-5 py-2.5 bg-[#409d69] hover:bg-[#358759] text-white rounded-xl font-bold text-sm flex items-center gap-2 transition-all shadow-md active:scale-95"
+            >
+              <FaComments />
+              Message Owner
+            </button>
+          )}
         </div>
       </div>
 
@@ -449,15 +455,21 @@ export default function StoreDetailScreen({ currentUser }: Props) {
                       {selectedOffer.price ? `PKR ${selectedOffer.price}` : selectedOffer.type === 'exchange' ? 'TRADE' : 'FREE'}
                     </p>
                   </div>
-                  <button
-                    onClick={() => {
-                      setSelectedOffer(null);
-                      handleContact();
-                    }}
-                    className="flex-1 bg-[#409d69] hover:bg-[#358759] text-white font-bold py-4 rounded-2xl shadow-xl flex items-center justify-center gap-2 transition-all active:scale-[0.98]"
-                  >
-                    <FaComments size={20} /> Interested
-                  </button>
+                  {store.ownerEmail === currentUser.email ? (
+                    <div className="flex-1 bg-[#f4f1ea] border border-[#d8d8d8] text-[#382110] font-bold py-4 rounded-2xl text-center">
+                       📦 Your Listing
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => {
+                        setSelectedOffer(null);
+                        handleContact();
+                      }}
+                      className="flex-1 bg-[#409d69] hover:bg-[#358759] text-white font-bold py-4 rounded-2xl shadow-xl flex items-center justify-center gap-2 transition-all active:scale-[0.98]"
+                    >
+                      <FaComments size={20} /> Interested
+                    </button>
+                  )}
                 </div>
               </div>
             </motion.div>

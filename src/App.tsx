@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-// src/App.tsx - VITE-PROOF & HMR-RESILIENT VERSION (FIXED DEADLOCK)
+// src/App.tsx - POLISHED UI VERSION
 import React, { useEffect, useState, useCallback, useMemo } from "react";
 import { BrowserRouter, Routes, Route, useNavigate, useLocation, Navigate } from "react-router-dom";
-import { FaUserCircle, FaEnvelope, FaSignOutAlt, FaMapMarkerAlt, FaBook, FaPlus, FaStore } from "react-icons/fa";
+import { FaSearch, FaUserCircle, FaEnvelope, FaSignOutAlt, FaMapMarkerAlt, FaBook, FaPlus, FaStore, FaLayerGroup, FaUsers } from "react-icons/fa";
 import HomeScreen from "./pages/HomeScreen";
 import OfferScreen from "./pages/OfferScreen";
 import ProfileScreen from "./pages/ProfileScreen";
@@ -30,8 +30,17 @@ type User = {
   token: string;
 } | null;
 
+const NavItem = ({ icon, label, path, active, navigate }: any) => (
+  <button 
+    onClick={() => navigate(path)} 
+    className={`flex flex-col items-center justify-center w-14 gap-1 ${active ? 'text-[#382110]' : 'text-[#999]'} transition-colors active:scale-95`}
+  >
+    {icon}
+    <span className="text-[10px] font-medium tracking-tight">{label}</span>
+  </button>
+);
+
 const AppContent = () => {
-  // 1. SYNCHRONOUS INITIALIZATION
   const [user, setUser] = useState<User>(() => {
     try {
       const saved = localStorage.getItem("user") || sessionStorage.getItem("user");
@@ -47,7 +56,6 @@ const AppContent = () => {
   const location = useLocation();
 
   const handleAuth = useCallback((u: any) => {
-    console.log("💎 App: Auth Received", u.email);
     const fullUser = { ...u, id: u.id.toString() };
     try {
       localStorage.setItem("user", JSON.stringify(fullUser));
@@ -69,52 +77,106 @@ const AppContent = () => {
     <NotificationProvider currentUser={user}>
       <div className="min-h-screen bg-[#fdfaf5]">
         {user && (
-          <header className="bg-[#f4f1ea] border-b px-4 h-14 flex items-center sticky top-0 z-50 justify-between">
-            <h1 onClick={() => navigate("/home")} className="text-xl font-serif font-bold text-[#382110] cursor-pointer">Boocozmo</h1>
-            <div className="flex items-center gap-4">
-              <NotificationBell />
-              <button 
-                onClick={() => navigate("/profile")} 
-                className="w-8 h-8 rounded-full bg-[#382110] text-white text-xs font-bold"
-              >
-                {user.name.charAt(0)}
-              </button>
-              <button onClick={handleLogout} className="text-[#382110]"><FaSignOutAlt /></button>
+          <header className="bg-[#f4f1ea] border-b border-[#d8d8d8] px-4 h-[50px] md:h-[60px] flex items-center sticky top-0 z-50 shadow-sm">
+            <div className="max-w-[1100px] mx-auto w-full flex items-center justify-between">
+              <div className="flex items-center gap-6">
+                <h1 onClick={() => navigate("/home")} className="text-2xl font-serif font-bold text-[#382110] cursor-pointer">Boocozmo</h1>
+                <nav className="hidden md:flex items-center gap-1 text-[#382110] text-[14px]">
+                  <button onClick={() => navigate("/home")} className="px-3 py-2 hover:bg-white/50 rounded">Home</button>
+                  <button onClick={() => navigate("/communities")} className="px-3 py-2 hover:bg-white/50 rounded">Communities</button>
+                  <button onClick={() => navigate("/my-library")} className="px-3 py-2 hover:bg-white/50 rounded">My Books</button>
+                  <button onClick={() => navigate("/stores")} className="px-3 py-2 hover:bg-white/50 rounded">Stores</button>
+                </nav>
+              </div>
+
+              {/* Desktop Search Bar */}
+              <div className="hidden md:flex flex-1 max-w-[300px] mx-4">
+                <div className="relative w-full" onClick={() => navigate("/discover")}>
+                  <input
+                    type="text"
+                    readOnly
+                    placeholder="Search gems..."
+                    className="w-full bg-white border border-[#d8d8d8] rounded-[3px] py-1.5 px-3 text-sm focus:outline-none cursor-pointer shadow-inner"
+                  />
+                  <button className="absolute right-0 top-0 bottom-0 px-3 text-[#555] hover:bg-[#eee] transition-colors rounded-r-[3px]">
+                    <FaSearch size={14} />
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3 md:gap-4">
+                <button className="md:hidden text-[#382110]" onClick={() => navigate("/discover")}><FaSearch size={18} /></button>
+                <button className="md:hidden text-[#382110]" onClick={() => navigate("/my-library")}><FaLayerGroup size={18} /></button>
+                
+                <div className="flex items-center gap-3 border-r border-[#ccc] pr-4 mr-1">
+                  <button onClick={() => navigate("/chat")} className="text-[#382110] hover:bg-white/50 p-1.5 rounded-full transition-colors relative">
+                    <FaEnvelope size={18} />
+                  </button>
+                  <NotificationBell />
+                </div>
+
+                <div 
+                  className="w-8 h-8 rounded-full bg-[#382110] text-white flex items-center justify-center text-xs font-bold cursor-pointer"
+                  onClick={() => navigate("/profile")}
+                >
+                  {user.name.charAt(0)}
+                </div>
+                <button onClick={handleLogout} className="text-[#382110] opacity-60 hover:opacity-100 hidden md:block">
+                  <FaSignOutAlt />
+                </button>
+              </div>
             </div>
           </header>
         )}
 
-        <Routes>
-          {/* Always allow AuthCallback to render so it can process the login */}
-          <Route path="/auth/callback" element={<AuthCallback onLoginSuccess={handleAuth} />} />
-          <Route path="/login" element={<LoginScreen onLoginSuccess={handleAuth} onGoToSignup={() => navigate("/signup")} />} />
-          <Route path="/signup" element={<SignupScreen onSignupSuccess={handleAuth} onGoToLogin={() => navigate("/login")} />} />
+        <div className="max-w-[1100px] mx-auto min-h-[calc(100vh-110px)] md:min-h-[calc(100vh-60px)] bg-white shadow-sm border-x border-[#ebebeb]">
+          <Routes>
+            <Route path="/auth/callback" element={<AuthCallback onLoginSuccess={handleAuth} />} />
+            <Route path="/login" element={<LoginScreen onLoginSuccess={handleAuth} onGoToSignup={() => navigate("/signup")} />} />
+            <Route path="/signup" element={<SignupScreen onSignupSuccess={handleAuth} onGoToLogin={() => navigate("/login")} />} />
 
-          <Route path="/" element={!user ? <WelcomeScreen /> : <Navigate to="/home" replace />} />
-          
-          <Route path="/home" element={user ? <HomeScreen {...authProps} /> : <Navigate to="/login" replace />} />
-          <Route path="/profile" element={user ? <ProfileScreen {...authProps} /> : <Navigate to="/login" replace />} />
-          <Route path="/map" element={user ? <MapScreen {...authProps} /> : <Navigate to="/login" replace />} />
-          <Route path="/chat" element={user ? <ChatScreen {...authProps} /> : <Navigate to="/login" replace />} />
-          <Route path="/chat/:chatId" element={user ? <SingleChat {...authProps} /> : <Navigate to="/login" replace />} />
-          <Route path="/my-library" element={user ? <MyLibraryScreen {...authProps} onBack={() => navigate("/home")} onAddPress={() => navigate("/offer")} onProfilePress={() => navigate("/profile")} onMapPress={() => navigate("/map")} /> : <Navigate to="/login" replace />} />
-          <Route path="/stores" element={user ? <StoresScreen {...authProps} /> : <Navigate to="/login" replace />} />
-          <Route path="/offer" element={user ? <OfferScreen {...authProps} onBack={() => navigate("/home")} onProfilePress={() => navigate("/profile")} onMapPress={() => navigate("/map")} onAddPress={() => navigate("/offer")} /> : <Navigate to="/login" replace />} />
-          <Route path="/offer/:id" element={user ? <OfferDetailScreen {...authProps} /> : <Navigate to="/login" replace />} />
-          <Route path="/discover" element={user ? <DiscoverScreen {...authProps} /> : <Navigate to="/login" replace />} />
-          <Route path="/communities" element={user ? <CommunityScreen {...authProps} /> : <Navigate to="/login" replace />} />
-          <Route path="/store/:id" element={user ? <StoreDetailScreen {...authProps} /> : <Navigate to="/login" replace />} />
-          
-          <Route path="*" element={user ? <Navigate to="/home" replace /> : <Navigate to="/" replace />} />
-        </Routes>
+            {!user ? (
+              <>
+                <Route path="/" element={<WelcomeScreen />} />
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </>
+            ) : (
+              <>
+                <Route path="/" element={<HomeScreen {...authProps} />} />
+                <Route path="/home" element={<HomeScreen {...authProps} />} />
+                <Route path="/profile" element={<ProfileScreen {...authProps} />} />
+                <Route path="/map" element={<MapScreen {...authProps} />} />
+                <Route path="/chat" element={<ChatScreen {...authProps} />} />
+                <Route path="/chat/:chatId" element={<SingleChat {...authProps} />} />
+                <Route path="/my-library" element={<MyLibraryScreen {...authProps} onBack={() => navigate("/home")} onAddPress={() => navigate("/offer")} onProfilePress={() => navigate("/profile")} onMapPress={() => navigate("/map")} />} />
+                <Route path="/stores" element={<StoresScreen {...authProps} />} />
+                <Route path="/offer" element={<OfferScreen {...authProps} onBack={() => navigate("/home")} onProfilePress={() => navigate("/profile")} onMapPress={() => navigate("/map")} onAddPress={() => navigate("/offer")} />} />
+                <Route path="/offer/:id" element={<OfferDetailScreen {...authProps} />} />
+                <Route path="/discover" element={<DiscoverScreen {...authProps} />} />
+                <Route path="/communities" element={<CommunityScreen {...authProps} />} />
+                <Route path="/store/:id" element={<StoreDetailScreen {...authProps} />} />
+                <Route path="*" element={<HomeScreen {...authProps} />} />
+              </>
+            )}
+          </Routes>
+        </div>
 
         {user && (
-          <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t h-14 flex items-center justify-around z-50">
-            <button onClick={() => navigate("/home")}><FaBook /></button>
-            <button onClick={() => navigate("/stores")}><FaStore /></button>
-            <button onClick={() => navigate("/offer")} className="w-10 h-10 bg-[#382110] text-white rounded-full"><FaPlus /></button>
-            <button onClick={() => navigate("/map")}><FaMapMarkerAlt /></button>
-            <button onClick={() => navigate("/profile")}><FaUserCircle /></button>
+          <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t h-16 flex items-center justify-around z-50 pb-safe shadow-[0_-2px_10px_rgba(0,0,0,0.05)]">
+            <NavItem icon={<FaBook size={18} />} label="Home" path="/home" active={location.pathname === "/home" || location.pathname === "/"} navigate={navigate} />
+            <NavItem icon={<FaStore size={18} />} label="Stores" path="/stores" active={location.pathname === "/stores"} navigate={navigate} />
+            
+            <div className="relative -top-5">
+              <button 
+                onClick={() => navigate("/offer")} 
+                className="w-12 h-12 bg-[#382110] text-white rounded-full flex items-center justify-center shadow-lg border-4 border-[#fdfaf5] active:scale-95 transition-transform"
+              >
+                <FaPlus size={20} />
+              </button>
+            </div>
+
+            <NavItem icon={<FaMapMarkerAlt size={18} />} label="Map" path="/map" active={location.pathname === "/map"} navigate={navigate} />
+            <NavItem icon={<FaUserCircle size={18} />} label="Profile" path="/profile" active={location.pathname === "/profile"} navigate={navigate} />
           </div>
         )}
       </div>
