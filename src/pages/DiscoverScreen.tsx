@@ -1,11 +1,12 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-// src/pages/DiscoverScreen.tsx - STABLE & BEAUTIFUL DISCOVERY GRID
-import { useEffect, useState, useCallback, useMemo } from "react";
+// src/pages/DiscoverScreen.tsx - UPDATED WITH PROPER SEARCH
+import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   FaSearch, FaMapMarkerAlt, FaTimes, FaArrowLeft, FaFilter, 
-  FaComments, FaHeart, FaBookmark, FaStore, FaFolder, FaLocationArrow 
+  FaComments, FaHeart, FaBookmark, FaStore, FaFolder, FaLocationArrow,
+  FaSync, FaUser, FaBook, FaTag
 } from "react-icons/fa";
 
 const API_BASE = "https://boocozmo-api.onrender.com";
@@ -40,6 +41,8 @@ type Store = {
   location?: string;
   offerIds?: number[];
   bookCount?: number;
+  latitude?: number;
+  longitude?: number;
 };
 
 type Props = {
@@ -73,6 +76,9 @@ export default function DiscoverScreen({ currentUser, wishlist = [], toggleWishl
   const [selectedOffer, setSelectedOffer] = useState<Offer | null>(null);
   const [showStores, setShowStores] = useState(false);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [searchType, setSearchType] = useState<"all" | "books" | "stores" | "users">("all");
+  const [searchHistory, setSearchHistory] = useState<string[]>([]);
+  const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   const getImageSource = (offer: any) => {
     const url = offer.imageUrl || offer.imageurl || offer.imageBase64;
@@ -106,7 +112,7 @@ export default function DiscoverScreen({ currentUser, wishlist = [], toggleWishl
   const fetchOffers = useCallback(async () => {
     setLoading(true);
     try {
-      // 1. Fetch offers
+      // 1. Fetch offers from backend
       const response = await fetch(`${API_BASE}/offers?limit=300`, {
         headers: { Authorization: `Bearer ${currentUser.token}` }
       });
@@ -123,6 +129,7 @@ export default function DiscoverScreen({ currentUser, wishlist = [], toggleWishl
         return badges;
       };
 
+      // Fetch profiles for all unique owners
       await Promise.all(
         uniqueEmails.map(async (email) => {
           try {
@@ -148,6 +155,7 @@ export default function DiscoverScreen({ currentUser, wishlist = [], toggleWishl
         })
       );
 
+      // Process offers
       const processed: Offer[] = raw.map((o: any) => {
         const ownerEmail = o.owneremail || o.ownerEmail;
         return {
@@ -179,7 +187,40 @@ export default function DiscoverScreen({ currentUser, wishlist = [], toggleWishl
       if (storesResponse.ok) {
         const storesData = await storesResponse.json();
         const stores = storesData.stores || storesData || [];
-        setAllStores(stores);
+        
+        // Process stores with location data
+        const processedStores = stores.map((store: any) => {
+          let lat = null;
+          let lng = null;
+          
+          if (store.latitude && store.longitude) {
+            lat = parseFloat(store.latitude);
+            lng = parseFloat(store.longitude);
+          } else if (store.location) {
+            const match = store.location.match(/Lat:\s*(-?\d+(\.\d+)?),\s*Lng:\s*(-?\d+(\.\d+)?)/);
+            if (match) {
+              lat = parseFloat(match[1]);
+              lng = parseFloat(match[3]);
+            }
+          }
+          
+          return {
+            id: store.id,
+            name: store.name,
+            ownerEmail: store.ownerEmail,
+            ownerName: store.ownerName || "Community Member",
+            ownerPhoto: store.ownerPhoto,
+            created_at: store.created_at,
+            visibility: store.visibility || "public",
+            location: store.location,
+            offerIds: store.offerIds || [],
+            bookCount: store.bookCount || store.offerIds?.length || 0,
+            latitude: lat,
+            longitude: lng
+          };
+        });
+        
+        setAllStores(processedStores);
       }
     } catch (e) {
       console.error("Failed to fetch discovery data", e);
@@ -191,65 +232,210 @@ export default function DiscoverScreen({ currentUser, wishlist = [], toggleWishl
   useEffect(() => {
     fetchProfile();
     fetchOffers();
+    
+    // Load search history from localStorage
+    const savedHistory = localStorage.getItem("searchHistory");
+    if (savedHistory) {
+      setSearchHistory(JSON.parse(savedHistory));
+    }
   }, [fetchProfile, fetchOffers]);
 
   const isWishlisted = (title: string) => wishlist?.includes(title);
 
+  const searchBackendOffers = async (query: string) => {
+    try {
+      const response = await fetch(`${API_BASE}/search-offers?query=${encodeURIComponent(query)}&limit=100`, {
+        headers: { Authorization: `Bearer ${currentUser.token}` }
+      });
+      
+      if (!response.ok) throw new Error("Search failed");
+      
+      const data = await response.json();
+      const raw = data.offers || [];
+      
+      // Process the search results
+      const processed: Offer[] = raw.map((o: any) => ({
+        id: o.id,
+        bookTitle: o.booktitle || o.bookTitle || "Untitled",
+        author: o.author || "Unknown",
+        type: o.type || "sell",
+        imageUrl: o.imageurl || o.imageUrl,
+        description: o.description,
+        price: o.price,
+        condition: o.condition,
+        ownerName: o.ownername || "Neighbor",
+        ownerEmail: o.owneremail || o.ownerEmail,
+        ownerPhoto: o.ownerphoto || null,
+        ownerBadges: [],
+        publishedAt: o.publishedat || o.publishedAt,
+        latitude: o.latitude,
+        longitude: o.longitude
+      }));
+      
+      return processed;
+    } catch (error) {
+      console.error("Backend search error:", error);
+      return [];
+    }
+  };
+
   const handleSearch = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    const q = searchQuery.trim().toLowerCase();
+    
+    const q = searchQuery.trim();
     if (!q) {
       setDiscoveryFeed([...allOffers].sort(() => Math.random() - 0.5));
       setStoreResults([]);
       setShowStores(false);
+      setIsSearching(false);
       return;
     }
 
     setIsSearching(true);
+    
+    // Add to search history
+    const newHistory = [q, ...searchHistory.filter(item => item !== q)].slice(0, 10);
+    setSearchHistory(newHistory);
+    localStorage.setItem("searchHistory", JSON.stringify(newHistory));
 
-    const storeMatches = allStores.filter(s => s.name?.toLowerCase().includes(q));
-    setStoreResults(storeMatches);
-    setShowStores(storeMatches.length > 0);
-
-    const textMatches = allOffers.filter(o => 
-      o.bookTitle?.toLowerCase().includes(q) || 
-      o.author?.toLowerCase().includes(q) || 
-      o.ownerName?.toLowerCase().includes(q)
-    ).sort((a, b) => {
-       const aTitle = a.bookTitle?.toLowerCase() || "";
-       const bTitle = b.bookTitle?.toLowerCase() || "";
-       if (aTitle === q) return -1;
-       if (bTitle === q) return 1;
-       if (aTitle.startsWith(q) && !bTitle.startsWith(q)) return -1;
-       if (bTitle.startsWith(q) && !aTitle.startsWith(q)) return 1;
-       return aTitle.length - bTitle.length;
-    });
-
-    if (textMatches.length > 0) {
-      setDiscoveryFeed(textMatches);
-      setIsSearching(false);
-      return;
+    // Clear previous timeout
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
     }
 
-    try {
-      const gResp = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&limit=1`);
-      const gData = await gResp.json();
-      if (gData && gData.length > 0) {
-        const tLat = parseFloat(gData[0].lat);
-        const tLon = parseFloat(gData[0].lon);
-        const withDist = allOffers.filter(o => o.latitude && o.longitude).map(o => ({
-          ...o,
-          distVal: getDistanceFromLatLonInKm(tLat, tLon, o.latitude!, o.longitude!)
-        })).sort((a, b) => a.distVal - b.distVal);
-        setDiscoveryFeed(withDist as any);
-      } else {
-        setDiscoveryFeed([]);
+    // Debounce search
+    searchTimeoutRef.current = setTimeout(async () => {
+      try {
+        // Search stores locally
+        const storeMatches = allStores.filter(s => 
+          s.name?.toLowerCase().includes(q.toLowerCase()) ||
+          s.ownerName?.toLowerCase().includes(q.toLowerCase())
+        );
+        
+        setStoreResults(storeMatches);
+        setShowStores(storeMatches.length > 0 && (searchType === "all" || searchType === "stores"));
+
+        // Search offers based on type
+        if (searchType === "all" || searchType === "books") {
+          // Use backend search API
+          const backendResults = await searchBackendOffers(q);
+          
+          if (backendResults.length > 0) {
+            // Enhance with profile data
+            const enhancedResults = await Promise.all(
+              backendResults.map(async (offer) => {
+                try {
+                  const profileResp = await fetch(`${API_BASE}/profile/${offer.ownerEmail}`, {
+                    headers: { Authorization: `Bearer ${currentUser.token}` }
+                  });
+                  
+                  if (profileResp.ok) {
+                    const profileData = await profileResp.json();
+                    return {
+                      ...offer,
+                      ownerName: profileData.name || offer.ownerName,
+                      ownerPhoto: profileData.profilePhoto || offer.ownerPhoto,
+                      ownerBadges: profileData.badges || []
+                    };
+                  }
+                } catch (err) {
+                  console.error("Profile fetch error in search:", err);
+                }
+                return offer;
+              })
+            );
+            
+            // Sort by relevance
+            const sortedResults = enhancedResults.sort((a, b) => {
+              const aTitle = a.bookTitle.toLowerCase();
+              const bTitle = b.bookTitle.toLowerCase();
+              const query = q.toLowerCase();
+              
+              // Exact match first
+              if (aTitle === query) return -1;
+              if (bTitle === query) return 1;
+              
+              // Starts with query
+              if (aTitle.startsWith(query) && !bTitle.startsWith(query)) return -1;
+              if (bTitle.startsWith(query) && !aTitle.startsWith(query)) return 1;
+              
+              // Contains query
+              if (aTitle.includes(query) && !bTitle.includes(query)) return -1;
+              if (bTitle.includes(query) && !aTitle.includes(query)) return 1;
+              
+              // Alphabetical
+              return aTitle.localeCompare(bTitle);
+            });
+            
+            setDiscoveryFeed(sortedResults);
+          } else {
+            // Fallback to local search
+            const localMatches = allOffers.filter(o => 
+              o.bookTitle?.toLowerCase().includes(q.toLowerCase()) || 
+              o.author?.toLowerCase().includes(q.toLowerCase()) ||
+              o.description?.toLowerCase().includes(q.toLowerCase())
+            );
+            
+            setDiscoveryFeed(localMatches);
+          }
+        } else if (searchType === "users") {
+          // Search for users
+          try {
+            const usersResp = await fetch(`${API_BASE}/get-usernames?query=${encodeURIComponent(q)}`, {
+              headers: { Authorization: `Bearer ${currentUser.token}` }
+            });
+            
+            if (usersResp.ok) {
+              const users = await usersResp.json();
+              // Find offers by these users
+              const userEmails = users.map((u: any) => u.email.toLowerCase());
+              const userOffers = allOffers.filter(o => 
+                userEmails.includes(o.ownerEmail.toLowerCase()) ||
+                o.ownerName.toLowerCase().includes(q.toLowerCase())
+              );
+              setDiscoveryFeed(userOffers);
+            }
+          } catch (err) {
+            console.error("User search error:", err);
+            const userOffers = allOffers.filter(o => 
+              o.ownerName.toLowerCase().includes(q.toLowerCase())
+            );
+            setDiscoveryFeed(userOffers);
+          }
+        }
+      } catch (error) {
+        console.error("Search error:", error);
+        // Fallback to local search
+        const localMatches = allOffers.filter(o => 
+          o.bookTitle?.toLowerCase().includes(q.toLowerCase()) || 
+          o.author?.toLowerCase().includes(q.toLowerCase())
+        );
+        setDiscoveryFeed(localMatches);
+      } finally {
+        setIsSearching(false);
       }
-    } catch (err) { 
-      setDiscoveryFeed([]);
-    } finally {
-      setIsSearching(false);
+    }, 300); // 300ms debounce
+  };
+
+  // Auto-search when query changes (with debounce)
+  useEffect(() => {
+    if (searchQuery.trim() && searchQuery.length > 2) {
+      handleSearch();
     }
+    
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    };
+  }, [searchQuery, searchType]);
+
+  const clearSearch = () => {
+    setSearchQuery("");
+    setDiscoveryFeed([...allOffers].sort(() => Math.random() - 0.5));
+    setStoreResults([]);
+    setShowStores(false);
+    setIsSearching(false);
   };
 
   const handleContact = async (offer: Offer) => {
@@ -285,35 +471,88 @@ export default function DiscoverScreen({ currentUser, wishlist = [], toggleWishl
     });
   };
 
+  const SearchTypeButton = ({ type, icon, label }: { type: "all" | "books" | "stores" | "users", icon: React.ReactNode, label: string }) => (
+    <button
+      onClick={() => setSearchType(type)}
+      className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+        searchType === type 
+          ? 'bg-[#382110] text-white' 
+          : 'bg-[#f4f1ea] text-[#382110] hover:bg-[#e8e0d5]'
+      }`}
+    >
+      {icon}
+      <span>{label}</span>
+    </button>
+  );
+
   return (
     <div className="flex flex-col h-[calc(100vh-110px)] md:h-[calc(100vh-60px)] overflow-y-auto bg-[#faf8f5]">
       {/* Search Header */}
       <div className="sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-[#eee] px-4 py-3 md:px-8">
-        <div className="max-w-4xl mx-auto flex items-center gap-3">
-          <button onClick={() => navigate("/home")} className="text-[#382110] p-2 hover:bg-[#f4f1ea] rounded-full transition-colors md:hidden">
-            <FaArrowLeft size={18} />
-          </button>
-          
-          <form onSubmit={handleSearch} className="flex-1 relative group">
-            <input 
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search books, stores, authors, users..."
-              className="w-full bg-[#f4f4f4] border-none rounded-xl py-2 pl-10 pr-4 text-[#382110] text-sm focus:bg-white focus:ring-2 focus:ring-[#382110]/10 outline-none transition-all shadow-inner"
-            />
-            <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#999] group-focus-within:text-[#382110]">
-              {isSearching ? <div className="w-4 h-4 border-2 border-[#382110] border-t-transparent rounded-full animate-spin" /> : <FaSearch size={14} />}
-            </div>
-          </form>
+        <div className="max-w-6xl mx-auto">
+          <div className="flex items-center gap-3 mb-3">
+            <button onClick={() => navigate("/home")} className="text-[#382110] p-2 hover:bg-[#f4f1ea] rounded-full transition-colors">
+              <FaArrowLeft size={18} />
+            </button>
+            
+            <form onSubmit={handleSearch} className="flex-1 relative group">
+              <input 
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search books, authors, stores, or users..."
+                className="w-full bg-[#f4f4f4] border-none rounded-xl py-3 pl-12 pr-10 text-[#382110] text-sm focus:bg-white focus:ring-2 focus:ring-[#382110]/10 outline-none transition-all shadow-inner"
+              />
+              <div className="absolute left-4 top-1/2 -translate-y-1/2 text-[#999] group-focus-within:text-[#382110]">
+                {isSearching ? <div className="w-4 h-4 border-2 border-[#382110] border-t-transparent rounded-full animate-spin" /> : <FaSearch size={16} />}
+              </div>
+              {searchQuery && (
+                <button 
+                  type="button"
+                  onClick={clearSearch}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#999] hover:text-[#382110] p-1"
+                >
+                  <FaTimes size={14} />
+                </button>
+              )}
+            </form>
 
-          <button onClick={() => {setSearchQuery(""); setDiscoveryFeed([...allOffers].sort(() => Math.random() - 0.5)); setShowStores(false);}} className="p-2 text-[#382110] hover:bg-[#f4f1ea] rounded-full">
-            <FaFilter size={16} />
-          </button>
+            <button 
+              onClick={fetchOffers} 
+              className="p-3 text-[#382110] hover:bg-[#f4f1ea] rounded-full transition-colors"
+              title="Refresh"
+            >
+              <FaSync size={16} />
+            </button>
+          </div>
+
+          {/* Search Type Filters */}
+          <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide">
+            <SearchTypeButton type="all" icon={<FaSearch size={12} />} label="All" />
+            <SearchTypeButton type="books" icon={<FaBook size={12} />} label="Books" />
+            <SearchTypeButton type="stores" icon={<FaStore size={12} />} label="Stores" />
+            <SearchTypeButton type="users" icon={<FaUser size={12} />} label="Users" />
+          </div>
+
+          {/* Search History */}
+          {searchHistory.length > 0 && !searchQuery && (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {searchHistory.slice(0, 5).map((term, index) => (
+                <button
+                  key={index}
+                  onClick={() => setSearchQuery(term)}
+                  className="px-3 py-1.5 bg-[#f4f1ea] text-[#382110] text-xs rounded-full hover:bg-[#e8e0d5] transition-colors flex items-center gap-1.5"
+                >
+                  <FaSearch size={10} />
+                  {term}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
-      <main className="flex-1 max-w-[1100px] mx-auto w-full p-4 md:p-8">
+      <main className="flex-1 max-w-6xl mx-auto w-full p-4 md:p-8">
         {loading ? (
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4 md:gap-6">
             {[...Array(10)].map((_, i) => (
@@ -322,25 +561,43 @@ export default function DiscoverScreen({ currentUser, wishlist = [], toggleWishl
           </div>
         ) : (
           <>
+            {/* Store Results */}
             {showStores && storeResults.length > 0 && (
               <div className="mb-10">
-                <h2 className="text-xs font-bold text-[#382110] uppercase tracking-widest mb-4 border-b pb-2">Store Matches</h2>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-xs font-bold text-[#382110] uppercase tracking-widest border-b pb-2">Store Matches ({storeResults.length})</h2>
+                  <button 
+                    onClick={() => navigate("/stores")}
+                    className="text-xs text-[#382110] hover:underline"
+                  >
+                    View All Stores
+                  </button>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {storeResults.map((store) => (
                     <motion.div
                       key={store.id}
                       whileHover={{ y: -4 }}
                       onClick={() => navigate(`/store/${store.id}`, { state: { store } })}
-                      className="bg-white rounded-xl border border-[#eee] p-4 cursor-pointer hover:shadow-md transition-all flex items-center gap-4"
+                      className="bg-white rounded-xl border border-[#eee] p-4 cursor-pointer hover:shadow-md transition-all flex items-center gap-4 group"
                     >
-                      <div className="w-12 h-12 rounded-full bg-[#382110] flex items-center justify-center flex-shrink-0">
-                        <FaStore size={18} className="text-white" />
+                      <div className="w-14 h-14 rounded-full bg-gradient-to-br from-[#382110] to-[#5a3e2b] flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-transform">
+                        <FaStore size={20} className="text-white" />
                       </div>
                       <div className="flex-1 min-w-0">
                         <h3 className="font-bold text-[#382110] text-sm truncate">{store.name}</h3>
-                        <div className="flex items-center gap-2 text-[10px] text-[#777] mt-1">
-                          <FaFolder size={10} />
-                          <span>{store.bookCount || store.offerIds?.length || 0} books</span>
+                        <p className="text-[11px] text-[#777] truncate mt-1">{store.ownerName}</p>
+                        <div className="flex items-center gap-3 text-[10px] text-[#777] mt-2">
+                          <div className="flex items-center gap-1">
+                            <FaFolder size={10} />
+                            <span>{store.bookCount || 0} books</span>
+                          </div>
+                          {userLocation && store.latitude && store.longitude && (
+                            <div className="flex items-center gap-1">
+                              <FaLocationArrow size={10} />
+                              <span>{getDistanceFromLatLonInKm(userLocation.lat, userLocation.lng, store.latitude, store.longitude).toFixed(1)} km</span>
+                            </div>
+                          )}
                         </div>
                       </div>
                     </motion.div>
@@ -349,19 +606,40 @@ export default function DiscoverScreen({ currentUser, wishlist = [], toggleWishl
               </div>
             )}
 
-            <h2 className="text-xs font-bold text-[#382110] uppercase tracking-widest mb-6 border-b pb-2 flex justify-between items-center">
-              {searchQuery ? `Search results for "${searchQuery}"` : "Discover Gems Near You"}
-              <span className="text-[10px] text-[#999] normal-case font-medium">{discoveryFeed.length} items</span>
-            </h2>
+            {/* Book Results */}
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xs font-bold text-[#382110] uppercase tracking-widest border-b pb-2">
+                {searchQuery 
+                  ? `Results for "${searchQuery}" (${discoveryFeed.length})` 
+                  : `Discover Gems (${discoveryFeed.length})`}
+              </h2>
+              
+              {searchQuery && (
+                <button 
+                  onClick={clearSearch}
+                  className="text-xs text-[#382110] hover:underline flex items-center gap-1"
+                >
+                  <FaTimes size={10} />
+                  Clear Search
+                </button>
+              )}
+            </div>
 
-            {discoveryFeed.length === 0 ? (
+            {discoveryFeed.length === 0 && searchQuery ? (
               <div className="flex flex-col items-center justify-center py-20 text-center">
-                 <div className="w-16 h-16 bg-[#f4f1ea] rounded-full flex items-center justify-center text-[#382110] mb-4">
-                    <FaSearch size={24} />
-                 </div>
-                 <h3 className="text-xl font-serif font-bold text-[#382110]">No matches found</h3>
-                 <p className="text-[#777] text-sm mt-1 mb-8 max-w-xs mx-auto">Try searching for a different book, author or city.</p>
-                 <button onClick={() => {setSearchQuery(""); setDiscoveryFeed([...allOffers].sort(() => Math.random() - 0.5));}} className="text-[#382110] text-xs font-bold uppercase underline">Clear Search</button>
+                <div className="w-20 h-20 bg-[#f4f1ea] rounded-full flex items-center justify-center text-[#382110] mb-6">
+                  <FaSearch size={28} />
+                </div>
+                <h3 className="text-xl font-serif font-bold text-[#382110]">No matches found</h3>
+                <p className="text-[#777] text-sm mt-2 mb-8 max-w-md mx-auto">
+                  Try different keywords or search for authors, genres, or locations.
+                </p>
+                <div className="flex flex-wrap gap-2 justify-center">
+                  <button onClick={() => setSearchQuery("fantasy")} className="px-3 py-1.5 bg-[#f4f1ea] text-[#382110] text-xs rounded-full hover:bg-[#e8e0d5]">fantasy</button>
+                  <button onClick={() => setSearchQuery("mystery")} className="px-3 py-1.5 bg-[#f4f1ea] text-[#382110] text-xs rounded-full hover:bg-[#e8e0d5]">mystery</button>
+                  <button onClick={() => setSearchQuery("classic")} className="px-3 py-1.5 bg-[#f4f1ea] text-[#382110] text-xs rounded-full hover:bg-[#e8e0d5]">classic</button>
+                  <button onClick={() => setSearchQuery("novel")} className="px-3 py-1.5 bg-[#f4f1ea] text-[#382110] text-xs rounded-full hover:bg-[#e8e0d5]">novel</button>
+                </div>
               </div>
             ) : (
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6">
@@ -383,7 +661,9 @@ export default function DiscoverScreen({ currentUser, wishlist = [], toggleWishl
                       
                       <div className="absolute top-2 right-2 flex flex-col items-end gap-1">
                         <div className={`text-[9px] font-bold px-2 py-1 text-white shadow-sm rounded-md tracking-wider uppercase
-                          ${offer.type === 'sell' ? 'bg-[#d37e2fcc] backdrop-blur-md' : offer.type === 'exchange' ? 'bg-[#00635dcc] backdrop-blur-md' : 'bg-[#764d91cc] backdrop-blur-md'}`}>
+                          ${offer.type === 'sell' ? 'bg-[#d37e2fcc] backdrop-blur-md' : 
+                            offer.type === 'exchange' ? 'bg-[#00635dcc] backdrop-blur-md' : 
+                            'bg-[#764d91cc] backdrop-blur-md'}`}>
                           {offer.type}
                         </div>
                       </div>
@@ -408,7 +688,7 @@ export default function DiscoverScreen({ currentUser, wishlist = [], toggleWishl
                       <div className="flex items-center gap-2 pt-2 border-t border-[#f4f4f4]">
                         <div className="w-6 h-6 rounded-full overflow-hidden bg-[#f4f1ea] border border-[#e5e5e5] flex-shrink-0">
                           {offer.ownerPhoto ? (
-                            <img src={offer.ownerPhoto} className="w-full h-full object-cover" />
+                            <img src={offer.ownerPhoto} className="w-full h-full object-cover" alt={offer.ownerName} />
                           ) : (
                             <div className="w-full h-full flex items-center justify-center text-[9px] font-bold text-[#382110]">
                               {offer.ownerName?.charAt(0)}
@@ -439,6 +719,7 @@ export default function DiscoverScreen({ currentUser, wishlist = [], toggleWishl
         )}
       </main>
 
+      {/* Offer Detail Modal */}
       <AnimatePresence>
          {selectedOffer && (
             <motion.div 
@@ -456,7 +737,7 @@ export default function DiscoverScreen({ currentUser, wishlist = [], toggleWishl
                   </button>
 
                   <div className="w-full md:w-1/2 bg-[#f4f1ea] flex items-center justify-center p-8 relative">
-                     <img src={getImageSource(selectedOffer)} className="max-h-full max-w-full shadow-lg object-contain" />
+                     <img src={getImageSource(selectedOffer)} className="max-h-full max-w-full shadow-lg object-contain" alt={selectedOffer.bookTitle} />
                      <div className="absolute bottom-4 left-4 bg-white/90 px-3 py-1 rounded text-[10px] font-bold text-[#382110] shadow-sm uppercase tracking-widest">
                         {selectedOffer.type}
                      </div>
@@ -470,7 +751,7 @@ export default function DiscoverScreen({ currentUser, wishlist = [], toggleWishl
 
                      <div className="flex items-center gap-3 mb-6 pb-6 border-b border-[#eee]">
                         <div className="w-12 h-12 rounded-full overflow-hidden bg-[#f4f1ea] border border-[#ddd] shadow-sm">
-                           {selectedOffer.ownerPhoto ? <img src={selectedOffer.ownerPhoto} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-lg font-bold">{selectedOffer.ownerName?.charAt(0)}</div>}
+                           {selectedOffer.ownerPhoto ? <img src={selectedOffer.ownerPhoto} className="w-full h-full object-cover" alt={selectedOffer.ownerName} /> : <div className="w-full h-full flex items-center justify-center text-lg font-bold">{selectedOffer.ownerName?.charAt(0)}</div>}
                         </div>
                         <div className="flex-1">
                            <div className="flex items-center gap-2">

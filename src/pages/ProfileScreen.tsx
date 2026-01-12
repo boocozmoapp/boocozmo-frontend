@@ -7,7 +7,7 @@ import {
   FaTrash, FaArrowLeft, FaMapMarkerAlt, FaCalendarAlt, FaFolder, 
   FaChartLine, FaCheck, FaTimes, FaHome, FaMapMarkedAlt, 
   FaBookOpen, FaCompass, FaBookmark, FaUsers, FaComments, 
-  FaBell, FaStar, FaCog, FaBars,
+  FaBell, FaStar, FaCog, FaBars, FaSignOutAlt,
   FaEye,
   FaEyeSlash
 } from "react-icons/fa";
@@ -85,6 +85,7 @@ type Props = {
   toggleWishlist?: (title: string) => void;
   onAddPress?: () => void;
   onMapPress?: () => void;
+  onLogout?: () => void;
 };
 
 const fetchWithTimeout = async (url: string, options: RequestInit = {}, timeout = 10000) => {
@@ -100,7 +101,7 @@ const fetchWithTimeout = async (url: string, options: RequestInit = {}, timeout 
   }
 };
 
-export default function ProfileScreen({ currentUser, wishlist = [], toggleWishlist, onAddPress, onMapPress }: Props) {
+export default function ProfileScreen({ currentUser, wishlist = [], toggleWishlist, onAddPress, onMapPress, onLogout }: Props) {
   const navigate = useNavigate();
 
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -429,6 +430,12 @@ export default function ProfileScreen({ currentUser, wishlist = [], toggleWishli
                  {sidebarOpen && <span className="font-medium whitespace-nowrap">{item.label}</span>}
               </button>
            ))}
+           {onLogout && (
+              <button onClick={onLogout} className="w-full flex items-center gap-4 p-3 rounded-xl hover:bg-white/5 text-gray-400 hover:text-red-500 transition-all mt-4 border-t border-white/5 pt-6">
+                 <FaSignOutAlt size={20} />
+                 {sidebarOpen && <span className="font-medium whitespace-nowrap">Logout</span>}
+              </button>
+           )}
         </nav>
       </motion.aside>
 
@@ -440,10 +447,17 @@ export default function ProfileScreen({ currentUser, wishlist = [], toggleWishli
 
          <header className="h-20 px-6 flex items-center justify-between border-b border-white/5 bg-primary/80 backdrop-blur-md sticky top-0 z-30">
             <div className="flex items-center gap-4">
-               <button onClick={() => navigate(-1)} className="p-2 text-white hover:text-secondary"><FaArrowLeft /></button>
-               <h1 className="text-2xl font-serif font-bold text-white">Profile</h1>
+               <button onClick={() => navigate(-1)} className="p-2 text-[#382110] hover:text-secondary transition-colors"><FaArrowLeft /></button>
+               <h1 className="text-2xl font-serif font-bold text-[#382110]">Profile</h1>
             </div>
-            <button onClick={() => setSidebarOpen(!sidebarOpen)} className="md:hidden p-2 text-white"><FaBars /></button>
+            <div className="flex items-center gap-2">
+               {onLogout && (
+                  <button onClick={onLogout} className="md:hidden p-2 text-[#777] hover:text-red-500" title="Logout">
+                     <FaSignOutAlt size={18} />
+                  </button>
+               )}
+               <button onClick={() => setSidebarOpen(!sidebarOpen)} className="md:hidden p-2 text-[#382110]"><FaBars /></button>
+            </div>
          </header>
 
          <main className="flex-1 overflow-y-auto p-4 md:p-8">

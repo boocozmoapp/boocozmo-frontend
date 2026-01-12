@@ -144,7 +144,7 @@ const AppContent = () => {
               <>
                 <Route path="/" element={<HomeScreen {...authProps} />} />
                 <Route path="/home" element={<HomeScreen {...authProps} />} />
-                <Route path="/profile" element={<ProfileScreen {...authProps} />} />
+                <Route path="/profile" element={<ProfileScreen {...authProps} onLogout={handleLogout} />} />
                 <Route path="/map" element={<MapScreen {...authProps} />} />
                 <Route path="/chat" element={<ChatScreen {...authProps} />} />
                 <Route path="/chat/:chatId" element={<SingleChat {...authProps} />} />
