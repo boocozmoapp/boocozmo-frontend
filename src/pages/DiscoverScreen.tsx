@@ -318,14 +318,36 @@ export default function DiscoverScreen({ currentUser, wishlist = [], toggleWishl
         store.ownerName?.toLowerCase().includes(query.toLowerCase()) ||
         store.location?.toLowerCase().includes(query.toLowerCase())
       );
-      return filtered;
+      
+      // Sort stores: first by name match, then by owner name match
+      const sortedStores = filtered.sort((a, b) => {
+        const queryLower = query.toLowerCase();
+        const aNameMatch = a.name?.toLowerCase().includes(queryLower);
+        const bNameMatch = b.name?.toLowerCase().includes(queryLower);
+        
+        // Store name matches first
+        if (aNameMatch && !bNameMatch) return -1;
+        if (!aNameMatch && bNameMatch) return 1;
+        
+        // Then check owner name matches
+        const aOwnerMatch = a.ownerName?.toLowerCase().includes(queryLower);
+        const bOwnerMatch = b.ownerName?.toLowerCase().includes(queryLower);
+        
+        if (aOwnerMatch && !bOwnerMatch) return -1;
+        if (!aOwnerMatch && bOwnerMatch) return 1;
+        
+        // Finally sort alphabetically by store name
+        return (a.name || "").localeCompare(b.name || "");
+      });
+      
+      return sortedStores;
     } catch (error) {
       console.error("Store search error:", error);
       return [];
     }
   };
 
-  const searchBackendUsers = async (query: string): Promise<{users: User[], userOffers: Offer[]}> => {
+  const searchBackendUsers = async (query: string): Promise<User[]> => {
     try {
       const response = await fetch(`${API_BASE}/get-usernames?query=${encodeURIComponent(query)}&limit=20`, {
         headers: { Authorization: `Bearer ${currentUser.token}` }
@@ -338,13 +360,28 @@ export default function DiscoverScreen({ currentUser, wishlist = [], toggleWishl
           user.email?.toLowerCase().includes(query.toLowerCase())
         );
         
-        // Find offers by these users
-        const userEmails = filteredUsers.map(u => u.email.toLowerCase());
-        const userOffers = allOffers.filter(o => 
-          userEmails.includes(o.ownerEmail.toLowerCase())
-        );
+        // Sort users: first by name match, then by email match
+        const sortedUsers = filteredUsers.sort((a, b) => {
+          const queryLower = query.toLowerCase();
+          const aNameMatch = a.name?.toLowerCase().includes(queryLower);
+          const bNameMatch = b.name?.toLowerCase().includes(queryLower);
+          
+          // Name matches first
+          if (aNameMatch && !bNameMatch) return -1;
+          if (!aNameMatch && bNameMatch) return 1;
+          
+          // Then check email matches
+          const aEmailMatch = a.email?.toLowerCase().includes(queryLower);
+          const bEmailMatch = b.email?.toLowerCase().includes(queryLower);
+          
+          if (aEmailMatch && !bEmailMatch) return -1;
+          if (!aEmailMatch && bEmailMatch) return 1;
+          
+          // Finally sort alphabetically by name
+          return (a.name || "").localeCompare(b.name || "");
+        });
         
-        return { users: filteredUsers, userOffers };
+        return sortedUsers;
       }
       
       const usersData = await response.json();
@@ -357,13 +394,25 @@ export default function DiscoverScreen({ currentUser, wishlist = [], toggleWishl
         profilePhoto: user.profilePhoto || user.profilephoto
       }));
       
-      // Find offers by these users
-      const userEmails = processedUsers.map(u => u.email.toLowerCase());
-      const userOffers = allOffers.filter(o => 
-        userEmails.includes(o.ownerEmail.toLowerCase())
-      );
+      // Sort users for consistent results
+      const sortedUsers = processedUsers.sort((a, b) => {
+        const queryLower = query.toLowerCase();
+        const aNameMatch = a.name?.toLowerCase().includes(queryLower);
+        const bNameMatch = b.name?.toLowerCase().includes(queryLower);
+        
+        if (aNameMatch && !bNameMatch) return -1;
+        if (!aNameMatch && bNameMatch) return 1;
+        
+        const aEmailMatch = a.email?.toLowerCase().includes(queryLower);
+        const bEmailMatch = b.email?.toLowerCase().includes(queryLower);
+        
+        if (aEmailMatch && !bEmailMatch) return -1;
+        if (!aEmailMatch && bEmailMatch) return 1;
+        
+        return (a.name || "").localeCompare(b.name || "");
+      });
       
-      return { users: processedUsers, userOffers };
+      return sortedUsers;
     } catch (error) {
       console.error("User search error:", error);
       // Fallback to local search
@@ -372,12 +421,24 @@ export default function DiscoverScreen({ currentUser, wishlist = [], toggleWishl
         user.email?.toLowerCase().includes(query.toLowerCase())
       );
       
-      const userEmails = filteredUsers.map(u => u.email.toLowerCase());
-      const userOffers = allOffers.filter(o => 
-        userEmails.includes(o.ownerEmail.toLowerCase())
-      );
+      const sortedUsers = filteredUsers.sort((a, b) => {
+        const queryLower = query.toLowerCase();
+        const aNameMatch = a.name?.toLowerCase().includes(queryLower);
+        const bNameMatch = b.name?.toLowerCase().includes(queryLower);
+        
+        if (aNameMatch && !bNameMatch) return -1;
+        if (!aNameMatch && bNameMatch) return 1;
+        
+        const aEmailMatch = a.email?.toLowerCase().includes(queryLower);
+        const bEmailMatch = b.email?.toLowerCase().includes(queryLower);
+        
+        if (aEmailMatch && !bEmailMatch) return -1;
+        if (!aEmailMatch && bEmailMatch) return 1;
+        
+        return (a.name || "").localeCompare(b.name || "");
+      });
       
-      return { users: filteredUsers, userOffers };
+      return sortedUsers;
     }
   };
 
@@ -415,64 +476,160 @@ export default function DiscoverScreen({ currentUser, wishlist = [], toggleWishl
         setShowUsers(false);
         setStoreResults([]);
         setUserResults([]);
+        setDiscoveryFeed([]);
 
-        if (searchType === "all" || searchType === "books") {
-          // Try backend search first
-          let backendResults = await searchBackendOffers(q);
-          
-          if (backendResults.length === 0) {
-            // Fallback to local search
-            backendResults = allOffers.filter(o => 
-              o.bookTitle?.toLowerCase().includes(q.toLowerCase()) || 
-              o.author?.toLowerCase().includes(q.toLowerCase()) ||
-              o.description?.toLowerCase().includes(q.toLowerCase())
-            );
-          }
-          
-          // Sort by relevance
-          const sortedResults = backendResults.sort((a, b) => {
-            const aTitle = a.bookTitle.toLowerCase();
-            const bTitle = b.bookTitle.toLowerCase();
-            const query = q.toLowerCase();
-            
-            // Exact match first
-            if (aTitle === query) return -1;
-            if (bTitle === query) return 1;
-            
-            // Starts with query
-            if (aTitle.startsWith(query) && !bTitle.startsWith(query)) return -1;
-            if (bTitle.startsWith(query) && !aTitle.startsWith(query)) return 1;
-            
-            // Contains query
-            if (aTitle.includes(query) && !bTitle.includes(query)) return -1;
-            if (bTitle.includes(query) && !aTitle.includes(query)) return 1;
-            
-            // Alphabetical
-            return aTitle.localeCompare(bTitle);
-          });
-          
-          setDiscoveryFeed(sortedResults);
-        }
+        // Handle search based on type
+        switch (searchType) {
+          case "all":
+            // For "all", search everything and show all results
+            let bookResults: Offer[] = [];
+            let storeResults: Store[] = [];
+            let userResults: User[] = [];
 
-        if (searchType === "all" || searchType === "stores") {
-          const storeResults = await searchBackendStores(q);
-          setStoreResults(storeResults);
-          if (storeResults.length > 0) {
-            setShowStores(true);
-          }
-        }
+            // Search books
+            const backendBookResults = await searchBackendOffers(q);
+            if (backendBookResults.length === 0) {
+              bookResults = allOffers.filter(o => 
+                o.bookTitle?.toLowerCase().includes(q.toLowerCase()) || 
+                o.author?.toLowerCase().includes(q.toLowerCase()) ||
+                o.description?.toLowerCase().includes(q.toLowerCase())
+              );
+            } else {
+              bookResults = backendBookResults;
+            }
 
-        if (searchType === "all" || searchType === "users") {
-          const { users, userOffers } = await searchBackendUsers(q);
-          setUserResults(users);
-          if (users.length > 0) {
-            setShowUsers(true);
-          }
-          
-          // If we're searching for users and also want to show their offers
-          if (searchType === "users" && userOffers.length > 0) {
-            setDiscoveryFeed(userOffers);
-          }
+            // Sort books by relevance
+            const sortedBookResults = bookResults.sort((a, b) => {
+              const aTitle = a.bookTitle.toLowerCase();
+              const bTitle = b.bookTitle.toLowerCase();
+              const query = q.toLowerCase();
+              
+              // Exact match first
+              if (aTitle === query) return -1;
+              if (bTitle === query) return 1;
+              
+              // Starts with query
+              if (aTitle.startsWith(query) && !bTitle.startsWith(query)) return -1;
+              if (bTitle.startsWith(query) && !aTitle.startsWith(query)) return 1;
+              
+              // Contains query
+              if (aTitle.includes(query) && !bTitle.includes(query)) return -1;
+              if (bTitle.includes(query) && !aTitle.includes(query)) return 1;
+              
+              // Then check author matches
+              const aAuthorMatch = a.author?.toLowerCase().includes(query);
+              const bAuthorMatch = b.author?.toLowerCase().includes(query);
+              
+              if (aAuthorMatch && !bAuthorMatch) return -1;
+              if (!aAuthorMatch && bAuthorMatch) return 1;
+              
+              // Finally check owner name matches
+              const aOwnerMatch = a.ownerName?.toLowerCase().includes(query);
+              const bOwnerMatch = b.ownerName?.toLowerCase().includes(query);
+              
+              if (aOwnerMatch && !bOwnerMatch) return -1;
+              if (!aOwnerMatch && bOwnerMatch) return 1;
+              
+              // Alphabetical
+              return aTitle.localeCompare(bTitle);
+            });
+            
+            setDiscoveryFeed(sortedBookResults);
+
+            // Search stores
+            storeResults = await searchBackendStores(q);
+            setStoreResults(storeResults);
+            if (storeResults.length > 0) {
+              setShowStores(true);
+            }
+
+            // Search users
+            userResults = await searchBackendUsers(q);
+            setUserResults(userResults);
+            if (userResults.length > 0) {
+              setShowUsers(true);
+            }
+            break;
+
+          case "books":
+            // Only search for books
+            let booksOnlyResults = await searchBackendOffers(q);
+            if (booksOnlyResults.length === 0) {
+              booksOnlyResults = allOffers.filter(o => 
+                o.bookTitle?.toLowerCase().includes(q.toLowerCase()) || 
+                o.author?.toLowerCase().includes(q.toLowerCase()) ||
+                o.description?.toLowerCase().includes(q.toLowerCase())
+              );
+            }
+
+            // Sort books by title match first, then author, then owner
+            const sortedBooksOnlyResults = booksOnlyResults.sort((a, b) => {
+              const queryLower = q.toLowerCase();
+              const aTitle = a.bookTitle.toLowerCase();
+              const bTitle = b.bookTitle.toLowerCase();
+              
+              // Exact title match
+              if (aTitle === queryLower) return -1;
+              if (bTitle === queryLower) return 1;
+              
+              // Title starts with query
+              if (aTitle.startsWith(queryLower) && !bTitle.startsWith(queryLower)) return -1;
+              if (bTitle.startsWith(queryLower) && !aTitle.startsWith(queryLower)) return 1;
+              
+              // Title contains query
+              if (aTitle.includes(queryLower) && !bTitle.includes(queryLower)) return -1;
+              if (bTitle.includes(queryLower) && !aTitle.includes(queryLower)) return 1;
+              
+              // Check author matches
+              const aAuthorMatch = a.author?.toLowerCase().includes(queryLower);
+              const bAuthorMatch = b.author?.toLowerCase().includes(queryLower);
+              
+              if (aAuthorMatch && !bAuthorMatch) return -1;
+              if (!aAuthorMatch && bAuthorMatch) return 1;
+              
+              // Check owner name matches
+              const aOwnerMatch = a.ownerName?.toLowerCase().includes(queryLower);
+              const bOwnerMatch = b.ownerName?.toLowerCase().includes(queryLower);
+              
+              if (aOwnerMatch && !bOwnerMatch) return -1;
+              if (!aOwnerMatch && bOwnerMatch) return 1;
+              
+              // Alphabetical by title
+              return aTitle.localeCompare(bTitle);
+            });
+            
+            setDiscoveryFeed(sortedBooksOnlyResults);
+            setStoreResults([]);
+            setUserResults([]);
+            setShowStores(false);
+            setShowUsers(false);
+            break;
+
+          case "stores":
+            // Only search for stores
+            const storesOnlyResults = await searchBackendStores(q);
+            setStoreResults(storesOnlyResults);
+            setDiscoveryFeed([]); // Clear books display
+            setUserResults([]);
+            
+            if (storesOnlyResults.length > 0) {
+              setShowStores(true);
+            }
+            setShowUsers(false);
+            break;
+
+          case "users":
+            // Only search for users
+            const usersOnlyResults = await searchBackendUsers(q);
+            setUserResults(usersOnlyResults);
+            setDiscoveryFeed([]); // Clear books display
+            setStoreResults([]);
+            
+            if (usersOnlyResults.length > 0) {
+              setShowUsers(true);
+            }
+            setShowStores(false);
+            break;
         }
       } catch (error) {
         console.error("Search error:", error);
@@ -488,6 +645,13 @@ export default function DiscoverScreen({ currentUser, wishlist = [], toggleWishl
         );
         setStoreResults(localStores);
         if (localStores.length > 0) setShowStores(true);
+        
+        const localUsers = allUsers.filter(u => 
+          u.name?.toLowerCase().includes(q.toLowerCase()) ||
+          u.email?.toLowerCase().includes(q.toLowerCase())
+        );
+        setUserResults(localUsers);
+        if (localUsers.length > 0) setShowUsers(true);
       } finally {
         setIsSearching(false);
       }
@@ -498,6 +662,13 @@ export default function DiscoverScreen({ currentUser, wishlist = [], toggleWishl
   useEffect(() => {
     if (searchQuery.trim() && searchQuery.length >= 2) {
       handleSearch();
+    } else if (!searchQuery.trim()) {
+      // Clear search results when query is empty
+      setDiscoveryFeed([...allOffers].sort(() => Math.random() - 0.5));
+      setStoreResults([]);
+      setUserResults([]);
+      setShowStores(false);
+      setShowUsers(false);
     }
     
     return () => {
@@ -737,52 +908,29 @@ export default function DiscoverScreen({ currentUser, wishlist = [], toggleWishl
               </div>
             )}
 
-            {/* Book Results Header */}
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xs font-bold text-[#382110] uppercase tracking-widest border-b pb-2">
-                {searchQuery 
-                  ? `Results for "${searchQuery}" (${discoveryFeed.length})` 
-                  : `Discover Books (${discoveryFeed.length})`}
-              </h2>
-              
-              {searchQuery && (
-                <button 
-                  onClick={clearSearch}
-                  className="text-xs text-[#382110] hover:underline flex items-center gap-1"
-                >
-                  <FaTimes size={10} />
-                  Clear Search
-                </button>
-              )}
-            </div>
+            {/* Book Results Header - Only show when there are books to display */}
+            {discoveryFeed.length > 0 && (
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-xs font-bold text-[#382110] uppercase tracking-widest border-b pb-2">
+                  {searchQuery 
+                    ? `Book Results for "${searchQuery}" (${discoveryFeed.length})` 
+                    : `Discover Books (${discoveryFeed.length})`}
+                </h2>
+                
+                {searchQuery && (
+                  <button 
+                    onClick={clearSearch}
+                    className="text-xs text-[#382110] hover:underline flex items-center gap-1"
+                  >
+                    <FaTimes size={10} />
+                    Clear Search
+                  </button>
+                )}
+              </div>
+            )}
 
             {/* No Results & Suggestions */}
-            {discoveryFeed.length === 0 && searchQuery ? (
-              <div className="flex flex-col items-center justify-center py-20 text-center">
-                <div className="w-20 h-20 bg-[#f4f1ea] rounded-full flex items-center justify-center text-[#382110] mb-6">
-                  <FaSearch size={28} />
-                </div>
-                <h3 className="text-xl font-serif font-bold text-[#382110] mb-2">No matches found</h3>
-                <p className="text-[#777] text-sm mb-8 max-w-md mx-auto">
-                  Try different keywords or browse suggestions below.
-                </p>
-                
-                <div className="mb-10">
-                  <p className="text-sm text-[#382110] font-medium mb-3">Try searching for:</p>
-                  <div className="flex flex-wrap gap-2 justify-center">
-                    {suggestedSearches.map((term) => (
-                      <button 
-                        key={term}
-                        onClick={() => setSearchQuery(term)}
-                        className="px-4 py-2 bg-[#f4f1ea] text-[#382110] text-sm rounded-full hover:bg-[#e8e0d5] transition-colors capitalize"
-                      >
-                        {term}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            ) : discoveryFeed.length === 0 && !searchQuery ? (
+            {!searchQuery && discoveryFeed.length === 0 && storeResults.length === 0 && userResults.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-20 text-center">
                 <div className="w-20 h-20 bg-[#f4f1ea] rounded-full flex items-center justify-center text-[#382110] mb-6">
                   <FaBookOpen size={28} />
@@ -819,7 +967,32 @@ export default function DiscoverScreen({ currentUser, wishlist = [], toggleWishl
                   </div>
                 </div>
               </div>
-            ) : (
+            ) : searchQuery && discoveryFeed.length === 0 && storeResults.length === 0 && userResults.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-20 text-center">
+                <div className="w-20 h-20 bg-[#f4f1ea] rounded-full flex items-center justify-center text-[#382110] mb-6">
+                  <FaSearch size={28} />
+                </div>
+                <h3 className="text-xl font-serif font-bold text-[#382110] mb-2">No matches found</h3>
+                <p className="text-[#777] text-sm mb-8 max-w-md mx-auto">
+                  Try different keywords or browse suggestions below.
+                </p>
+                
+                <div className="mb-10">
+                  <p className="text-sm text-[#382110] font-medium mb-3">Try searching for:</p>
+                  <div className="flex flex-wrap gap-2 justify-center">
+                    {suggestedSearches.map((term) => (
+                      <button 
+                        key={term}
+                        onClick={() => setSearchQuery(term)}
+                        className="px-4 py-2 bg-[#f4f1ea] text-[#382110] text-sm rounded-full hover:bg-[#e8e0d5] transition-colors capitalize"
+                      >
+                        {term}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            ) : discoveryFeed.length > 0 ? (
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6">
                 {discoveryFeed.map((offer) => (
                   <motion.div 
@@ -892,7 +1065,7 @@ export default function DiscoverScreen({ currentUser, wishlist = [], toggleWishl
                   </motion.div>
                 ))}
               </div>
-            )}
+            ) : null}
           </>
         )}
       </main>

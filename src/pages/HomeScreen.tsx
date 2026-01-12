@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-// src/pages/HomeScreen.tsx - BOOCOZMO FINAL (MODALS & ARTISTIC) - FIXED
+// src/pages/HomeScreen.tsx - BOOCOZMO FINAL (MODALS & ARTISTIC) - FIXED WITH PROPER SPACING
 import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
@@ -649,11 +649,11 @@ export default function HomeScreen({ currentUser }: Props) {
        </AnimatePresence>
 
        {/* Main Feed */}
-       <div className="flex-1 md:pr-6">
+       <div className="flex-1 md:pr-6 pt-4 md:pt-6"> {/* Added padding-top here */}
           
           {/* Stores Section */}
           {sortedStores.length > 0 && (
-            <div className="mb-8 pt-2">
+            <div className="mb-8">
               <div className="flex justify-between items-center mb-3">
                 <h2 className="text-[#382110] font-bold text-[16px] uppercase tracking-widest">Stores</h2>
                 <div className="flex gap-2">
@@ -686,6 +686,11 @@ export default function HomeScreen({ currentUser }: Props) {
                 </div>
               </div>
             </div>
+          )}
+          
+          {/* If no stores, add extra margin */}
+          {sortedStores.length === 0 && !loadingStores && (
+            <div className="mb-6"></div> 
           )}
           
           {/* Location Banner or Nearest Books */}
@@ -857,7 +862,7 @@ export default function HomeScreen({ currentUser }: Props) {
        </div>
 
        {/* Artistic Sidebar (Desktop) */}
-       <aside className="hidden md:block w-[300px] shrink-0">
+       <aside className="hidden md:block w-[300px] shrink-0 mt-6"> {/* Added margin-top here */}
           <div className="bg-[#382110] p-6 rounded-[2px] mb-6 relative overflow-hidden text-white shadow-md group">
             <div className="absolute top-0 right-0 p-4 opacity-20 transform scale-150 rotate-12 group-hover:rotate-0 transition-transform duration-700">
                <FaExchangeAlt size={120} />
