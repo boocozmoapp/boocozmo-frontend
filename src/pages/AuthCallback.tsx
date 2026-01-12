@@ -1,130 +1,67 @@
-// src/pages/AuthCallback.tsx - FIXED VERSION
-import { useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-
-const API_BASE = "https://boocozmo-api.onrender.com";
+// src/pages/AuthCallback.tsx - HMR-PROOF REDIRECT
+import { useEffect, useRef } from "react";
 
 const AuthCallback = ({ onLoginSuccess }: { onLoginSuccess: (user: any) => void }) => {
-  const navigate = useNavigate();
+  const processedRef = useRef(false);
 
   useEffect(() => {
-    console.log("🔄 AuthCallback: Starting...");
-    console.log("🔍 Full URL:", window.location.href);
-    console.log("🔍 Hash:", window.location.hash);
-    console.log("🔍 Search:", window.location.search);
+    // 1. Strict double-execution prevention
+    if (processedRef.current) return;
+    processedRef.current = true;
+
+    console.log("🔄 Auth: Loading token and fighting Vite HMR...");
     
-    // Parse BOTH hash AND query parameters
-    const hash = window.location.hash.substring(1);
-    const search = window.location.search.substring(1);
-    
-    // Supabase puts token in hash, but let's check both
-    let accessToken = null;
-    let error = null;
-    
-    // First, try to parse hash (most common for Supabase)
-    if (hash) {
-      // Parse hash fragment manually
-      const hashParams = new URLSearchParams(hash);
-      accessToken = hashParams.get("access_token");
-      error = hashParams.get("error");
-    }
-    
-    // If not in hash, check query params
-    if (!accessToken && search) {
-      const searchParams = new URLSearchParams(search);
-      accessToken = searchParams.get("access_token") || accessToken;
-      error = searchParams.get("error") || error;
-    }
-    
-    console.log("Access token found:", accessToken ? "YES ✓" : "NO ✗");
-    console.log("Error found:", error || "None");
-    
-    if (error) {
-      console.error("❌ Error:", error);
-      alert(`Login error: ${error}`);
-      navigate("/login");
-      return;
-    }
+    // Check both hash and search
+    const hashData = window.location.hash.substring(1);
+    const searchData = window.location.search.substring(1);
+    const params = new URLSearchParams(hashData || searchData);
+    const accessToken = params.get("access_token");
     
     if (!accessToken) {
       console.error("❌ No access token found");
-      console.log("Hash content:", hash);
-      console.log("Search content:", search);
-      
-      // Check if we have a refresh token instead
-      const refreshToken = hash.includes("refresh_token") || search.includes("refresh_token");
-      if (refreshToken) {
-        console.log("Found refresh token instead");
-      }
-      
-      alert("Login failed: No token received. Please try again.");
-      navigate("/login");
+      window.location.replace("/login");
       return;
     }
     
-    console.log("✅ Got Supabase token");
-    
-    // Process the token
     try {
-      // Decode JWT to get user info
-      const parts = accessToken.split('.');
-      if (parts.length !== 3) {
-        throw new Error("Invalid token format");
-      }
-      
-      const payload = JSON.parse(atob(parts[1]));
-      console.log("📋 Token payload:", payload);
-      
-      const userEmail = payload.email;
-      const userName = payload.user_metadata?.name || 
-                      payload.email?.split('@')[0] || 
-                      "User";
-      const userId = payload.sub; // Supabase user ID
-      
-      if (!userEmail) {
-        throw new Error("No email in token");
-      }
-      
-      console.log(`👤 User: ${userEmail}, Name: ${userName}`);
-      
-      // Create user object
+      const payload = JSON.parse(atob(accessToken.split('.')[1]));
       const user = {
-        id: `supa_${userId}`,
-        name: userName,
-        email: userEmail,
+        id: `supa_${payload.sub}`,
+        name: payload.user_metadata?.name || payload.email?.split('@')[0] || "User",
+        email: payload.email,
         token: accessToken,
       };
       
-      // Save to localStorage
-      localStorage.setItem("user", JSON.stringify(user));
-      localStorage.setItem("token", accessToken);
+      console.log("✅ Auth: Handover successful. Storing and redirecting...");
       
-      console.log("💾 Saved user to localStorage:", userEmail);
-      
-      // Update application state immediately
+      // 2. IMMEDIATE PERSISTENCE
+      // Save to BOTH to beat browser tracking prevention and session resets
+      try {
+        localStorage.setItem("user", JSON.stringify(user));
+        sessionStorage.setItem("user", JSON.stringify(user));
+      } catch (e) {
+        console.error("Storage Error:", e);
+      }
+
+      // 3. Update App State (In-Memory)
       onLoginSuccess(user);
-      
-      // Clean the URL (remove hash and query params)
-      window.history.replaceState({}, document.title, "/home");
-      
-      // Navigate to home immediately
-      console.log("🚀 Navigating to home...");
-      navigate("/home", { replace: true });
+
+      // 4. THE VITE KILLER: Zero-delay Hard Redirect
+      // We use window.location.replace to KILL the current process at /auth/callback
+      // and start a fresh app at /home. This prevents HMR from resetting state mid-flow.
+      window.location.replace("/home");
       
     } catch (err) {
-      console.error("❌ Error processing token:", err);
-      alert("Login failed. Please try again.");
-      navigate("/login");
+      console.error("❌ Auth Processing Error:", err);
+      window.location.replace("/login");
     }
-    
-  }, [navigate]);
+  }, [onLoginSuccess]);
 
   return (
-    <div className="h-screen bg-[#f4f1ea] flex items-center justify-center">
+    <div className="h-screen bg-[#fdfaf5] flex items-center justify-center">
       <div className="text-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#382110] mx-auto mb-4"></div>
-        <p className="text-[#382110] font-serif">Completing Google login...</p>
-        <p className="text-sm text-[#555] mt-2">Please wait a moment</p>
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#382110] mx-auto mb-4"></div>
+        <p className="text-xl font-bold font-serif text-[#382110]">Lancement de votre session...</p>
       </div>
     </div>
   );
