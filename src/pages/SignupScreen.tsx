@@ -224,7 +224,8 @@ export default function SignupScreen({ onSignupSuccess, onGoToLogin }: Props) {
               </motion.div>
             )}
 
-            {/* Google Signup */}
+            {/* Google Signup - HIDDEN FOR BETA */}
+            {/*
             <motion.button
               whileHover={{ scale: 1.01 }}
               whileTap={{ scale: 0.98 }}
@@ -236,12 +237,12 @@ export default function SignupScreen({ onSignupSuccess, onGoToLogin }: Props) {
               {googleLoading ? "Connecting..." : "Continue with Google"}
             </motion.button>
 
-            {/* Divider */}
             <div className="relative flex items-center">
               <div className="flex-grow border-t border-[#d9c9b8]"></div>
               <span className="flex-shrink-0 mx-4 text-[10px] uppercase font-bold tracking-[0.2em] text-[#8b6f47]">Or Registry Via</span>
               <div className="flex-grow border-t border-[#d9c9b8]"></div>
             </div>
+            */}
 
             {/* Registration Form */}
             <form onSubmit={handleSignup} className="space-y-4">

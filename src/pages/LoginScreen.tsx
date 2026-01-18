@@ -282,14 +282,14 @@ export default function LoginScreen({ onLoginSuccess, onGoToSignup }: Props) {
               </motion.button>
             </form>
 
-            {/* Divider */}
+            {/* Google Login - HIDDEN FOR BETA */}
+            {/* 
             <div className="relative flex items-center">
               <div className="flex-grow border-t border-[#d9c9b8]"></div>
               <span className="flex-shrink-0 mx-4 text-[10px] uppercase font-bold tracking-[0.2em] text-[#8b6f47]">Or Seek Via</span>
               <div className="flex-grow border-t border-[#d9c9b8]"></div>
             </div>
 
-            {/* Google Login */}
             <motion.button
               whileHover={{ scale: 1.01 }}
               whileTap={{ scale: 0.98 }}
@@ -299,7 +299,8 @@ export default function LoginScreen({ onLoginSuccess, onGoToSignup }: Props) {
             >
               <FaGoogle className="text-[#4285F4]" />
               {googleLoading ? "Connecting..." : "Google Account"}
-            </motion.button>
+            </motion.button> 
+            */}
 
             {/* Signup Redirect */}
             <div className="text-center pt-4">
