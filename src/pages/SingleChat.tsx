@@ -207,7 +207,8 @@ export default function SingleChat({ currentUser }: Props) {
           body: JSON.stringify({
             otherUserEmail: otherUserEmail.toLowerCase(),
             offer_id: activeChatInfo?.offer_id || null,
-            title: activeChatInfo?.offer_title || activeChatInfo?.bookTitle || null
+            store_id: activeChatInfo?.store_id || null,
+            title: activeChatInfo?.offer_title || activeChatInfo?.bookTitle || activeChatInfo?.title || null
           })
         });
 

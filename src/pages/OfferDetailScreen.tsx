@@ -30,7 +30,7 @@ type Offer = {
 };
 
 type Props = {
-  currentUser: { email: string; name: string; id: string };
+  currentUser: { email: string; name: string; id: string; token: string };
   wishlist: string[];
   toggleWishlist: (title: string) => void;
 };
@@ -62,8 +62,29 @@ export default function OfferDetailScreen({ currentUser, wishlist, toggleWishlis
     fetchOffer();
   }, [id]);
 
-  const handleChat = () => {
+  const handleChat = async () => {
     if (!offer) return;
+
+    try {
+      const resp = await fetch(`${API_BASE}/chats?user=${encodeURIComponent(currentUser.email)}`, {
+        headers: { "Authorization": `Bearer ${currentUser.token}` }
+      });
+      if (resp.ok) {
+        const chats: any[] = await resp.json();
+        const existingChat = chats.find((c: any) => 
+          (c.user1.toLowerCase() === offer.ownerEmail.toLowerCase() || c.user2.toLowerCase() === offer.ownerEmail.toLowerCase()) && 
+          (Number(c.offer_id) === Number(offer.id))
+        );
+
+        if (existingChat) {
+          navigate(`/chat/${existingChat.id}`, { state: { chat: existingChat } });
+          return;
+        }
+      }
+    } catch (e) {
+      console.warn("Could not check existing chats:", e);
+    }
+
     navigate(`/chat/new`, {
       state: {
         chat: {

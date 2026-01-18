@@ -184,7 +184,11 @@ export default function ChatScreen({ currentUser }: Props) {
                            <h3 className="font-bold text-white truncate">{conv.other_user?.name || conv.other_user_name || "Unknown"}</h3>
                            <span className="text-xs text-gray-500 whitespace-nowrap">{new Date(conv.last_message_at || conv.created_at).toLocaleDateString()}</span>
                         </div>
-                           <p className="text-sm text-gray-400 truncate">{conv.offer_title || conv.title || (conv as any).bookTitle || "Book Inquiry"}</p>
+                        <p className="text-sm text-gray-400 truncate">
+                           {(conv as any).store_id 
+                              ? `Store Inquiry: ${conv.offer_title || conv.title || "Store"}`
+                              : (conv.offer_title || conv.title || (conv as any).bookTitle || "Book Inquiry")}
+                        </p>
                      </div>
                      {((conv.user1 === currentUser.email && conv.unread_user1) || (conv.user2 === currentUser.email && conv.unread_user2)) && (
                         <div className="w-3 h-3 rounded-full bg-secondary shadow-lg shadow-secondary/50" />

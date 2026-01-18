@@ -204,6 +204,26 @@ export default function StoreDetailScreen({ currentUser }: Props) {
       return;
     }
 
+    // Check if a chat for this specific store already exists
+    try {
+      const resp = await fetch(`${API_BASE}/chats?user=${encodeURIComponent(currentUser.email)}`, {
+        headers: { "Authorization": `Bearer ${currentUser.token}` }
+      });
+      if (resp.ok) {
+        const chats: any[] = await resp.json();
+        const existingChat = chats.find((c: any) => 
+          (c.user1.toLowerCase() === ownerEmail.toLowerCase() || c.user2.toLowerCase() === ownerEmail.toLowerCase()) && 
+          (Number(c.store_id) === Number(store.id))
+        );
+        if (existingChat) {
+          navigate(`/chat/${existingChat.id}`, { state: { chat: existingChat } });
+          return;
+        }
+      }
+    } catch (e) {
+      console.warn("Could not check existing chats, proceeding with potential new chat:", e);
+    }
+
     navigate(`/chat/new`, {
       state: {
         chat: {
@@ -212,7 +232,8 @@ export default function StoreDetailScreen({ currentUser }: Props) {
           user2: ownerEmail,
           other_user_name: ownerName,
           other_user_email: ownerEmail,
-          offer_title: `Books in ${store.name}`,
+          offer_title: `Inquiry: ${store.name}`,
+          store_id: store.id,
           ownerEmail: ownerEmail
         }
       }

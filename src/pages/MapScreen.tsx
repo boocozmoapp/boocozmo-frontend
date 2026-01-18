@@ -51,7 +51,7 @@ type Store = {
 };
 
 type Props = {
-  currentUser: { email: string; name: string; token: string };
+  currentUser: { email: string; name: string; id: string; token: string };
   onAddPress?: () => void;
   onProfilePress?: () => void;
 };
@@ -394,10 +394,10 @@ export default function MapScreen({ currentUser }: Props) {
        });
        if (resp.ok) {
           const chats: any[] = await resp.json();
-          const existingChat = chats.find((c: any) => 
-             (c.user1 === offer.ownerEmail || c.user2 === offer.ownerEmail) && 
-             (c.offer_id === offer.id)
-          );
+        const existingChat = chats.find((c: any) => 
+           (c.user1.toLowerCase() === offer.ownerEmail.toLowerCase() || c.user2.toLowerCase() === offer.ownerEmail.toLowerCase()) && 
+           (Number(c.offer_id) === Number(offer.id))
+        );
 
           if (existingChat) {
              navigate(`/chat/${existingChat.id}`, { state: { chat: existingChat } });
