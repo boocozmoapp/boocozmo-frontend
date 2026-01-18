@@ -164,7 +164,7 @@ export const NotificationProvider: React.FC<Props> = ({ children, currentUser })
     try {
       // NOTE: We primarily rely on the local notification list for the badge to ensure
       // immediate UI updates, but we fetch from server to stay in sync.
-      const response = await fetch(`${API_BASE}/unread-count`, {
+      const response = await fetch(`${API_BASE}/unread-messages`, {
         headers: { "Authorization": `Bearer ${currentUser.token}` }
       });
       
@@ -298,16 +298,17 @@ export const NotificationProvider: React.FC<Props> = ({ children, currentUser })
 
     requestNotificationPermission();
 
-    // Use a simplified connection strategy to fallback gracefully
+    // Use websocket transport only to avoid polling 404s on some server configs
     const socket = io(API_BASE, {
-      transports: ["polling", "websocket"], // Try polling first for stability in some envs
+      transports: ["websocket"], 
+      path: "/socket.io/", // Explicitly set default path just in case
       auth: {
         token: currentUser.token,
         userEmail: currentUser.email
       },
       reconnection: true,
-      reconnectionAttempts: 3,
-      timeout: 10000,
+      reconnectionAttempts: 5,
+      timeout: 20000,
       autoConnect: true
     });
 

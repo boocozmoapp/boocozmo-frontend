@@ -47,7 +47,10 @@ function LocationMarker({
   return position ? <Marker position={position} /> : null;
 }
 
+import { useNavigate } from "react-router-dom";
+
 export default function SignupScreen({ onSignupSuccess, onGoToLogin }: Props) {
+  const navigate = useNavigate();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -139,6 +142,7 @@ export default function SignupScreen({ onSignupSuccess, onGoToLogin }: Props) {
 
       localStorage.setItem("user", JSON.stringify(user));
       onSignupSuccess(user);
+      navigate("/home", { replace: true });
     } catch (err: any) {
       setError(err.message || "Network error. Please try again.");
     } finally {
