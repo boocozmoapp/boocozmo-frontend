@@ -2,6 +2,7 @@
 // src/context/NotificationContext.tsx
 import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from "react";
 import { io, Socket } from "socket.io-client";
+import { AnimatePresence, motion } from "framer-motion";
 
 const API_BASE = "https://boocozmo-api.onrender.com";
 
@@ -30,6 +31,8 @@ type NotificationContextType = {
   refreshUnreadCount: () => Promise<void>;
   showWishlistNotification: (bookTitle: string, ownerName: string, offerId: number) => void;
   showNearbyNotification: (bookTitle: string, ownerName: string, distance: string, offerId: number) => void;
+  activeToast: NotificationItem | null;
+  closeToast: () => void;
 };
 
 // Default values for when context is not available
@@ -44,6 +47,8 @@ const defaultContext: NotificationContextType = {
   refreshUnreadCount: async () => {},
   showWishlistNotification: () => {},
   showNearbyNotification: () => {},
+  activeToast: null,
+  closeToast: () => {},
 };
 
 // Notification throttle settings
@@ -118,14 +123,13 @@ type Props = {
 export const NotificationProvider: React.FC<Props> = ({ children, currentUser }) => {
   const [unreadCount, setUnreadCount] = useState(0);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [activeToast, setActiveToast] = useState<NotificationItem | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const socketRef = useRef<Socket | null>(null);
   const reconnectAttempts = useRef(0);
-  const maxReconnectAttempts = 3; // Reduced retry attempts to avoid spamming
 
   // Load cached data strictly
   useEffect(() => {
-    // We do NOT want to load dummy data. Only load if explicitly set.
     const cachedNotifications = localStorage.getItem("boocozmo_notifications");
     if (cachedNotifications) {
       try {
@@ -134,13 +138,10 @@ export const NotificationProvider: React.FC<Props> = ({ children, currentUser })
            const validDefaults = parsed.map((n: any) => ({ ...n, timestamp: new Date(n.timestamp) }));
            setNotifications(validDefaults);
            
-           // Recalculate unread count based on actual local items to avoid sync drift
            const localUnread = validDefaults.filter(n => !n.isRead).length;
            setUnreadCount(localUnread);
         }
       } catch (e) {
-        console.error("Failed to parse cached notifications:", e);
-        // If error, clear it to prevent issues
         localStorage.removeItem("boocozmo_notifications");
       }
     }
@@ -148,132 +149,130 @@ export const NotificationProvider: React.FC<Props> = ({ children, currentUser })
 
   // Sync state to localStorage
   useEffect(() => {
-    // Only save recent 50
     const toSave = notifications.slice(0, 50);
     localStorage.setItem("boocozmo_notifications", JSON.stringify(toSave));
     
-    // Strict calc
     const count = notifications.filter(n => !n.isRead).length;
     setUnreadCount(count);
   }, [notifications]);
 
-  // Fetch unread count from API
   const refreshUnreadCount = useCallback(async () => {
     if (!currentUser?.token) return;
     
     try {
-      // NOTE: We primarily rely on the local notification list for the badge to ensure
-      // immediate UI updates, but we fetch from server to stay in sync.
-      const response = await fetch(`${API_BASE}/unread-messages`, {
+      const chatResp = await fetch(`${API_BASE}/chats?user=${encodeURIComponent(currentUser.email)}`, {
         headers: { "Authorization": `Bearer ${currentUser.token}` }
       });
       
-      if (response.ok) {
-        const data = await response.json();
-        // If server returns count, trust it for the badge
-        if (typeof data.count === 'number') {
-           setUnreadCount(data.count);
-        }
-      } else {
-        // Fallback: if route fails (e.g. 404), manually fetch chats and count unread
-        // This handles the case where the backend endpoint might be missing temporary
-        const chatRest = await fetch(`${API_BASE}/chats?user=${encodeURIComponent(currentUser.email)}`, {
-          headers: { "Authorization": `Bearer ${currentUser.token}` }
+      if (chatResp.ok) {
+        const chats = await chatResp.json();
+        const totalUnread = chats.reduce((acc: number, c: any) => acc + (parseInt(c.unread_count) || 0), 0);
+        setUnreadCount(totalUnread);
+        
+        const unreadChats = chats.filter((c: any) => (parseInt(c.unread_count) || 0) > 0);
+        
+        setNotifications(prev => {
+           let updated = [...prev];
+           unreadChats.forEach((chat: any) => {
+             const hasUnread = prev.some(n => Number(n.chatId) === Number(chat.id) && !n.isRead);
+             if (!hasUnread) {
+               const lastMsg = chat.last_message || {};
+               const newItem: NotificationItem = {
+                 id: `sync-${chat.id}-${Date.now()}`,
+                 chatId: chat.id,
+                 senderEmail: chat.other_user?.email || "",
+                 senderName: chat.other_user?.name || "User",
+                 message: lastMsg.content || "New unread messages",
+                 timestamp: lastMsg.created_at ? new Date(lastMsg.created_at) : new Date(),
+                 isRead: false,
+                 offerTitle: chat.offer_title || chat.title || null,
+                 type: 'message'
+               };
+               updated = [newItem, ...updated];
+             }
+           });
+           return updated
+             .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+             .slice(0, 50);
         });
-        if (chatRest.ok) {
-           const chats = await chatRest.json();
-           const count = chats.reduce((acc: number, c: any) => {
-             const isUnread = (c.user1 === currentUser.email && c.unread_user1) || 
-                              (c.user2 === currentUser.email && c.unread_user2);
-             return acc + (isUnread ? 1 : 0);
-           }, 0);
-           setUnreadCount(count);
-        }
       }
     } catch (error) {
-       // Silent fail
+       console.error("Refresh unread sync failed:", error);
     }
   }, [currentUser?.email, currentUser?.token]);
 
-  // Mark specific notification as read
   const markAsRead = useCallback((notificationId: string) => {
     setNotifications(prev => 
       prev.map(n => n.id === notificationId ? { ...n, isRead: true } : n)
     );
-    // Unread count will auto-update via the useEffect above
   }, []);
 
-  // Mark all messages in a chat as read
   const markChatAsRead = useCallback(async (chatId: number) => {
-    // Optimistic update first
-    setNotifications(prev => 
-      prev.map(n => n.chatId === chatId ? { ...n, isRead: true } : n)
-    );
-
     if (!currentUser?.token) return;
     
-    // The backend automatically marks messages as read when we fetch them via /chat-messages/:id
-    // So we don't need a separate API call here, just the local optimistic update above.
-  }, [currentUser?.token]);
+    try {
+      setNotifications(prev => 
+        prev.map(n => Number(n.chatId) === Number(chatId) ? { ...n, isRead: true } : n)
+      );
+      setUnreadCount(prev => Math.max(0, prev - 1));
 
-  // Clear all notifications
+      const response = await fetch(`${API_BASE}/mark-read`, {
+        method: "POST",
+        headers: { 
+          "Authorization": `Bearer ${currentUser.token}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ chatId })
+      });
+
+      if (response.ok) {
+        await refreshUnreadCount();
+      }
+    } catch (e) {
+      console.error("Failed to mark chat as read:", e);
+    }
+  }, [currentUser?.token, refreshUnreadCount]);
+
   const clearNotifications = useCallback(() => {
     setNotifications([]);
     localStorage.removeItem("boocozmo_notifications");
     setUnreadCount(0);
   }, []);
 
-  // Internal Logic for adding notifications safely
+  const closeToast = useCallback(() => {
+    setActiveToast(null);
+  }, []);
+
   const addNotification = useCallback((item: NotificationItem) => {
     setNotifications(prev => {
-       // Avoid duplicates
        if (prev.some(n => n.id === item.id)) return prev;
-       
-       // Avoid "spam" duplicates (same content/type within 5 seconds)
        const recentDup = prev.find(n => 
-          n.type === item.type && 
-          n.message === item.message &&
-          (Date.now() - new Date(n.timestamp).getTime() < 5000)
+          n.type === item.type && n.message === item.message && (Date.now() - new Date(n.timestamp).getTime() < 5000)
        );
        if (recentDup) return prev;
-
        return [item, ...prev];
     });
   }, []);
 
-  // Show wishlist match notification
   const showWishlistNotification = useCallback((bookTitle: string, ownerName: string, offerId: number) => {
     const newItem: NotificationItem = {
-      id: `wishlist-${offerId}`, // Stable ID to prevent dupes
+      id: `wishlist-${offerId}`,
       chatId: 0,
       senderEmail: "",
       senderName: ownerName,
-      message: `"${bookTitle}" from your wishlist is now available!`,
+      message: `"${bookTitle}" is now available!`,
       timestamp: new Date(),
       isRead: false,
       offerId,
       offerTitle: bookTitle,
       type: 'wishlist'
     };
-    
     addNotification(newItem);
-
-    // Show browser notification
     if (document.hidden || !document.hasFocus()) {
-      showBrowserNotification(
-        `✨ Wishlist Match!`,
-        `"${bookTitle}" is now available from ${ownerName}`,
-        `wishlist-${offerId}`,
-        () => {
-          window.dispatchEvent(new CustomEvent("navigate-to-offer", { 
-            detail: { offerId } 
-          }));
-        }
-      );
+      showBrowserNotification(`✨ Wishlist Match!`, `"${bookTitle}" is now available from ${ownerName}`, `wishlist-${offerId}`);
     }
   }, [addNotification]);
 
-  // Show nearby offer notification
   const showNearbyNotification = useCallback((bookTitle: string, ownerName: string, distance: string, offerId: number) => {
     const newItem: NotificationItem = {
       id: `nearby-${offerId}`,
@@ -287,141 +286,119 @@ export const NotificationProvider: React.FC<Props> = ({ children, currentUser })
       offerTitle: bookTitle,
       type: 'nearby'
     };
-
     addNotification(newItem);
-
-    // Show browser notification
     if (document.hidden || !document.hasFocus()) {
-      showBrowserNotification(
-        `📍 Book Nearby!`,
-        `"${bookTitle}" is available ${distance} from ${ownerName}`,
-        `nearby-${offerId}`,
-        () => {
-          window.dispatchEvent(new CustomEvent("navigate-to-offer", { 
-            detail: { offerId } 
-          }));
-        }
-      );
+      showBrowserNotification(`📍 Book Nearby!`, `"${bookTitle}" is available ${distance} from ${ownerName}`, `nearby-${offerId}`);
     }
   }, [addNotification]);
 
-    // Socket.IO connection management
-    useEffect(() => {
-      if (!currentUser?.email || !currentUser?.token) {
-        return;
-      }
-  
-      requestNotificationPermission();
-  
-      // Use websocket transport only to avoid polling 404s
-      const socket = io(API_BASE, {
-        transports: ["websocket"], 
-        auth: {
-          token: currentUser.token,
-          userEmail: currentUser.email
-        },
-        reconnection: true,
-        reconnectionAttempts: 5,
-        timeout: 20000,
-        autoConnect: true
-      });
-  
-      socketRef.current = socket;
-  
-      socket.on("connect", async () => {
-        console.log("Socket connected");
-        setIsConnected(true);
-        reconnectAttempts.current = 0;
-        
-        // Strategy: Since backend only emits to chat rooms, we must join all our chat rooms
-        // to receive real-time notifications for them.
-        try {
-          const resp = await fetch(`${API_BASE}/chats?user=${encodeURIComponent(currentUser.email)}`, {
-             headers: { "Authorization": `Bearer ${currentUser.token}` }
-          });
-          if (resp.ok) {
-            const chats = await resp.json();
-            chats.forEach((chat: any) => {
-              socket.emit("join-chat", chat.id);
-            });
-            console.log(`Joined ${chats.length} chat rooms for notifications`);
-          }
-        } catch (e) {
-          console.error("Failed to join chat rooms:", e);
-        }
-      });
-  
-      socket.on("disconnect", () => {
-        setIsConnected(false);
-      });
-  
-      socket.on("connect_error", (err) => {
-        if (reconnectAttempts.current < 2) {
-           console.log("Socket connect error, retrying...", err.message);
-        }
-        reconnectAttempts.current++;
-      });
-  
-      // Listen for 'new-message' (from backend server.js)
-      socket.on("new-message", (data: any) => {
-        console.log("New message received via socket:", data);
-        
-        // Ignore own messages
-        if (data.sender === currentUser.email) return;
+  useEffect(() => {
+    if (!currentUser?.email || !currentUser?.token) return;
 
-        const chatId = data.chatId;
-        
-        const newItem: NotificationItem = {
-          id: `msg-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
-          chatId,
-          senderEmail: data.sender || "", // Backend sends 'sender' (email)
-          senderName: data.senderName || "User", // We might not get name directly, fallback
-          message: data.message || "New message",
-          timestamp: new Date(data.timestamp),
-          isRead: false,
-          type: 'message'
-        };
-  
-        addNotification(newItem);
-        setUnreadCount(prev => prev + 1); // Optimistically increment
-  
-        // Show browser notification if app is not focused
-        if (document.hidden || !document.hasFocus()) {
-          showBrowserNotification(
-            `New Message`,
-            newItem.message,
-            `chat-${chatId}`,
-            () => {
-               window.dispatchEvent(new CustomEvent("navigate-to-chat", { 
-                 detail: { chatId } 
-               }));
-            }
-          );
-        }
-      });
-  
-      return () => {
-        socket.disconnect();
-        socketRef.current = null;
+    requestNotificationPermission();
+
+    const socket = io(API_BASE, {
+      transports: ["websocket"], 
+      auth: { token: currentUser.token, userEmail: currentUser.email }
+    });
+
+    socketRef.current = socket;
+
+    socket.on("connect", () => {
+      setIsConnected(true);
+      refreshUnreadCount();
+      socket.emit("join_user_room", currentUser.email);
+    });
+
+    socket.on("disconnect", () => setIsConnected(false));
+
+    const handleIncomingMessage = (data: any) => {
+      const sender = data.sender || data.senderEmail || data.sender_email;
+      const msgContent = data.message || data.content || "New message";
+      const msgChatId = data.chatId || data.chat_id;
+
+      if (sender?.toLowerCase() === currentUser.email.toLowerCase()) return;
+
+      const newItem: NotificationItem = {
+        id: `msg-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+        chatId: msgChatId,
+        senderEmail: sender || "", 
+        senderName: data.senderName || data.sender_name || "User",
+        message: msgContent,
+        timestamp: data.timestamp ? new Date(data.timestamp) : new Date(),
+        isRead: false,
+        type: 'message'
       };
-    }, [currentUser?.email, currentUser?.token, addNotification]);
 
-  const value: NotificationContextType = {
-    unreadCount,
-    notifications,
-    socket: socketRef.current,
-    isConnected,
-    markAsRead,
-    markChatAsRead,
-    clearNotifications,
-    refreshUnreadCount,
-    showWishlistNotification,
-    showNearbyNotification,
+      addNotification(newItem);
+      setUnreadCount(prev => prev + 1);
+
+      if (document.hidden || !document.hasFocus()) {
+        showBrowserNotification(`Message from ${newItem.senderName}`, newItem.message);
+      } else {
+        const isAtThisChat = window.location.pathname.includes(`/chat/${msgChatId}`);
+        if (!isAtThisChat) {
+          setActiveToast(newItem);
+          setTimeout(() => setActiveToast(null), 6000);
+        }
+      }
+    };
+
+    socket.on("new_notification", handleIncomingMessage);
+    socket.on("new-message", handleIncomingMessage);
+
+    return () => {
+      socket.disconnect();
+      socketRef.current = null;
+    };
+  }, [currentUser, addNotification, refreshUnreadCount]);
+
+    // Added: Refresh unread count on mount/identity change
+    useEffect(() => {
+      if (!currentUser?.token) return;
+
+      // Initial fetch
+      refreshUnreadCount();
+
+      // Professional Background Refresh: 
+      // Keep checking for messages every 20 seconds in the background
+      // to handle cases where socket might be sleeping or missed an event.
+      const interval = setInterval(() => {
+          console.log("Background notification sync...");
+          refreshUnreadCount();
+      }, 20000);
+
+      return () => clearInterval(interval);
+    }, [currentUser?.token, refreshUnreadCount]);
+
+  const value = {
+    unreadCount, notifications, socket: socketRef.current, isConnected,
+    markAsRead, markChatAsRead, clearNotifications, refreshUnreadCount,
+    showWishlistNotification, showNearbyNotification, activeToast, closeToast
   };
 
   return (
     <NotificationContext.Provider value={value}>
       {children}
+      <AnimatePresence>
+        {activeToast && (
+          <motion.div 
+            initial={{ y: -100, x: "-50%", opacity: 0 }}
+            animate={{ y: 20, x: "-50%", opacity: 1 }}
+            exit={{ y: -100, x: "-50%", opacity: 0 }}
+            className="fixed top-0 left-1/2 w-[90%] max-w-[400px] bg-[#382110] text-white p-4 rounded-2xl shadow-2xl z-[10000] flex items-center gap-4 cursor-pointer"
+            onClick={() => { window.location.href = `/chat/${activeToast.chatId}`; setActiveToast(null); }}
+          >
+            <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center font-bold text-lg">
+              {activeToast.senderName.charAt(0)}
+            </div>
+            <div className="flex-1 min-w-0">
+              <h4 className="font-bold text-sm truncate">{activeToast.senderName}</h4>
+              <p className="text-xs opacity-90 truncate">{activeToast.message}</p>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </NotificationContext.Provider>
   );
 };

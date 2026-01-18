@@ -71,7 +71,7 @@ export default function SingleChat({ currentUser }: Props) {
   // Use notification context
   const { markChatAsRead, socket, refreshUnreadCount } = useNotifications();
 
-  // Mark chat as read when opened
+  // Mark chat as read when opened or when new messages arrive
   useEffect(() => {
     if (activeChatId && typeof activeChatId === "number") {
       markChatAsRead(activeChatId);
@@ -97,21 +97,24 @@ export default function SingleChat({ currentUser }: Props) {
     if (!socket || !activeChatId) return;
 
     const handleNewMessage = (data: any) => {
+      console.log("Incoming message in chat:", data);
+      
+      const msgChatId = data.chatId || data.chat_id;
       // If message is for this chat, refresh messages
-      if (data.chatId === activeChatId || data.chat_id === activeChatId) {
+      if (Number(msgChatId) === Number(activeChatId)) {
         // Add the new message to the list
-        const msgSenderEmail = data.senderEmail || data.sender_email || '';
-        const newMsg: Message = {
-          id: data.messageId || Date.now(),
-          senderEmail: msgSenderEmail,
-          sender_email: msgSenderEmail,
-          content: data.message || data.content,
-          created_at: new Date().toISOString(),
-          is_read: false
-        };
+        const msgSenderEmail = data.sender || data.senderEmail || data.sender_email || '';
         
         // Only add if not from current user (to avoid duplicates with optimistic updates)
         if (msgSenderEmail.toLowerCase() !== currentUser.email.toLowerCase()) {
+          const newMsg: Message = {
+            id: data.messageId || Date.now(),
+            senderEmail: msgSenderEmail,
+            sender_email: msgSenderEmail,
+            content: data.message || data.content,
+            created_at: new Date().toISOString(),
+            is_read: false
+          };
           setMessages(prev => [...prev, newMsg]);
           // Mark as read immediately since user is viewing the chat
           markChatAsRead(activeChatId as number);
@@ -120,9 +123,11 @@ export default function SingleChat({ currentUser }: Props) {
     };
 
     socket.on("new_notification", handleNewMessage);
+    socket.on("new-message", handleNewMessage);
     
     return () => {
       socket.off("new_notification", handleNewMessage);
+      socket.off("new-message", handleNewMessage);
     };
   }, [socket, activeChatId, currentUser.email, markChatAsRead]);
 
@@ -133,9 +138,11 @@ export default function SingleChat({ currentUser }: Props) {
       if (resp.ok) {
          const data = await resp.json();
          setMessages(Array.isArray(data) ? data : data.messages || []);
+         // Since the server marks messages as read during this fetch, refresh the global count
+         refreshUnreadCount?.();
       }
     } catch {}
-  }, [activeChatId, currentUser]);
+  }, [activeChatId, currentUser, refreshUnreadCount]);
 
   useEffect(() => { 
      fetchMessages();
@@ -262,11 +269,16 @@ export default function SingleChat({ currentUser }: Props) {
   return (
     <div className="h-screen w-full bg-[#f4f1ea] flex flex-col font-sans text-[#333]">
       {/* Header */}
-      <header className="h-16 px-4 flex items-center gap-4 bg-white border-b border-[#d8d8d8] z-20">
+      {/* Header - Fixed to top */}
+      <header className="h-[60px] px-4 flex items-center gap-4 bg-white border-b border-[#d8d8d8] fixed top-0 left-0 right-0 z-50 shadow-sm">
          <button onClick={() => navigate(-1)} className="p-2 -ml-2 text-[#555] hover:text-[#382110]"><FaArrowLeft /></button>
-         <div className="flex-1">
-            <h1 className="font-serif font-bold text-[#382110] text-lg">{activeChatInfo?.other_user_name || activeChatInfo?.ownerName || "Chat"}</h1>
-            <p className="text-xs text-[#555] truncate max-w-[200px]">{activeChatInfo?.offer_title || activeChatInfo?.bookTitle || "Book Inquiry"}</p>
+         <div className="flex-1 min-w-0">
+            <h1 className="font-serif font-bold text-[#382110] text-lg truncate">
+               {activeChatInfo?.other_user?.name || activeChatInfo?.other_user_name || activeChatInfo?.ownerName || "Chat"}
+            </h1>
+            <p className="text-xs text-[#555] truncate">
+               {activeChatInfo?.offer_title || activeChatInfo?.title || activeChatInfo?.bookTitle || "Conversation"}
+            </p>
          </div>
           {offerDetails && offerDetails.ownerEmail?.toLowerCase() === currentUser.email.toLowerCase() && (
              <button 
@@ -278,6 +290,9 @@ export default function SingleChat({ currentUser }: Props) {
              </button>
           )}
       </header>
+
+      {/* Spacer for fixed header */}
+      <div className="h-[60px]" />
 
       {/* Messages */}
       <main className="flex-1 overflow-y-auto p-4 space-y-3 bg-[#f4f1ea]">
@@ -303,12 +318,14 @@ export default function SingleChat({ currentUser }: Props) {
                </motion.div>
             );
          })}
+         {/* Spacer to ensure last messages clear the fixed input bar */}
+         <div className="h-[180px]" />
          <div ref={messagesEndRef} />
       </main>
 
-      {/* Input */}
-      <div className="p-4 bg-white border-t border-[#d8d8d8] pb-6">
-         <div className="flex items-center gap-2 bg-[#f4f1ea] border border-[#d8d8d8] rounded-full px-4 py-2 focus-within:border-[#382110] transition-colors">
+      {/* Input - Fixed to sit on top of mobile bottom nav (bottom-16) and bottom of screen on desktop (md:bottom-0) */}
+      <div className="fixed bottom-16 md:bottom-0 left-0 right-0 p-4 bg-white border-t border-[#d8d8d8] pb-6 md:pb-4 z-50">
+         <div className="flex items-center gap-2 bg-[#f4f1ea] border border-[#d8d8d8] rounded-full px-4 py-2 focus-within:border-[#382110] transition-colors max-w-[1100px] mx-auto">
             <input 
                value={newMessage} 
                onChange={e => setNewMessage(e.target.value)} 
