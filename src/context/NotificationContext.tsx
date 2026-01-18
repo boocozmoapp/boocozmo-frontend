@@ -216,36 +216,27 @@ export const NotificationProvider: React.FC<Props> = ({ children, currentUser })
            });
 
            // 2. Add new synthetic notifications for unread chats we don't know about yet
-           // 2. Add new synthetic notifications for unread chats we don't know about yet
            unreadChats.forEach((chat: any) => {
              const lastMsg = chat.last_message || {};
-             const serverMsgTime = lastMsg.created_at ? new Date(lastMsg.created_at).getTime() : 0;
+             const msgTime = lastMsg.created_at ? new Date(lastMsg.created_at).getTime() : Date.now();
              
-             // Check if we already have a notification for this chat
-             const existing = updated.find(n => Number(n.chatId) === Number(chat.id));
+             // HARDCORE FIX: Deterministic ID based on message content/time
+             const stableId = `msg-${chat.id}-${msgTime}`;
+
+             // 1. Strict ID Check: Do we already have this EXACT message?
+             const alreadyHasMessage = updated.some(n => n.id === stableId);
              
-             let shouldAdd = false;
+             // 2. Freshness Check: Do we have a READ notification that is newer/same?
+             const hasNewerRead = updated.some(n => 
+                Number(n.chatId) === Number(chat.id) && 
+                n.isRead && 
+                new Date(n.timestamp).getTime() >= msgTime
+             );
 
-             if (!existing) {
-                // Completely new chat to our list -> Add it
-                shouldAdd = true;
-             } else {
-                // We have a notification for this chat. Check if server has a NEWER message.
-                // We add a small buffer (1s) to avoid equality issues with precision
-                const localTime = new Date(existing.timestamp).getTime();
-                if (serverMsgTime > localTime + 1000) {
-                   shouldAdd = true;
-                }
-             }
-
-             // Final check: if it's already tracked as UNREAD, don't duplicate
-             if (updated.some(n => Number(n.chatId) === Number(chat.id) && !n.isRead)) {
-                shouldAdd = false;
-             }
-
-             if (shouldAdd) {
+             // Only add if it's completely new and we haven't read anything newer
+             if (!alreadyHasMessage && !hasNewerRead) {
                const newItem: NotificationItem = {
-                 id: `sync-${chat.id}-${Date.now()}`,
+                 id: stableId, // Use stable ID
                  chatId: chat.id,
                  senderEmail: chat.other_user?.email || "",
                  senderName: chat.other_user?.name || "User",

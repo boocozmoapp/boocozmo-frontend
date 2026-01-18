@@ -186,7 +186,7 @@ export default function ChatScreen({ currentUser }: Props) {
                         </div>
                         <p className="text-sm text-gray-400 truncate">
                            {(conv as any).store_id 
-                              ? `Store Inquiry: ${conv.offer_title || conv.title || "Store"}`
+                              ? `Store Inquiry: ${(conv.offer_title || conv.title || "Store").replace(/^Inquiry:\s*/i, "")}`
                               : (conv.offer_title || conv.title || (conv as any).bookTitle || "Book Inquiry")}
                         </p>
                      </div>
