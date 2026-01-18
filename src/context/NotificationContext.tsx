@@ -170,15 +170,30 @@ export const NotificationProvider: React.FC<Props> = ({ children, currentUser })
       
       if (response.ok) {
         const data = await response.json();
-        // We trust our local state for immediate interaction, but if server says more, we might miss some.
-        // For now, let's trust the server count if it's vastly different, otherwise stick to local logic for snappiness.
-        // Simplified: Just log it for now.
-        // console.log("Server unread count:", data.unreadCount);
+        // If server returns count, trust it for the badge
+        if (typeof data.count === 'number') {
+           setUnreadCount(data.count);
+        }
+      } else {
+        // Fallback: if route fails (e.g. 404), manually fetch chats and count unread
+        // This handles the case where the backend endpoint might be missing temporary
+        const chatRest = await fetch(`${API_BASE}/chats?user=${encodeURIComponent(currentUser.email)}`, {
+          headers: { "Authorization": `Bearer ${currentUser.token}` }
+        });
+        if (chatRest.ok) {
+           const chats = await chatRest.json();
+           const count = chats.reduce((acc: number, c: any) => {
+             const isUnread = (c.user1 === currentUser.email && c.unread_user1) || 
+                              (c.user2 === currentUser.email && c.unread_user2);
+             return acc + (isUnread ? 1 : 0);
+           }, 0);
+           setUnreadCount(count);
+        }
       }
     } catch (error) {
        // Silent fail
     }
-  }, [currentUser?.token]);
+  }, [currentUser?.email, currentUser?.token]);
 
   // Mark specific notification as read
   const markAsRead = useCallback((notificationId: string) => {
@@ -290,91 +305,106 @@ export const NotificationProvider: React.FC<Props> = ({ children, currentUser })
     }
   }, [addNotification]);
 
-  // Socket.IO connection management
-  useEffect(() => {
-    if (!currentUser?.email || !currentUser?.token) {
-      return;
-    }
-
-    requestNotificationPermission();
-
-    // Use websocket transport only to avoid polling 404s on some server configs
-    const socket = io(API_BASE, {
-      transports: ["websocket"], 
-      path: "/socket.io/", // Explicitly set default path just in case
-      auth: {
-        token: currentUser.token,
-        userEmail: currentUser.email
-      },
-      reconnection: true,
-      reconnectionAttempts: 5,
-      timeout: 20000,
-      autoConnect: true
-    });
-
-    socketRef.current = socket;
-
-    socket.on("connect", () => {
-      console.log("Socket connected");
-      setIsConnected(true);
-      reconnectAttempts.current = 0;
-      socket.emit("join_user_room", currentUser.email);
-    });
-
-    socket.on("disconnect", () => {
-      setIsConnected(false);
-    });
-
-    socket.on("connect_error", (err) => {
-      // Quietly handle error without exploding console
-      if (reconnectAttempts.current < 2) {
-         console.log("Socket connect error, retrying...", err.message);
+    // Socket.IO connection management
+    useEffect(() => {
+      if (!currentUser?.email || !currentUser?.token) {
+        return;
       }
-      reconnectAttempts.current++;
-    });
-
-    // Listen for new notifications
-    socket.on("new_notification", (data: any) => {
-      console.log("New notification received:", data);
-      
-      const chatId = data.chatId || data.chat_id;
-      
-      const newItem: NotificationItem = {
-        id: `msg-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
-        chatId,
-        senderEmail: data.senderEmail || data.sender_email,
-        senderName: data.senderName || data.sender_name || "Someone",
-        message: data.message || data.content || "New message",
-        timestamp: new Date(),
-        isRead: false,
-        offerId: data.offerId || data.offer_id,
-        offerTitle: data.offerTitle || data.offer_title,
-        type: 'message'
-      };
-
-      addNotification(newItem);
-
-      // Show browser notification if app is not focused
-      if (document.hidden || !document.hasFocus()) {
-        showBrowserNotification(
-          `Message from ${newItem.senderName}`,
-          newItem.message,
-          `chat-${chatId}`,
-          () => {
-             // Custom event to handle nav
-             window.dispatchEvent(new CustomEvent("navigate-to-chat", { 
-               detail: { chatId } 
-             }));
+  
+      requestNotificationPermission();
+  
+      // Use websocket transport only to avoid polling 404s
+      const socket = io(API_BASE, {
+        transports: ["websocket"], 
+        auth: {
+          token: currentUser.token,
+          userEmail: currentUser.email
+        },
+        reconnection: true,
+        reconnectionAttempts: 5,
+        timeout: 20000,
+        autoConnect: true
+      });
+  
+      socketRef.current = socket;
+  
+      socket.on("connect", async () => {
+        console.log("Socket connected");
+        setIsConnected(true);
+        reconnectAttempts.current = 0;
+        
+        // Strategy: Since backend only emits to chat rooms, we must join all our chat rooms
+        // to receive real-time notifications for them.
+        try {
+          const resp = await fetch(`${API_BASE}/chats?user=${encodeURIComponent(currentUser.email)}`, {
+             headers: { "Authorization": `Bearer ${currentUser.token}` }
+          });
+          if (resp.ok) {
+            const chats = await resp.json();
+            chats.forEach((chat: any) => {
+              socket.emit("join-chat", chat.id);
+            });
+            console.log(`Joined ${chats.length} chat rooms for notifications`);
           }
-        );
-      }
-    });
+        } catch (e) {
+          console.error("Failed to join chat rooms:", e);
+        }
+      });
+  
+      socket.on("disconnect", () => {
+        setIsConnected(false);
+      });
+  
+      socket.on("connect_error", (err) => {
+        if (reconnectAttempts.current < 2) {
+           console.log("Socket connect error, retrying...", err.message);
+        }
+        reconnectAttempts.current++;
+      });
+  
+      // Listen for 'new-message' (from backend server.js)
+      socket.on("new-message", (data: any) => {
+        console.log("New message received via socket:", data);
+        
+        // Ignore own messages
+        if (data.sender === currentUser.email) return;
 
-    return () => {
-      socket.disconnect();
-      socketRef.current = null;
-    };
-  }, [currentUser?.email, currentUser?.token, addNotification]);
+        const chatId = data.chatId;
+        
+        const newItem: NotificationItem = {
+          id: `msg-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+          chatId,
+          senderEmail: data.sender || "", // Backend sends 'sender' (email)
+          senderName: data.senderName || "User", // We might not get name directly, fallback
+          message: data.message || "New message",
+          timestamp: new Date(data.timestamp),
+          isRead: false,
+          type: 'message'
+        };
+  
+        addNotification(newItem);
+        setUnreadCount(prev => prev + 1); // Optimistically increment
+  
+        // Show browser notification if app is not focused
+        if (document.hidden || !document.hasFocus()) {
+          showBrowserNotification(
+            `New Message`,
+            newItem.message,
+            `chat-${chatId}`,
+            () => {
+               window.dispatchEvent(new CustomEvent("navigate-to-chat", { 
+                 detail: { chatId } 
+               }));
+            }
+          );
+        }
+      });
+  
+      return () => {
+        socket.disconnect();
+        socketRef.current = null;
+      };
+    }, [currentUser?.email, currentUser?.token, addNotification]);
 
   const value: NotificationContextType = {
     unreadCount,
