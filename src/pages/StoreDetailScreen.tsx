@@ -47,6 +47,7 @@ type Store = {
   latitude?: number;
   longitude?: number;
   offerIds?: number[];
+  ownerBadges?: string[];
 };
 
 type Props = {
@@ -103,12 +104,48 @@ export default function StoreDetailScreen({ currentUser }: Props) {
         }
       }
 
-      setStore({
+      // Backend /offers-by-store is sometimes missing ownerEmail in the store object, 
+      // but it's present in the offers. Let's find it.
+      const firstOffer = offersData[0];
+      const ownerEmail = storeData.ownerEmail || storeData.owneremail || firstOffer?.ownerEmail || firstOffer?.owneremail;
+
+      const processedStore = {
         ...storeData,
+        ownerEmail: ownerEmail, // Ensure this exists for the profile fetch below
         latitude: lat ? parseFloat(lat) : undefined,
         longitude: lng ? parseFloat(lng) : undefined,
-        ownerName: storeData.ownerName || "Store Owner",
-      });
+        ownerName: storeData.ownerName || storeData.owner_name || "Store Owner",
+      };
+
+      setStore(processedStore);
+
+      // Robust check: If we have an email, fetch full profile for name/photo/badges
+      if (ownerEmail) {
+        try {
+           const profileRes = await fetch(`${API_BASE}/profile/${ownerEmail}`, {
+             headers: { "Authorization": `Bearer ${currentUser.token}` }
+           });
+           if (profileRes.ok) {
+             const profile = await profileRes.json();
+             
+             let badges: string[] = [];
+             if (profile.badges) {
+               badges = typeof profile.badges === "string" ? JSON.parse(profile.badges) : profile.badges;
+             }
+             if (!badges.length && profile.offersPosted) {
+               if (profile.offersPosted >= 20) badges.push("Verified");
+               else if (profile.offersPosted >= 3) badges.push("Contributor");
+             }
+
+             setStore(prev => prev ? {
+               ...prev,
+               ownerName: profile.name || prev.ownerName,
+               ownerPhoto: profile.profilePhoto || profile.profilePhotoURL || profile.photo || profile.profileImageUrl || prev.ownerPhoto,
+               ownerBadges: badges
+             } : null);
+           }
+        } catch (e) { console.error("Could not fetch owner profile fallback:", e); }
+      }
 
       // 3. Process offers
       const processedOffers = offersData.map((o: any) => ({
@@ -151,17 +188,32 @@ export default function StoreDetailScreen({ currentUser }: Props) {
   };
 
   const handleContact = async () => {
+    console.log("Store owner info:", {
+      ownerName: store?.ownerName,
+      ownerEmail: store?.ownerEmail,
+      storeName: store?.name
+    });
+
     if (!store) return;
-    // Fixed: Cleaner state structure
+    
+    const ownerName = store.ownerName || "Store Owner";
+    const ownerEmail = store.ownerEmail;
+
+    if (!ownerEmail) {
+      console.error("No owner email found!");
+      return;
+    }
+
     navigate(`/chat/new`, {
       state: {
         chat: {
           id: 0,
           user1: currentUser.email,
-          user2: store.ownerEmail,
-          other_user_name: store.ownerName || "Seller",
-          offer_title: `Inquiry about books in ${store.name}`,
-          ownerEmail: store.ownerEmail // Keep this for backward compatibility
+          user2: ownerEmail,
+          other_user_name: ownerName,
+          other_user_email: ownerEmail,
+          offer_title: `Books in ${store.name}`,
+          ownerEmail: ownerEmail
         }
       }
     });
@@ -212,18 +264,25 @@ export default function StoreDetailScreen({ currentUser }: Props) {
             </button>
             <div>
               <h1 className="text-2xl font-bold text-[#382110] leading-tight">{store.name}</h1>
-              <div className="flex items-center gap-3 mt-1 text-sm text-[#777]">
-                <div className="flex items-center gap-1.5 px-2 py-0.5 bg-[#f4f1ea] rounded-full">
-                  <div className="w-4 h-4 rounded-full overflow-hidden bg-[#382110]/20">
+              <div className="flex items-center gap-3 mt-1.5">
+                <div className="flex items-center gap-2 px-2.5 py-1 bg-[#f4f1ea] rounded-full border border-[#eee] shadow-sm">
+                  <div className="w-6 h-6 rounded-full overflow-hidden bg-[#382110]/10 border border-[#382110]/20 flex-shrink-0">
                     {store.ownerPhoto ? (
                       <img src={store.ownerPhoto} className="w-full h-full object-cover" alt={store.ownerName} />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center text-[8px] font-bold">
+                      <div className="w-full h-full flex items-center justify-center text-[10px] font-bold text-[#382110]">
                         {store.ownerName?.charAt(0)}
                       </div>
                     )}
                   </div>
-                  <span className="font-semibold text-[#382110] text-[12px]">{store.ownerName}</span>
+                  <div className="flex flex-col">
+                    <span className="font-bold text-[#382110] text-[11px] leading-none">{store.ownerName}</span>
+                    {store.ownerBadges && store.ownerBadges.length > 0 && (
+                      <span className="text-[9px] text-[#d37e2f] font-black uppercase tracking-tighter mt-0.5">
+                        {store.ownerBadges[store.ownerBadges.length - 1]}
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
@@ -430,6 +489,30 @@ export default function StoreDetailScreen({ currentUser }: Props) {
                   <p className="text-lg text-[#777] font-medium">
                     by <span className="text-[#382110] border-b-2 border-[#d37e2f]/30">{selectedOffer.author}</span>
                   </p>
+                </div>
+
+                {/* Added: Owner Info Section (Matches Discovery/Stores) */}
+                <div className="flex items-center gap-3 mb-6 pb-6 border-b border-[#eee]">
+                  <div className="w-10 h-10 rounded-full overflow-hidden bg-[#f4f1ea] border border-[#ddd] shadow-sm flex-shrink-0">
+                    {store.ownerPhoto ? (
+                      <img src={store.ownerPhoto} className="w-full h-full object-cover" alt={store.ownerName} />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-sm font-bold text-[#382110]">
+                        {store.ownerName?.charAt(0)}
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-bold text-[#382110] truncate">{store.ownerName}</p>
+                      {store.ownerBadges && store.ownerBadges.length > 0 && (
+                        <span className="px-1.5 py-0.5 rounded text-[8px] font-black bg-[#d37e2f]/10 text-[#d37e2f] border border-[#d37e2f]/20 uppercase">
+                          {store.ownerBadges[store.ownerBadges.length - 1]}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[10px] text-[#999] mt-0.5">Store Owner • Member since {new Date(store.created_at).getFullYear()}</p>
+                  </div>
                 </div>
 
                 <div className="flex-1 overflow-y-auto mb-8 pr-2 custom-scrollbar">

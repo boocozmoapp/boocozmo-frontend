@@ -127,6 +127,7 @@ export const NotificationProvider: React.FC<Props> = ({ children, currentUser })
   const [isConnected, setIsConnected] = useState(false);
   const socketRef = useRef<Socket | null>(null);
   const reconnectAttempts = useRef(0);
+  const recentlyReadRef = useRef<Map<number, number>>(new Map()); // chatId -> timestamp
 
   // Load cached data strictly
   useEffect(() => {
@@ -166,16 +167,38 @@ export const NotificationProvider: React.FC<Props> = ({ children, currentUser })
       
       if (chatResp.ok) {
         const chats = await chatResp.json();
-        const totalUnread = chats.reduce((acc: number, c: any) => acc + (parseInt(c.unread_count) || 0), 0);
-        setUnreadCount(totalUnread);
         
-        const unreadChats = chats.filter((c: any) => (parseInt(c.unread_count) || 0) > 0);
+        // 2. Clear old entries from recentlyRead cache (older than 30s)
+        const now = Date.now();
+        recentlyReadRef.current.forEach((time, id) => {
+          if (now - time > 30000) recentlyReadRef.current.delete(id);
+        });
+
+        // 3. Create synthetic notifications for unread chats
+        const unreadChats = chats.filter((c: any) => {
+           const count = parseInt(c.unread_count) || 0;
+           // Ensure we compare numbers
+           const isRecentlyRead = recentlyReadRef.current.has(Number(c.id));
+           return count > 0 && !isRecentlyRead;
+        });
         
         setNotifications(prev => {
-           let updated = [...prev];
+           // 1. Mark existing notifications as read if server says they are read (or we just read them)
+           let updated = prev.map(n => {
+             if (n.type === 'message' && !n.isRead) {
+               const stillUnreadOnServer = unreadChats.some((uc: any) => Number(uc.id) === Number(n.chatId));
+               const isRecentlyRead = recentlyReadRef.current.has(Number(n.chatId));
+               if (!stillUnreadOnServer || isRecentlyRead) {
+                 return { ...n, isRead: true };
+               }
+             }
+             return n;
+           });
+
+           // 2. Add new synthetic notifications for unread chats we don't know about yet
            unreadChats.forEach((chat: any) => {
-             const hasUnread = prev.some(n => Number(n.chatId) === Number(chat.id) && !n.isRead);
-             if (!hasUnread) {
+             const alreadyTracked = updated.some(n => Number(n.chatId) === Number(chat.id) && !n.isRead);
+             if (!alreadyTracked) {
                const lastMsg = chat.last_message || {};
                const newItem: NotificationItem = {
                  id: `sync-${chat.id}-${Date.now()}`,
@@ -210,11 +233,13 @@ export const NotificationProvider: React.FC<Props> = ({ children, currentUser })
   const markChatAsRead = useCallback(async (chatId: number) => {
     if (!currentUser?.token) return;
     
+    // Add to recently read cache to prevent re-syng flicker
+    recentlyReadRef.current.set(Number(chatId), Date.now());
+
     try {
       setNotifications(prev => 
         prev.map(n => Number(n.chatId) === Number(chatId) ? { ...n, isRead: true } : n)
       );
-      setUnreadCount(prev => Math.max(0, prev - 1));
 
       const response = await fetch(`${API_BASE}/mark-read`, {
         method: "POST",
@@ -339,7 +364,10 @@ export const NotificationProvider: React.FC<Props> = ({ children, currentUser })
         const isAtThisChat = window.location.pathname.includes(`/chat/${msgChatId}`);
         if (!isAtThisChat) {
           setActiveToast(newItem);
-          setTimeout(() => setActiveToast(null), 6000);
+          // Auto-dismiss after 6s, but only if it's still THIS specific toast
+          setTimeout(() => {
+            setActiveToast(current => current?.id === newItem.id ? null : current);
+          }, 6000);
         }
       }
     };
