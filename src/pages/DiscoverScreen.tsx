@@ -747,14 +747,12 @@ export default function DiscoverScreen({ currentUser, wishlist = [], toggleWishl
   ];
 
   return (
-    <div className="flex flex-col h-[calc(100vh-110px)] md:h-[calc(100vh-60px)] overflow-y-auto bg-[#faf8f5]">
+    <div className="flex flex-col h-full bg-[#faf8f5]">
       {/* Search Header */}
       <div className="sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-[#eee] px-4 py-3 md:px-8">
         <div className="max-w-6xl mx-auto">
           <div className="flex items-center gap-3 mb-3">
-            <button onClick={() => navigate("/home")} className="text-[#382110] p-2 hover:bg-[#f4f1ea] rounded-full transition-colors">
-              <FaArrowLeft size={18} />
-            </button>
+             {/* Back Button Removed - Using Global Nav */}
             
             <form onSubmit={handleSearch} className="flex-1 relative group">
               <input 

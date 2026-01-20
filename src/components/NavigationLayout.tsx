@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { 
   FaBars, FaArrowLeft, FaHome, FaMapMarkedAlt, 
   FaStore, FaUserCircle, FaBook, FaSearch, 
-  FaTimes, FaChevronRight, FaSignOutAlt, FaCog, FaEnvelope, FaTachometerAlt
+  FaTimes, FaChevronRight, FaSignOutAlt, FaCog, FaEnvelope, FaTachometerAlt, FaUsers
 } from "react-icons/fa";
 import NotificationBell from "./NotificationBell";
 
@@ -28,6 +28,7 @@ const MAIN_MENU = [
   { label: "Dashboard", path: "/dashboard", icon: <FaTachometerAlt size={18} /> },
   { label: "Discover", path: "/discover", icon: <FaSearch size={18} /> },
   { label: "Bookstores", path: "/stores", icon: <FaStore size={18} /> },
+  { label: "Communities", path: "/communities", icon: <FaUsers size={18} /> },
   { label: "Map Explorer", path: "/map", icon: <FaMapMarkedAlt size={18} /> },
   { label: "My Library", path: "/my-library", icon: <FaBook size={18} /> },
   { label: "Messages", path: "/chat", icon: <FaEnvelope size={18} /> },
