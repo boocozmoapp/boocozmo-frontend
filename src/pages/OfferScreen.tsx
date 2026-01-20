@@ -164,12 +164,7 @@ export default function OfferScreen({ onBack, currentUser }: Props) {
 
   return (
     <div className="min-h-screen bg-[#f4f1ea] font-sans text-[#333]">
-       <header className="px-4 py-3 border-b border-[#d8d8d8] bg-white sticky top-0 z-30 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-             <button onClick={onBack || (() => navigate(-1))} className="p-2 text-[#555] hover:bg-[#f4f1ea] rounded-full"><FaArrowLeft /></button>
-             <h1 className="text-xl font-serif font-bold text-[#382110]">Post a Listing</h1>
-          </div>
-       </header>
+
 
        <main className="max-w-3xl mx-auto px-4 pb-8 pt-0 md:px-8 md:pb-8">
           {/* Instructional Poster */}

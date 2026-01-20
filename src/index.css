@@ -57,6 +57,10 @@ body {
   background-color: var(--color-primary);
   color: var(--color-gr-text-main);
   font-family: var(--font-sans);
+  font-size: 14px;
+  /* Default size for compact view */
+  line-height: 1.5;
+  /* Relaxed reading */
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   margin: 0;

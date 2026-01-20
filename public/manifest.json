@@ -1,0 +1,40 @@
+{
+    "name": "Boocozmo",
+    "short_name": "Boocozmo",
+    "description": "Trade, sell & discover books near you. The ultimate book trading marketplace for book lovers.",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#f4f1ea",
+    "theme_color": "#382110",
+    "orientation": "portrait-primary",
+    "icons": [
+        {
+            "src": "/vite.svg",
+            "sizes": "any",
+            "type": "image/svg+xml",
+            "purpose": "any maskable"
+        }
+    ],
+    "categories": [
+        "books",
+        "shopping",
+        "social"
+    ],
+    "shortcuts": [
+        {
+            "name": "Discover Books",
+            "url": "/discover",
+            "description": "Search for books to trade or buy"
+        },
+        {
+            "name": "My Library",
+            "url": "/my-library",
+            "description": "View your book collection"
+        },
+        {
+            "name": "Messages",
+            "url": "/chat",
+            "description": "Check your conversations"
+        }
+    ]
+}

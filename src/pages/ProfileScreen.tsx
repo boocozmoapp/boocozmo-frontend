@@ -409,35 +409,10 @@ export default function ProfileScreen({ currentUser, wishlist = [], toggleWishli
 
   return (
     <div className="h-[calc(100vh-110px)] md:h-[calc(100vh-60px)] w-full bg-primary text-text-main flex overflow-y-auto font-sans">
-      {/* Sidebar */}
+      {/* Sidebar REMOVED - using global nav */}
       <AnimatePresence>
-        {sidebarOpen && <motion.div initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} onClick={() => setSidebarOpen(false)} className="fixed inset-0 bg-black/50 z-40 lg:hidden" />}
+        {sidebarOpen && <div className="hidden" />}
       </AnimatePresence>
-
-      <motion.aside
-        initial={false}
-        animate={{ width: sidebarOpen ? 260 : 80 }}
-        className="hidden md:flex flex-col bg-primary-light/80 backdrop-blur-xl border-r border-white/5 z-50 overflow-hidden"
-      >
-        <div className="p-6 flex items-center gap-3 mb-6">
-           <div className="w-10 h-10 rounded-xl bg-secondary flex items-center justify-center text-white text-xl font-bold font-serif">B</div>
-           {sidebarOpen && <span className="font-serif font-bold text-xl text-white">Boocozmo</span>}
-        </div>
-        <nav className="flex-1 px-4 space-y-2">
-           {navItems.map(item => (
-              <button key={item.label} onClick={item.onClick} className="w-full flex items-center gap-4 p-3 rounded-xl hover:bg-white/5 text-gray-400 hover:text-white transition-all">
-                 <item.icon size={20} />
-                 {sidebarOpen && <span className="font-medium whitespace-nowrap">{item.label}</span>}
-              </button>
-           ))}
-           {onLogout && (
-              <button onClick={onLogout} className="w-full flex items-center gap-4 p-3 rounded-xl hover:bg-white/5 text-gray-400 hover:text-red-500 transition-all mt-4 border-t border-white/5 pt-6">
-                 <FaSignOutAlt size={20} />
-                 {sidebarOpen && <span className="font-medium whitespace-nowrap">Logout</span>}
-              </button>
-           )}
-        </nav>
-      </motion.aside>
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col h-full bg-gradient-to-br from-primary via-primary-light/20 to-primary relative overflow-hidden">
@@ -445,20 +420,7 @@ export default function ProfileScreen({ currentUser, wishlist = [], toggleWishli
          <div className="absolute -top-40 -right-40 w-96 h-96 bg-secondary/10 rounded-full blur-3xl pointer-events-none" />
          <div className="absolute top-20 -left-20 w-72 h-72 bg-blue-500/5 rounded-full blur-3xl pointer-events-none" />
 
-         <header className="h-20 px-6 flex items-center justify-between border-b border-white/5 bg-primary/80 backdrop-blur-md sticky top-0 z-30">
-            <div className="flex items-center gap-4">
-               <button onClick={() => navigate(-1)} className="p-2 text-[#382110] hover:text-secondary transition-colors"><FaArrowLeft /></button>
-               <h1 className="text-2xl font-serif font-bold text-[#382110]">Profile</h1>
-            </div>
-            <div className="flex items-center gap-2">
-               {onLogout && (
-                  <button onClick={onLogout} className="md:hidden p-2 text-[#777] hover:text-red-500" title="Logout">
-                     <FaSignOutAlt size={18} />
-                  </button>
-               )}
-               <button onClick={() => setSidebarOpen(!sidebarOpen)} className="md:hidden p-2 text-[#382110]"><FaBars /></button>
-            </div>
-         </header>
+          {/* Header REMOVED - using global nav */}
 
          <main className="flex-1 overflow-y-auto p-4 md:p-8">
             <div className="max-w-5xl mx-auto space-y-8">
@@ -637,7 +599,7 @@ export default function ProfileScreen({ currentUser, wishlist = [], toggleWishli
                               value={wishlistInput}
                               onChange={e => setWishlistInput(e.target.value)}
                               placeholder="Add book title to hunting list..."
-                              className="flex-1 bg-primary-light/50 border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-secondary transition-colors"
+                              className="flex-1 bg-white border border-[#d8d8d8] rounded-xl px-4 py-3 text-sm text-[#333] placeholder:text-[#999] outline-none focus:border-secondary transition-colors"
                            />
                            <button 
                               onClick={() => {
