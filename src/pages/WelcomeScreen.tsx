@@ -239,6 +239,13 @@ export default function WelcomeScreen({ currentUser }: { currentUser?: any }) {
                     path="/my-library" 
                 />
                 <NavCard 
+                    title="Post Offer" 
+                    desc="Sell or trade books." 
+                    icon={<FaBoxOpen />} 
+                    path="/offer" 
+                    primary
+                />
+                <NavCard 
                     title="Stores" 
                     desc="Browse bookstore profiles." 
                     icon={<FaStore />} 

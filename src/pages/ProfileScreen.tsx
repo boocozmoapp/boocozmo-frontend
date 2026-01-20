@@ -199,7 +199,7 @@ export default function ProfileScreen({ currentUser, wishlist = [], toggleWishli
       const response = await fetchWithTimeout(`${API_BASE}/my-offers`, { headers: { "Authorization": `Bearer ${currentUser.token}` } });
       if (!response.ok) throw new Error("Failed");
       const data = await response.json();
-      setMyOffers((Array.isArray(data.offers) ? data.offers : []).filter((o: any) => o.state === 'open'));
+      setMyOffers(Array.isArray(data.offers) ? data.offers : []);
     } catch { setMyOffers([]); } finally { setLoadingOffers(false); }
   }, [currentUser.token]);
 
@@ -362,20 +362,7 @@ export default function ProfileScreen({ currentUser, wishlist = [], toggleWishli
   }), [profile, myOffers]);
 
   const filteredOffers = useMemo(() => {
-    // Deduplicate by bookTitle and author - show all books, no filtering
-    const uniqueMap = new Map<string, Offer>();
-    
-    myOffers.forEach(o => {
-       const key = `${o.bookTitle?.toLowerCase() || ''}-${o.author?.toLowerCase() || ''}`;
-       const existing = uniqueMap.get(key);
-       
-       // If public version exists, keep it. If current is public, overwrite.
-       if (!existing || o.visibility === 'public') {
-          uniqueMap.set(key, o);
-       }
-    });
-
-    return Array.from(uniqueMap.values());
+    return myOffers;
   }, [myOffers]);
 
   const getImageSource = (offer: any) => {
