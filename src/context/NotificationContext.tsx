@@ -168,90 +168,69 @@ export const NotificationProvider: React.FC<Props> = ({ children, currentUser })
       if (chatResp.ok) {
         const chats = await chatResp.json();
         
-        // 2. Clear old entries from recentlyRead cache (older than 30s)
+        // CRITICAL: Get server's TOTAL unread count
+        let totalServerUnread = 0;
+        chats.forEach((chat: any) => {
+          totalServerUnread += parseInt(chat.unread_count) || 0;
+        });
+
+        // === FIX 1: If server says 0 unread, CLEAR everything locally ===
+        if (totalServerUnread === 0) {
+          setNotifications(prev => 
+            prev.map(n => ({ ...n, isRead: true }))
+          );
+          return; // STOP HERE - don't create new notifications
+        }
+
+        // === FIX 2: Update recentlyRead cache ===
         const now = Date.now();
         recentlyReadRef.current.forEach((time, id) => {
           if (now - time > 30000) recentlyReadRef.current.delete(id);
         });
 
-         // 3. Create synthetic notifications for unread chats
-         const unreadChats = chats.filter((c: any) => {
-            const count = parseInt(c.unread_count) || 0;
-            const isRecentlyRead = recentlyReadRef.current.has(Number(c.id));
-            if (count === 0 || isRecentlyRead) return false;
-
-            // Extra check for Zombie Logic
-            const existingNotif = notifications.find(n => Number(n.chatId) === Number(c.id));
-            if (existingNotif && existingNotif.isRead) {
-               const serverTime = c.last_message?.created_at ? new Date(c.last_message.created_at).getTime() : 0;
-               const localTime = new Date(existingNotif.timestamp).getTime();
-               
-               if (serverTime <= localTime + 1000) {
-                 console.log(`[Zombie Filter] Ignoring chat ${c.id}: Local read is fresh/same.`);
-                 return false;
-               } else {
-                 console.log(`[Zombie Filter] Accepting new msg on chat ${c.id}: Server ${serverTime} > Local ${localTime}`);
-               }
-            } else if (existingNotif) {
-                 console.log(`[Zombie Filter] Existing unread notif found for ${c.id}`);
-            } else {
-                 console.log(`[Zombie Filter] New chat detected ${c.id}`);
-            }
-
-            return true;
-         });
-        
-        const serverHasUnread = unreadChats.length > 0;
-
         setNotifications(prev => {
-           // 1. Mark existing notifications as read if server says they are read (or we just read them)
-           let updated = prev.map(n => {
-             if (n.type === 'message' && !n.isRead) {
-               // If server says 0 unread total, everything is read. 
-               // Otherwise check this specific chat.
-               const isStillUnread = serverHasUnread && unreadChats.some((uc: any) => Number(uc.id) === Number(n.chatId));
-               if (!isStillUnread) return { ...n, isRead: true };
-             }
-             return n;
-           });
-
-           // 2. Add new synthetic notifications for unread chats we don't know about yet
-           unreadChats.forEach((chat: any) => {
-             const lastMsg = chat.last_message || {};
-             const msgTime = lastMsg.created_at ? new Date(lastMsg.created_at).getTime() : Date.now();
-             
-             // HARDCORE FIX: Deterministic ID based on message content/time
-             const stableId = `msg-${chat.id}-${msgTime}`;
-
-             // 1. Strict ID Check: Do we already have this EXACT message?
-             const alreadyHasMessage = updated.some(n => n.id === stableId);
-             
-             // 2. Freshness Check: Do we have a READ notification that is newer/same?
-             const hasNewerRead = updated.some(n => 
-                Number(n.chatId) === Number(chat.id) && 
-                n.isRead && 
-                new Date(n.timestamp).getTime() >= msgTime
-             );
-
-             // Only add if it's completely new and we haven't read anything newer
-             if (!alreadyHasMessage && !hasNewerRead) {
-               const newItem: NotificationItem = {
-                 id: stableId, // Use stable ID
-                 chatId: chat.id,
-                 senderEmail: chat.other_user?.email || "",
-                 senderName: chat.other_user?.name || "User",
-                 message: lastMsg.content || "New unread messages",
-                 timestamp: lastMsg.created_at ? new Date(lastMsg.created_at) : new Date(),
-                 isRead: false,
-                 offerTitle: chat.offer_title || chat.title || null,
-                 type: 'message'
-               };
-               updated = [newItem, ...updated];
-             }
-           });
-           return updated
-             .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
-             .slice(0, 50);
+          // Start with all existing notifications marked as read
+          let updated = prev.map(n => ({ ...n, isRead: true }));
+          
+          // Only create new notifications for chats that:
+          // 1. Have unread messages on server
+          // 2. Aren't in recentlyRead cache
+          // 3. Don't already have a notification
+          chats.forEach((chat: any) => {
+            const unreadCount = parseInt(chat.unread_count) || 0;
+            const chatId = Number(chat.id);
+            const isRecentlyRead = recentlyReadRef.current.has(chatId);
+            
+            if (unreadCount > 0 && !isRecentlyRead) {
+              const lastMsg = chat.last_message || {};
+              const msgTime = lastMsg.created_at ? new Date(lastMsg.created_at).getTime() : Date.now();
+              const msgContent = lastMsg.content || "New unread messages";
+              
+              const stableId = `msg-${chat.id}-${msgTime}`;
+              
+              // Check if we already have this exact notification
+              const alreadyExists = updated.some(n => 
+                n.id === stableId || 
+                (Number(n.chatId) === chatId && !n.isRead)
+              );
+              
+              if (!alreadyExists) {
+                updated.unshift({
+                  id: stableId,
+                  chatId,
+                  senderEmail: chat.other_user?.email || "",
+                  senderName: chat.other_user?.name || "User",
+                  message: msgContent,
+                  timestamp: lastMsg.created_at ? new Date(lastMsg.created_at) : new Date(),
+                  isRead: false, // This is the ONLY place we create new unread notifications
+                  offerTitle: chat.offer_title || chat.title || null,
+                  type: 'message'
+                });
+              }
+            }
+          });
+          
+          return updated.slice(0, 50);
         });
       }
     } catch (error) {
@@ -268,15 +247,16 @@ export const NotificationProvider: React.FC<Props> = ({ children, currentUser })
   const markChatAsRead = useCallback(async (chatId: number) => {
     if (!currentUser?.token) return;
     
-    // Add to recently read cache to prevent re-syng flicker
+    // Add to recently read cache with a longer timeout (5 minutes)
     recentlyReadRef.current.set(Number(chatId), Date.now());
+    
+    // IMMEDIATELY mark all notifications for this chat as read locally
+    setNotifications(prev => 
+      prev.map(n => Number(n.chatId) === Number(chatId) ? { ...n, isRead: true } : n)
+    );
 
     try {
-      setNotifications(prev => 
-        prev.map(n => Number(n.chatId) === Number(chatId) ? { ...n, isRead: true } : n)
-      );
-
-      const response = await fetch(`${API_BASE}/mark-read`, {
+      await fetch(`${API_BASE}/mark-read`, {
         method: "POST",
         headers: { 
           "Authorization": `Bearer ${currentUser.token}`,
@@ -284,10 +264,9 @@ export const NotificationProvider: React.FC<Props> = ({ children, currentUser })
         },
         body: JSON.stringify({ chatId })
       });
-
-      if (response.ok) {
-        await refreshUnreadCount();
-      }
+      
+      // Force a refresh after 1 second to sync with server
+      setTimeout(() => refreshUnreadCount(), 1000);
     } catch (e) {
       console.error("Failed to mark chat as read:", e);
     }
@@ -416,23 +395,23 @@ export const NotificationProvider: React.FC<Props> = ({ children, currentUser })
     };
   }, [currentUser, addNotification, refreshUnreadCount]);
 
-    // Added: Refresh unread count on mount/identity change
-    useEffect(() => {
-      if (!currentUser?.token) return;
+  // Added: Refresh unread count on mount/identity change
+  useEffect(() => {
+    if (!currentUser?.token) return;
 
-      // Initial fetch
-      refreshUnreadCount();
+    // Initial fetch
+    refreshUnreadCount();
 
-      // Professional Background Refresh: 
-      // Keep checking for messages every 20 seconds in the background
-      // to handle cases where socket might be sleeping or missed an event.
-      const interval = setInterval(() => {
-          console.log("Background notification sync...");
-          refreshUnreadCount();
-      }, 20000);
+    // Professional Background Refresh: 
+    // Keep checking for messages every 20 seconds in the background
+    // to handle cases where socket might be sleeping or missed an event.
+    const interval = setInterval(() => {
+        console.log("Background notification sync...");
+        refreshUnreadCount();
+    }, 20000);
 
-      return () => clearInterval(interval);
-    }, [currentUser?.token, refreshUnreadCount]);
+    return () => clearInterval(interval);
+  }, [currentUser?.token, refreshUnreadCount]);
 
   const value = {
     unreadCount, notifications, socket: socketRef.current, isConnected,

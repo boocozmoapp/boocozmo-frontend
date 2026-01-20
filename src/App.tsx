@@ -25,6 +25,8 @@ import AuthCallback from "./pages/AuthCallback";
 import CommunityScreen from "./pages/CommunityScreen";
 import { NotificationProvider } from "./context/NotificationContext";
 import NotificationBell from "./components/NotificationBell";
+import ErrorBoundary from "./components/ErrorBoundary";
+import { ToastProvider } from "./components/Toast";
 import "leaflet/dist/leaflet.css";
 
 type User = {
@@ -105,7 +107,7 @@ const AppContent = () => {
                     placeholder="Search gems..."
                     className="w-full bg-white border border-[#d8d8d8] rounded-[3px] py-1.5 px-3 text-sm focus:outline-none cursor-pointer shadow-inner"
                   />
-                  <button className="absolute right-0 top-0 bottom-0 px-3 text-[#555] hover:bg-[#eee] transition-colors rounded-r-[3px]">
+                  <button className="absolute right-0 top-0 bottom-0 px-3 text-[#555] hover:bg-[#eee] transition-colors rounded-r-[3px]" aria-label="Search">
                     <FaSearch size={14} />
                   </button>
                 </div>
@@ -113,30 +115,31 @@ const AppContent = () => {
 
               <div className="flex items-center gap-3 md:gap-4">
                 {/* Mobile Top Navigation Icons */}
-                <button className="md:hidden text-[#382110] hover:text-[#5a3e2b]" onClick={() => navigate("/discover")}>
+                <button className="md:hidden text-[#382110] hover:text-[#5a3e2b]" onClick={() => navigate("/discover")} aria-label="Search books">
                   <FaSearch size={18} />
                 </button>
-                <button className="md:hidden text-[#382110] hover:text-[#5a3e2b]" onClick={() => navigate("/communities")}>
+                <button className="md:hidden text-[#382110] hover:text-[#5a3e2b]" onClick={() => navigate("/communities")} aria-label="Communities">
                   <FaUserFriends size={18} />
                 </button>
-                <button className="md:hidden text-[#382110] hover:text-[#5a3e2b]" onClick={() => navigate("/my-library")}>
+                <button className="md:hidden text-[#382110] hover:text-[#5a3e2b]" onClick={() => navigate("/my-library")} aria-label="My Library">
                   <FaLayerGroup size={18} />
                 </button>
                 
                 <div className="flex items-center gap-3 border-r border-[#ccc] pr-4 mr-1">
-                  <button onClick={() => navigate("/chat")} className="text-[#382110] hover:bg-white/50 p-1.5 rounded-full transition-colors relative">
+                  <button onClick={() => navigate("/chat")} className="text-[#382110] hover:bg-white/50 p-1.5 rounded-full transition-colors relative" aria-label="Messages">
                     <FaEnvelope size={18} />
                   </button>
                   <NotificationBell />
                 </div>
 
-                <div 
+                <button 
                   className="w-8 h-8 rounded-full bg-[#382110] text-white flex items-center justify-center text-xs font-bold cursor-pointer hover:bg-[#5a3e2b] transition-colors"
                   onClick={() => navigate("/profile")}
+                  aria-label="Your profile"
                 >
                   {user.name.charAt(0)}
-                </div>
-                <button onClick={handleLogout} className="text-[#382110] opacity-60 hover:opacity-100 hidden md:block transition-opacity">
+                </button>
+                <button onClick={handleLogout} className="text-[#382110] opacity-60 hover:opacity-100 hidden md:block transition-opacity" aria-label="Log out">
                   <FaSignOutAlt />
                 </button>
               </div>
@@ -201,8 +204,12 @@ const AppContent = () => {
 
 export default function App() {
   return (
-    <BrowserRouter>
-      <AppContent />
-    </BrowserRouter>
+    <ErrorBoundary>
+      <ToastProvider>
+        <BrowserRouter>
+          <AppContent />
+        </BrowserRouter>
+      </ToastProvider>
+    </ErrorBoundary>
   );
 }

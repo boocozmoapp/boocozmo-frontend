@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { FaArrowLeft, FaPaperPlane, FaCheck, FaCheckDouble } from "react-icons/fa";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { useNotifications } from "../context/NotificationContext";
+import { useToast } from "../components/Toast";
 
 const API_BASE = "https://boocozmo-api.onrender.com";
 
@@ -53,19 +54,30 @@ export default function SingleChat({ currentUser }: Props) {
     }
   }, [activeChatInfo?.offer_id, currentUser.token]);
 
+  const toast = useToast();
+
   const handleCloseDeal = async () => {
-    if (!offerDetails || !confirm("Mark this deal as closed? This will archive the book.")) return;
-    try {
-      const res = await fetch(`${API_BASE}/close-deal`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${currentUser.token}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ offerId: offerDetails.id })
-      });
-      if (res.ok) {
-        setOfferDetails({ ...offerDetails, state: 'closed' });
-        alert("Deal closed successfully!");
+    if (!offerDetails) return;
+    
+    toast.confirm(
+      "Close This Deal?",
+      "This will archive the book and mark the transaction as complete.",
+      async () => {
+        try {
+          const res = await fetch(`${API_BASE}/close-deal`, {
+            method: "POST",
+            headers: { Authorization: `Bearer ${currentUser.token}`, "Content-Type": "application/json" },
+            body: JSON.stringify({ offerId: offerDetails.id })
+          });
+          if (res.ok) {
+            setOfferDetails({ ...offerDetails, state: 'closed' });
+            toast.success("Deal Closed!", "The book has been archived successfully.");
+          }
+        } catch (e) {
+          toast.error("Oops!", "Failed to close the deal. Please try again.");
+        }
       }
-    } catch (e) { alert("Failed to close deal"); }
+    );
   };
   
   // Use notification context
@@ -261,7 +273,7 @@ export default function SingleChat({ currentUser }: Props) {
       console.error("Chat error details:", e);
       // Revert optimistic update
       setMessages(prev => prev.filter(m => m.id !== tempId));
-      alert(`Error: ${e.message || "Failed to send message"}`);
+      toast.error("Message Failed", e.message || "Could not send your message. Please try again.");
     } finally { 
       setSending(false); 
     }
