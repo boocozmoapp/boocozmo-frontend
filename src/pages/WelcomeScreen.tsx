@@ -76,10 +76,21 @@ export default function WelcomeScreen({ currentUser }: { currentUser?: any }) {
                 const myOffers = allOffers.filter((o: any) => o.owneremail === user.email);
                 setStats((s: any) => ({ ...s, offers: myOffers.length }));
 
+                // Smart Location Inference: If using default NYC coords, try to use user's latest book location
+                // 40.7128, -74.0060 are the defaults set above
+                if (Math.abs(userLat - 40.7128) < 0.0001 && Math.abs(userLng - (-74.0060)) < 0.0001 && myOffers.length > 0) {
+                    const lastOffer = myOffers[0]; // Assuming most recent
+                    if (lastOffer.latitude && lastOffer.longitude) {
+                        userLat = parseFloat(lastOffer.latitude);
+                        userLng = parseFloat(lastOffer.longitude);
+                    }
+                }
+
                 // B. Calculate Local Activity (Offers within 15km)
                 let localCount = 0;
                 allOffers.forEach((offer: any) => {
-                    if (offer.latitude && offer.longitude && offer.owneremail !== user.email) {
+                    if (offer.latitude && offer.longitude) {
+                         // Include user's own offers in the local vibrancy count
                         const dist = getDistanceKm(userLat, userLng, parseFloat(offer.latitude), parseFloat(offer.longitude));
                         if (dist <= 15) localCount++;
                     }

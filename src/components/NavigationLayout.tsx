@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { 
   FaBars, FaArrowLeft, FaHome, FaMapMarkedAlt, 
   FaStore, FaUserCircle, FaBook, FaSearch, 
-  FaTimes, FaChevronRight, FaSignOutAlt, FaCog, FaEnvelope, FaTachometerAlt, FaUsers
+  FaTimes, FaChevronRight, FaSignOutAlt, FaCog, FaEnvelope, FaTachometerAlt, FaUsers, FaPlus
 } from "react-icons/fa";
 import NotificationBell from "./NotificationBell";
 
@@ -19,13 +19,14 @@ const ROUTE_MAP: Record<string, { title: string; parent?: string }> = {
   "/profile": { title: "My Profile", parent: "/home" },
   "/my-library": { title: "My Library", parent: "/profile" },
   "/discover": { title: "Discover", parent: "/home" },
-  "/offer": { title: "Add Book", parent: "/my-library" },
+  "/offer": { title: "Post Listing", parent: "/home" },
   "/communities": { title: "Communities", parent: "/discover" },
 };
 
 const MAIN_MENU = [
   { label: "Home", path: "/home", icon: <FaHome size={18} /> },
   { label: "Dashboard", path: "/dashboard", icon: <FaTachometerAlt size={18} /> },
+  { label: "Post Listing", path: "/offer", icon: <FaPlus size={18} /> },
   { label: "Discover", path: "/discover", icon: <FaSearch size={18} /> },
   { label: "Bookstores", path: "/stores", icon: <FaStore size={18} /> },
   { label: "Communities", path: "/communities", icon: <FaUsers size={18} /> },
